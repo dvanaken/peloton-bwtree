@@ -3,8 +3,7 @@
  * mm.c
  *    main memory storage manager
  *
- *    This code manages relations that reside in (presumably stable)
- *    main memory.
+ *    This code manages relations that reside in main memory.
  *
  * Copyright (c) 1994, Regents of the University of California
  *
@@ -15,8 +14,6 @@
  *-------------------------------------------------------------------------
  */
 #include "postgres.h"
-
-//#ifdef MAIN_MEMORY
 
 #include <math.h>
 #include "storage/ipc.h"
@@ -98,6 +95,8 @@ mminit()
 	bool found;
 	HASHCTL info;
 
+	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
+
 	SpinLockAcquire(MMCacheLock);
 
 	mmsize += MAXALIGN(BLCKSZ * MMNBUFFERS);
@@ -142,12 +141,12 @@ mminit()
 
 	// XXX Assume that it is NOT postmaster
 	/*
-	if (IsPostmaster) {
-		memset(mmcacheblk, 0, mmsize);
-		SpinLockRelease(MMCacheLock);
-		// SUCCESS
-		return;
-	}
+	  if (IsPostmaster) {
+	  memset(mmcacheblk, 0, mmsize);
+	  SpinLockRelease(MMCacheLock);
+	  // SUCCESS
+	  return;
+	  }
 	*/
 
 	SpinLockRelease(MMCacheLock);
@@ -166,6 +165,8 @@ mminit()
 int
 mmshutdown()
 {
+	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
+
 	return (SM_SUCCESS);
 }
 
@@ -175,6 +176,8 @@ mmcreate(Relation reln, ForkNumber forknum)
 	MMRelHashEntry *entry;
 	bool found;
 	MMRelTag tag;
+
+	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
 
 	SpinLockAcquire(MMCacheLock);
 
@@ -224,6 +227,8 @@ mmunlink(Relation reln, ForkNumber forknum)
 	MMRelHashEntry *rentry;
 	bool found;
 	MMRelTag rtag;
+
+	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
 
 	if (reln->rd_rel->relisshared)
 		reldbid = (Oid) 0;
@@ -281,6 +286,8 @@ mmextend(Relation reln, char *buffer)
 	bool found;
 	MMRelTag rtag;
 	MMCacheTag tag;
+
+	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
 
 	if (reln->rd_rel->relisshared)
 		reldbid = (Oid) 0;
@@ -346,6 +353,8 @@ mmextend(Relation reln, char *buffer)
 int
 mmopen(Relation reln)
 {
+	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
+
 	/* automatically successful */
 	return (0);
 }
@@ -358,6 +367,8 @@ mmopen(Relation reln)
 int
 mmclose(Relation reln, ForkNumber forknum)
 {
+	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
+
 	/* automatically successful */
 	return (SM_SUCCESS);
 }
@@ -374,6 +385,8 @@ mmread(Relation reln, BlockNumber blocknum, char *buffer)
 	bool found;
 	int offset;
 	MMCacheTag tag;
+
+	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
 
 	if (reln->rd_rel->relisshared)
 		tag.mmct_dbid = (Oid) 0;
@@ -420,6 +433,8 @@ mmwrite(Relation reln, BlockNumber blocknum, char *buffer)
 	int offset;
 	MMCacheTag tag;
 
+	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
+
 	if (reln->rd_rel->relisshared)
 		tag.mmct_dbid = (Oid) 0;
 	else
@@ -458,6 +473,8 @@ mmwrite(Relation reln, BlockNumber blocknum, char *buffer)
 int
 mmflush(Relation reln, BlockNumber blocknum, char *buffer)
 {
+	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
+
 	return (mmwrite(reln, blocknum, buffer));
 }
 
@@ -475,6 +492,8 @@ mmblindwrt(char *dbstr,
 		   BlockNumber blkno,
 		   char *buffer)
 {
+	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
+
 	return (SM_FAIL);
 }
 
@@ -490,6 +509,8 @@ mmnblocks(Relation reln)
 	MMRelHashEntry *rentry;
 	bool found;
 	int nblocks;
+
+	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
 
 	if (reln->rd_rel->relisshared)
 		rtag.mmrt_dbid = (Oid) 0;
@@ -526,6 +547,8 @@ mmnblocks(Relation reln)
 int
 mmcommit()
 {
+	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
+
 	return (SM_SUCCESS);
 }
 
@@ -536,6 +559,8 @@ mmcommit()
 int
 mmabort()
 {
+	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
+
 	return (SM_SUCCESS);
 }
 
@@ -555,21 +580,23 @@ MMShmemSize()
 	//int nsegs;
 	//int tmp;
 
+	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
+
 	/*
 	 *  first compute space occupied by the (dbid,relid,blkno) hash table
 	 */
 
 	/*
-	nbuckets = 1 << (int)my_log2((MMNBUFFERS - 1) / DEF_FFACTOR + 1);
-	nsegs = 1 << (int)my_log2((nbuckets - 1) / DEF_SEGSIZE + 1);
+	  nbuckets = 1 << (int)my_log2((MMNBUFFERS - 1) / DEF_FFACTOR + 1);
+	  nsegs = 1 << (int)my_log2((nbuckets - 1) / DEF_SEGSIZE + 1);
 
-	size += MAXALIGN(my_log2(MMNBUFFERS) * sizeof(void *));
-	size += MAXALIGN(sizeof(HHDR));
-	size += nsegs * MAXALIGN(DEF_SEGSIZE * sizeof(SEGMENT));
-	tmp = (int)ceil((double)MMNBUFFERS/BUCKET_ALLOC_INCR);
-	size += tmp * BUCKET_ALLOC_INCR *
-		(MAXALIGN(sizeof(BUCKET_INDEX)) +
-		MAXALIGN(sizeof(MMHashEntry)));     // contains hash key
+	  size += MAXALIGN(my_log2(MMNBUFFERS) * sizeof(void *));
+	  size += MAXALIGN(sizeof(HHDR));
+	  size += nsegs * MAXALIGN(DEF_SEGSIZE * sizeof(SEGMENT));
+	  tmp = (int)ceil((double)MMNBUFFERS/BUCKET_ALLOC_INCR);
+	  size += tmp * BUCKET_ALLOC_INCR *
+	  (MAXALIGN(sizeof(BUCKET_INDEX)) +
+	  MAXALIGN(sizeof(MMHashEntry)));     // contains hash key
 	*/
 
 	/*
@@ -577,13 +604,13 @@ MMShmemSize()
 	 */
 
 	/*
-	size += MAXALIGN(my_log2(MMNRELATIONS) * sizeof(void *));
-	size += MAXALIGN(sizeof(HHDR));
-	size += nsegs * MAXALIGN(DEF_SEGSIZE * sizeof(SEGMENT));
-	tmp = (int)ceil((double)MMNRELATIONS/BUCKET_ALLOC_INCR);
-	size += tmp * BUCKET_ALLOC_INCR *
-		(MAXALIGN(sizeof(BUCKET_INDEX)) +
-		 MAXALIGN(sizeof(MMRelHashEntry)));	// contains hash key
+	  size += MAXALIGN(my_log2(MMNRELATIONS) * sizeof(void *));
+	  size += MAXALIGN(sizeof(HHDR));
+	  size += nsegs * MAXALIGN(DEF_SEGSIZE * sizeof(SEGMENT));
+	  tmp = (int)ceil((double)MMNRELATIONS/BUCKET_ALLOC_INCR);
+	  size += tmp * BUCKET_ALLOC_INCR *
+	  (MAXALIGN(sizeof(BUCKET_INDEX)) +
+	  MAXALIGN(sizeof(MMRelHashEntry)));	// contains hash key
 	*/
 
 	/*
@@ -597,5 +624,3 @@ MMShmemSize()
 
 	return (size);
 }
-
-//#endif /* MAIN_MEMORY */
