@@ -17,7 +17,7 @@
 #include "fmgr.h"
 #include "storage/block.h"
 #include "storage/relfilenode.h"
-
+#include "utils/relcache.h"
 
 /*
  * smgr.c maintains a table of SMgrRelation objects, which are essentially
@@ -69,6 +69,9 @@ typedef struct SMgrRelationData
 
 	/* if unowned, list link in list of all unowned SMgrRelations */
 	struct SMgrRelationData *next_unowned_reln;
+
+	/* relation */
+	Relation  smgr_rd;
 } SMgrRelationData;
 
 typedef SMgrRelationData *SMgrRelation;
@@ -138,13 +141,11 @@ extern void ForgetDatabaseFsyncRequests(Oid dbid);
 
 
 /* in mm.c */
-/*
+
 extern void mminit(void);
 extern void mmclose(SMgrRelation reln, ForkNumber forknum);
 extern void mmcreate(SMgrRelation reln, ForkNumber forknum, bool isRedo);
-
 extern bool mmexists(SMgrRelation reln, ForkNumber forknum);
-
 extern void mmunlink(RelFileNodeBackend rnode, ForkNumber forknum, bool isRedo);
 extern void mmextend(SMgrRelation reln, ForkNumber forknum,
 		 BlockNumber blocknum, char *buffer, bool skipFsync);
@@ -161,7 +162,8 @@ extern void mmimmedsync(SMgrRelation reln, ForkNumber forknum);
 extern void mmpreckpt(void);
 extern void mmsync(void);
 extern void mmpostckpt(void);
-*/
+
+extern int mm_shmem_size(void);
 
 /* smgrtype.c */
 extern Datum smgrout(PG_FUNCTION_ARGS);

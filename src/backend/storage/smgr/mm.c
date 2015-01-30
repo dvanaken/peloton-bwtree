@@ -162,20 +162,22 @@ mminit()
 	// SUCCESS
 }
 
-int
-mmshutdown()
+bool
+mmexists(SMgrRelation smgr_reln, ForkNumber forknum)
 {
-	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
+	elog(ERROR, "%s %d %s : function not implemented", __FILE__, __LINE__, __func__);
 
-	return (SM_SUCCESS);
+	return false;
 }
 
-int
-mmcreate(Relation reln, ForkNumber forknum)
+
+void
+mmcreate(SMgrRelation smgr_reln, ForkNumber forknum, bool isRedo)
 {
 	MMRelHashEntry *entry;
 	bool found;
 	MMRelTag tag;
+	Relation reln = smgr_reln->smgr_rd;
 
 	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
 
@@ -183,7 +185,8 @@ mmcreate(Relation reln, ForkNumber forknum)
 
 	if (*MMCurRelno == MMNRELATIONS) {
 		SpinLockRelease(MMCacheLock);
-		return (SM_FAIL);
+		// FAILURE
+		return;
 	}
 
 	(*MMCurRelno)++;
@@ -205,21 +208,20 @@ mmcreate(Relation reln, ForkNumber forknum)
 	if (found) {
 		/* already exists */
 		SpinLockRelease(MMCacheLock);
-		return (SM_FAIL);
+		// FAILURE
+		return;
 	}
 
 	entry->mmrhe_nblocks = 0;
 
 	SpinLockRelease(MMCacheLock);
-
-	return (SM_SUCCESS);
 }
 
 /*
  *  mmunlink() -- Unlink a relation.
  */
-int
-mmunlink(Relation reln, ForkNumber forknum)
+void
+mmunlink(RelFileNodeBackend rnode, ForkNumber forknum, bool isRedo)
 {
 	int i;
 	Oid reldbid;
@@ -227,6 +229,8 @@ mmunlink(Relation reln, ForkNumber forknum)
 	MMRelHashEntry *rentry;
 	bool found;
 	MMRelTag rtag;
+
+	Relation reln = RelationIdGetRelation(rnode.node.relNode);
 
 	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
 
@@ -266,7 +270,6 @@ mmunlink(Relation reln, ForkNumber forknum)
 	(*MMCurRelno)--;
 
 	SpinLockRelease(MMCacheLock);
-	return 1;
 }
 
 /*
@@ -275,8 +278,9 @@ mmunlink(Relation reln, ForkNumber forknum)
  *	This routine returns SM_FAIL or SM_SUCCESS, with errno set as
  *	appropriate.
  */
-int
-mmextend(Relation reln, char *buffer)
+void
+mmextend(SMgrRelation smgr_reln, ForkNumber forknum,
+		 BlockNumber blocknum, char *buffer, bool skipFsync)
 {
 	MMRelHashEntry *rentry;
 	MMHashEntry *entry;
@@ -286,6 +290,8 @@ mmextend(Relation reln, char *buffer)
 	bool found;
 	MMRelTag rtag;
 	MMCacheTag tag;
+
+	Relation reln = smgr_reln->smgr_rd;
 
 	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
 
@@ -307,7 +313,8 @@ mmextend(Relation reln, char *buffer)
 		}
 		if (i == MMNBUFFERS) {
 			SpinLockRelease(MMCacheLock);
-			return (SM_FAIL);
+			// FAILURE
+			return;
 		}
 	} else {
 		i = *MMCurTop;
@@ -343,20 +350,6 @@ mmextend(Relation reln, char *buffer)
 	memmove(&(MMBlockCache[offset]), buffer, BLCKSZ);
 
 	SpinLockRelease(MMCacheLock);
-
-	return (SM_SUCCESS);
-}
-
-/*
- *  mmopen() -- Open the specified relation.
- */
-int
-mmopen(Relation reln)
-{
-	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
-
-	/* automatically successful */
-	return (0);
 }
 
 /*
@@ -364,13 +357,12 @@ mmopen(Relation reln)
  *
  *	Returns SM_SUCCESS or SM_FAIL with errno set as appropriate.
  */
-int
-mmclose(Relation reln, ForkNumber forknum)
+void
+mmclose(SMgrRelation smgr_reln, ForkNumber forknum)
 {
 	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
 
 	/* automatically successful */
-	return (SM_SUCCESS);
 }
 
 /*
@@ -378,13 +370,16 @@ mmclose(Relation reln, ForkNumber forknum)
  *
  *	Returns SM_SUCCESS or SM_FAIL.
  */
-int
-mmread(Relation reln, BlockNumber blocknum, char *buffer)
+void
+mmread(SMgrRelation smgr_reln, ForkNumber forknum, BlockNumber blocknum,
+	   char *buffer)
 {
 	MMHashEntry *entry;
 	bool found;
 	int offset;
 	MMCacheTag tag;
+
+	Relation reln = smgr_reln->smgr_rd;
 
 	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
 
@@ -409,15 +404,14 @@ mmread(Relation reln, BlockNumber blocknum, char *buffer)
 		/* reading nonexistent pages is defined to fill them with zeroes */
 		SpinLockRelease(MMCacheLock);
 		memset(buffer, 0, BLCKSZ);
-		return (SM_SUCCESS);
+		// SUCCESS
+		return;
 	}
 
 	offset = (entry->mmhe_bufno * BLCKSZ);
 	memmove(buffer, &MMBlockCache[offset], BLCKSZ);
 
 	SpinLockRelease(MMCacheLock);
-
-	return (SM_SUCCESS);
 }
 
 /*
@@ -425,13 +419,16 @@ mmread(Relation reln, BlockNumber blocknum, char *buffer)
  *
  *	Returns SM_SUCCESS or SM_FAIL.
  */
-int
-mmwrite(Relation reln, BlockNumber blocknum, char *buffer)
+void
+mmwrite(SMgrRelation smgr_reln, ForkNumber forknum,
+					BlockNumber blocknum, char *buffer, bool skipFsync)
 {
 	MMHashEntry *entry;
 	bool found;
 	int offset;
 	MMCacheTag tag;
+
+	Relation reln = smgr_reln->smgr_rd;
 
 	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
 
@@ -461,54 +458,22 @@ mmwrite(Relation reln, BlockNumber blocknum, char *buffer)
 	memmove(&MMBlockCache[offset], buffer, BLCKSZ);
 
 	SpinLockRelease(MMCacheLock);
-
-	return (SM_SUCCESS);
-}
-
-/*
- *  mmflush() -- Synchronously write a block to stable storage.
- *
- *	For main-memory relations, this is exactly equivalent to mmwrite().
- */
-int
-mmflush(Relation reln, BlockNumber blocknum, char *buffer)
-{
-	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
-
-	return (mmwrite(reln, blocknum, buffer));
-}
-
-/*
- *  mmblindwrt() -- Write a block to stable storage blind.
- *
- *	We have to be able to do this using only the name and OID of
- *	the database and relation in which the block belongs.
- */
-int
-mmblindwrt(char *dbstr,
-		   char *relstr,
-		   Oid dbid,
-		   Oid relid,
-		   BlockNumber blkno,
-		   char *buffer)
-{
-	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
-
-	return (SM_FAIL);
 }
 
 /*
  *  mmnblocks() -- Get the number of blocks stored in a relation.
  *
- *	Returns # of blocks or -1 on error.
+ *	Returns # of blocks or InvalidBlockNumber on error.
  */
-int
-mmnblocks(Relation reln)
+BlockNumber
+mmnblocks(SMgrRelation smgr_reln, ForkNumber forknum)
 {
 	MMRelTag rtag;
 	MMRelHashEntry *rentry;
 	bool found;
 	int nblocks;
+
+	Relation reln = smgr_reln->smgr_rd;
 
 	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
 
@@ -532,36 +497,44 @@ mmnblocks(Relation reln)
 	if (found)
 		nblocks = rentry->mmrhe_nblocks;
 	else
-		nblocks = -1;
+		nblocks = InvalidBlockNumber;
 
 	SpinLockRelease(MMCacheLock);
 
 	return (nblocks);
 }
 
-/*
- *  mmcommit() -- Commit a transaction.
- *
- *	Returns SM_SUCCESS or SM_FAIL with errno set as appropriate.
- */
-int
-mmcommit()
-{
-	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
 
-	return (SM_SUCCESS);
+void mmprefetch(SMgrRelation reln, ForkNumber forknum,
+				BlockNumber blocknum)
+{
+	elog(ERROR, "%s %d %s : function not implemented", __FILE__, __LINE__, __func__);
 }
 
-/*
- *  mmabort() -- Abort a transaction.
- */
-
-int
-mmabort()
+void mmtruncate(SMgrRelation reln, ForkNumber forknum,
+					   BlockNumber nblocks)
 {
-	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
+	elog(ERROR, "%s %d %s : function not implemented", __FILE__, __LINE__, __func__);
+}
 
-	return (SM_SUCCESS);
+void mmimmedsync(SMgrRelation reln, ForkNumber forknum)
+{
+	elog(ERROR, "%s %d %s : function not implemented", __FILE__, __LINE__, __func__);
+}
+
+void mmpreckpt(void)
+{
+	elog(ERROR, "%s %d %s : function not implemented", __FILE__, __LINE__, __func__);
+}
+
+void mmsync(void)
+{
+	elog(ERROR, "%s %d %s : function not implemented", __FILE__, __LINE__, __func__);
+}
+
+void mmpostckpt(void)
+{
+	elog(ERROR, "%s %d %s : function not implemented", __FILE__, __LINE__, __func__);
 }
 
 /*
@@ -573,7 +546,7 @@ mmabort()
  *	manager will use.
  */
 int
-MMShmemSize()
+mm_shmem_size(void)
 {
 	int size = 0;
 	//int nbuckets;
@@ -587,31 +560,8 @@ MMShmemSize()
 	 */
 
 	/*
-	  nbuckets = 1 << (int)my_log2((MMNBUFFERS - 1) / DEF_FFACTOR + 1);
-	  nsegs = 1 << (int)my_log2((nbuckets - 1) / DEF_SEGSIZE + 1);
-
-	  size += MAXALIGN(my_log2(MMNBUFFERS) * sizeof(void *));
-	  size += MAXALIGN(sizeof(HHDR));
-	  size += nsegs * MAXALIGN(DEF_SEGSIZE * sizeof(SEGMENT));
-	  tmp = (int)ceil((double)MMNBUFFERS/BUCKET_ALLOC_INCR);
-	  size += tmp * BUCKET_ALLOC_INCR *
-	  (MAXALIGN(sizeof(BUCKET_INDEX)) +
-	  MAXALIGN(sizeof(MMHashEntry)));     // contains hash key
-	*/
-
-	/*
 	 *  now do the same for the rel hash table
 	 */
-
-	/*
-	  size += MAXALIGN(my_log2(MMNRELATIONS) * sizeof(void *));
-	  size += MAXALIGN(sizeof(HHDR));
-	  size += nsegs * MAXALIGN(DEF_SEGSIZE * sizeof(SEGMENT));
-	  tmp = (int)ceil((double)MMNRELATIONS/BUCKET_ALLOC_INCR);
-	  size += tmp * BUCKET_ALLOC_INCR *
-	  (MAXALIGN(sizeof(BUCKET_INDEX)) +
-	  MAXALIGN(sizeof(MMRelHashEntry)));	// contains hash key
-	*/
 
 	/*
 	 *  finally, add in the memory block we use directly
