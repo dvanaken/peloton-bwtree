@@ -68,7 +68,13 @@ static const f_smgr smgrsw[] = {
 	{mdinit, NULL, mdclose, mdcreate, mdexists, mdunlink, mdextend,
 		mdprefetch, mdread, mdwrite, mdnblocks, mdtruncate, mdimmedsync,
 		mdpreckpt, mdsync, mdpostckpt
+	},
+	/* main memory
+	{mminit, NULL, mmclose, mmcreate, mmexists, mmunlink, mmextend,
+	 mmprefetch, mmread, mmwrite, mmnblocks, mmtruncate, mmimmedsync,
+	 mmpreckpt, mmsync, mmpostckpt
 	}
+	*/
 };
 
 static const int NSmgr = lengthof(smgrsw);

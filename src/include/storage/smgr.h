@@ -136,6 +136,33 @@ extern void RememberFsyncRequest(RelFileNode rnode, ForkNumber forknum,
 extern void ForgetRelationFsyncRequests(RelFileNode rnode, ForkNumber forknum);
 extern void ForgetDatabaseFsyncRequests(Oid dbid);
 
+
+/* in mm.c */
+/*
+extern void mminit(void);
+extern void mmclose(SMgrRelation reln, ForkNumber forknum);
+extern void mmcreate(SMgrRelation reln, ForkNumber forknum, bool isRedo);
+
+extern bool mmexists(SMgrRelation reln, ForkNumber forknum);
+
+extern void mmunlink(RelFileNodeBackend rnode, ForkNumber forknum, bool isRedo);
+extern void mmextend(SMgrRelation reln, ForkNumber forknum,
+		 BlockNumber blocknum, char *buffer, bool skipFsync);
+extern void mmprefetch(SMgrRelation reln, ForkNumber forknum,
+		   BlockNumber blocknum);
+extern void mmread(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
+	   char *buffer);
+extern void mmwrite(SMgrRelation reln, ForkNumber forknum,
+		BlockNumber blocknum, char *buffer, bool skipFsync);
+extern BlockNumber mmnblocks(SMgrRelation reln, ForkNumber forknum);
+extern void mmtruncate(SMgrRelation reln, ForkNumber forknum,
+		   BlockNumber nblocks);
+extern void mmimmedsync(SMgrRelation reln, ForkNumber forknum);
+extern void mmpreckpt(void);
+extern void mmsync(void);
+extern void mmpostckpt(void);
+*/
+
 /* smgrtype.c */
 extern Datum smgrout(PG_FUNCTION_ARGS);
 extern Datum smgrin(PG_FUNCTION_ARGS);
