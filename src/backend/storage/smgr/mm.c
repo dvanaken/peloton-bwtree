@@ -140,14 +140,12 @@ mminit()
 	}
 
 	// XXX Assume that it is NOT postmaster
-	/*
-	  if (IsPostmaster) {
+	//if (IsPostmaster) {
 	  memset(mmcacheblk, 0, mmsize);
 	  SpinLockRelease(MMCacheLock);
 	  // SUCCESS
 	  return;
-	  }
-	*/
+	  //}
 
 	SpinLockRelease(MMCacheLock);
 
@@ -159,7 +157,6 @@ mminit()
 	mmcacheblk += (MMNBUFFERS * sizeof(MMCacheTag));
 	MMBlockCache = mmcacheblk;
 
-	// SUCCESS
 }
 
 bool

@@ -142,6 +142,8 @@ extern void ForgetDatabaseFsyncRequests(Oid dbid);
 
 /* in mm.c */
 
+#define MEM_TABLE  "mem_"
+
 extern void mminit(void);
 extern void mmclose(SMgrRelation reln, ForkNumber forknum);
 extern void mmcreate(SMgrRelation reln, ForkNumber forknum, bool isRedo);
