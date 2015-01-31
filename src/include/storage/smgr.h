@@ -70,8 +70,9 @@ typedef struct SMgrRelationData
 	/* if unowned, list link in list of all unowned SMgrRelations */
 	struct SMgrRelationData *next_unowned_reln;
 
-	/* relation */
-	Relation  smgr_rd;
+	/* relation and database Id */
+	Oid         smgr_rd_id;
+	Oid         smgr_db_id;
 } SMgrRelationData;
 
 typedef SMgrRelationData *SMgrRelation;

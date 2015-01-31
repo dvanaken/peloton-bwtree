@@ -178,8 +178,9 @@ smgropen(RelFileNode rnode, BackendId backend)
 		if(backend == MMBackendId)
 		{
 			elog(WARNING, "Update smgr entry for relation :: %d", rnode.relNode);
-			// TODO :: smgr_rd
 			reln->smgr_which = SMGR_MD;
+			reln->smgr_rd_id = rnode.relNode;
+			reln->smgr_db_id = rnode.dbNode;
 		}
 
 		/* mark it not open */

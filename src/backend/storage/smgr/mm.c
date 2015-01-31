@@ -173,9 +173,9 @@ void
 mmcreate(SMgrRelation smgr_reln, ForkNumber forknum, bool isRedo)
 {
 	MMRelHashEntry *entry;
+	Oid rel_rd_id, rel_db_id;
 	bool found;
 	MMRelTag tag;
-	Relation reln = smgr_reln->smgr_rd;
 
 	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
 
@@ -189,11 +189,11 @@ mmcreate(SMgrRelation smgr_reln, ForkNumber forknum, bool isRedo)
 
 	(*MMCurRelno)++;
 
-	tag.mmrt_relid = reln->rd_id;
-	if (reln->rd_rel->relisshared)
-		tag.mmrt_dbid = (Oid) 0;
-	else
-		tag.mmrt_dbid = MyDatabaseId;
+	rel_rd_id = smgr_reln->smgr_rd_id;
+	rel_db_id = smgr_reln->smgr_db_id;
+
+	tag.mmrt_relid = rel_rd_id;
+	tag.mmrt_dbid = rel_db_id;
 
 	entry = (MMRelHashEntry *) hash_search(MMRelCacheHT,
 										   (char *) &tag, HASH_ENTER, &found);
@@ -222,26 +222,22 @@ void
 mmunlink(RelFileNodeBackend rnode, ForkNumber forknum, bool isRedo)
 {
 	int i;
-	Oid reldbid;
+	Oid rel_rd_id, rel_db_id;
 	MMHashEntry *entry;
 	MMRelHashEntry *rentry;
 	bool found;
 	MMRelTag rtag;
 
-	Relation reln = RelationIdGetRelation(rnode.node.relNode);
-
 	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
 
-	if (reln->rd_rel->relisshared)
-		reldbid = (Oid) 0;
-	else
-		reldbid = MyDatabaseId;
+	rel_rd_id = rnode.node.relNode;
+	rel_db_id = rnode.node.dbNode;
 
 	SpinLockAcquire(MMCacheLock);
 
 	for (i = 0; i < MMNBUFFERS; i++) {
-		if (MMBlockTags[i].mmct_dbid == reldbid
-			&& MMBlockTags[i].mmct_relid == reln->rd_id) {
+		if (MMBlockTags[i].mmct_dbid == rel_db_id
+			&& MMBlockTags[i].mmct_relid == rel_rd_id) {
 			entry = (MMHashEntry *) hash_search(MMCacheHT,
 												(char *) &MMBlockTags[i],
 												HASH_REMOVE, &found);
@@ -254,8 +250,8 @@ mmunlink(RelFileNodeBackend rnode, ForkNumber forknum, bool isRedo)
 			MMBlockTags[i].mmct_blkno = (BlockNumber) 0;
 		}
 	}
-	rtag.mmrt_dbid = reldbid;
-	rtag.mmrt_relid = reln->rd_id;
+	rtag.mmrt_dbid = rel_db_id;
+	rtag.mmrt_relid = rel_rd_id;
 
 	rentry = (MMRelHashEntry *) hash_search(MMRelCacheHT, (char *) &rtag,
 											HASH_REMOVE, &found);
@@ -283,23 +279,19 @@ mmextend(SMgrRelation smgr_reln, ForkNumber forknum,
 	MMRelHashEntry *rentry;
 	MMHashEntry *entry;
 	int i;
-	Oid reldbid;
+	Oid rel_rd_id, rel_db_id;
 	int offset;
 	bool found;
 	MMRelTag rtag;
 	MMCacheTag tag;
 
-	Relation reln = smgr_reln->smgr_rd;
-
 	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
 
-	if (reln->rd_rel->relisshared)
-		reldbid = (Oid) 0;
-	else
-		reldbid = MyDatabaseId;
+	rel_rd_id = smgr_reln->smgr_rd_id;
+	rel_db_id = smgr_reln->smgr_db_id;
 
-	tag.mmct_dbid = rtag.mmrt_dbid = reldbid;
-	tag.mmct_relid = rtag.mmrt_relid = reln->rd_id;
+	tag.mmct_dbid = rtag.mmrt_dbid = rel_db_id;
+	tag.mmct_relid = rtag.mmrt_relid = rel_rd_id;
 
 	SpinLockAcquire(MMCacheLock);
 
@@ -336,8 +328,8 @@ mmextend(SMgrRelation smgr_reln, ForkNumber forknum,
 	}
 
 	entry->mmhe_bufno = i;
-	MMBlockTags[i].mmct_dbid = reldbid;
-	MMBlockTags[i].mmct_relid = reln->rd_id;
+	MMBlockTags[i].mmct_dbid = rel_db_id;
+	MMBlockTags[i].mmct_relid = rel_rd_id;
 	MMBlockTags[i].mmct_blkno = rentry->mmrhe_nblocks;
 
 	/* page numbers are zero-based, so we increment this at the end */
@@ -376,17 +368,15 @@ mmread(SMgrRelation smgr_reln, ForkNumber forknum, BlockNumber blocknum,
 	bool found;
 	int offset;
 	MMCacheTag tag;
-
-	Relation reln = smgr_reln->smgr_rd;
+	Oid rel_rd_id, rel_db_id;
 
 	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
 
-	if (reln->rd_rel->relisshared)
-		tag.mmct_dbid = (Oid) 0;
-	else
-		tag.mmct_dbid = MyDatabaseId;
+	rel_rd_id = smgr_reln->smgr_rd_id;
+	rel_db_id = smgr_reln->smgr_db_id;
 
-	tag.mmct_relid = reln->rd_id;
+	tag.mmct_dbid = rel_db_id;
+	tag.mmct_relid = rel_rd_id;
 	tag.mmct_blkno = blocknum;
 
 	SpinLockAcquire(MMCacheLock);
@@ -425,17 +415,15 @@ mmwrite(SMgrRelation smgr_reln, ForkNumber forknum,
 	bool found;
 	int offset;
 	MMCacheTag tag;
-
-	Relation reln = smgr_reln->smgr_rd;
+	Oid rel_rd_id, rel_db_id;
 
 	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
 
-	if (reln->rd_rel->relisshared)
-		tag.mmct_dbid = (Oid) 0;
-	else
-		tag.mmct_dbid = MyDatabaseId;
+	rel_rd_id = smgr_reln->smgr_rd_id;
+	rel_db_id = smgr_reln->smgr_db_id;
 
-	tag.mmct_relid = reln->rd_id;
+	tag.mmct_dbid = rel_db_id;
+	tag.mmct_relid = rel_rd_id;
 	tag.mmct_blkno = blocknum;
 
 	SpinLockAcquire(MMCacheLock);
@@ -470,17 +458,15 @@ mmnblocks(SMgrRelation smgr_reln, ForkNumber forknum)
 	MMRelHashEntry *rentry;
 	bool found;
 	int nblocks;
-
-	Relation reln = smgr_reln->smgr_rd;
+	Oid rel_rd_id, rel_db_id;
 
 	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
 
-	if (reln->rd_rel->relisshared)
-		rtag.mmrt_dbid = (Oid) 0;
-	else
-		rtag.mmrt_dbid = MyDatabaseId;
+	rel_rd_id = smgr_reln->smgr_rd_id;
+	rel_db_id = smgr_reln->smgr_db_id;
 
-	rtag.mmrt_relid = reln->rd_id;
+	rtag.mmrt_dbid = rel_db_id;
+	rtag.mmrt_relid = rel_rd_id;
 
 	SpinLockAcquire(MMCacheLock);
 
@@ -547,23 +533,12 @@ int
 mm_shmem_size(void)
 {
 	int size = 0;
-	//int nbuckets;
-	//int nsegs;
-	//int tmp;
 
 	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
 
-	/*
-	 *  first compute space occupied by the (dbid,relid,blkno) hash table
-	 */
-
-	/*
-	 *  now do the same for the rel hash table
-	 */
-
-	/*
-	 *  finally, add in the memory block we use directly
-	 */
+	//  first compute space occupied by the (dbid,relid,blkno) hash table
+	//  now do the same for the rel hash table
+	//  finally, add in the memory block we use directly
 
 	size += MAXALIGN(BLCKSZ * MMNBUFFERS);
 	size += MAXALIGN(sizeof(*MMCurTop));
