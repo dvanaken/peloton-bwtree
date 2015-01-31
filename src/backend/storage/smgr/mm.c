@@ -90,12 +90,13 @@ static HTAB		*MMRelCacheHT;
 void
 mminit()
 {
+	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
+
+	/*
 	char *mmcacheblk;
 	int mmsize = 0;
 	bool found;
 	HASHCTL info;
-
-	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
 
 	SpinLockAcquire(MMCacheLock);
 
@@ -156,7 +157,7 @@ mminit()
 	MMBlockTags = (MMCacheTag *) mmcacheblk;
 	mmcacheblk += (MMNBUFFERS * sizeof(MMCacheTag));
 	MMBlockCache = mmcacheblk;
-
+	*/
 }
 
 bool
@@ -505,33 +506,33 @@ mmnblocks(SMgrRelation smgr_reln, ForkNumber forknum)
 void mmprefetch(SMgrRelation reln, ForkNumber forknum,
 				BlockNumber blocknum)
 {
-	elog(ERROR, "%s %d %s : function not implemented", __FILE__, __LINE__, __func__);
+	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
 }
 
 void mmtruncate(SMgrRelation reln, ForkNumber forknum,
 					   BlockNumber nblocks)
 {
-	elog(ERROR, "%s %d %s : function not implemented", __FILE__, __LINE__, __func__);
+	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
 }
 
 void mmimmedsync(SMgrRelation reln, ForkNumber forknum)
 {
-	elog(ERROR, "%s %d %s : function not implemented", __FILE__, __LINE__, __func__);
+	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
 }
 
 void mmpreckpt(void)
 {
-	elog(ERROR, "%s %d %s : function not implemented", __FILE__, __LINE__, __func__);
+	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
 }
 
 void mmsync(void)
 {
-	elog(ERROR, "%s %d %s : function not implemented", __FILE__, __LINE__, __func__);
+	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
 }
 
 void mmpostckpt(void)
 {
-	elog(ERROR, "%s %d %s : function not implemented", __FILE__, __LINE__, __func__);
+	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
 }
 
 /*

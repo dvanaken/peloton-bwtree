@@ -63,20 +63,17 @@ typedef struct f_smgr
 } f_smgr;
 
 
-#define SMGR_MD   0
-#define SMGR_MM   1
-
 static const f_smgr smgrsw[] = {
 	/* magnetic disk */
 	{mdinit, NULL, mdclose, mdcreate, mdexists, mdunlink, mdextend,
 	 mdprefetch, mdread, mdwrite, mdnblocks, mdtruncate, mdimmedsync,
 	 mdpreckpt, mdsync, mdpostckpt
-	}
-	/* main memory
+	},
+	/* main memory */
 	{mminit, NULL, mmclose, mmcreate, mmexists, mmunlink, mmextend,
 	 mmprefetch, mmread, mmwrite, mmnblocks, mmtruncate, mmimmedsync,
-	 NULL, NULL, NULL
-	} */
+	 mmpreckpt, mmsync, mmpostckpt
+	}
 };
 
 static const int NSmgr = lengthof(smgrsw);
@@ -145,8 +142,6 @@ smgropen(RelFileNode rnode, BackendId backend)
 	RelFileNodeBackend brnode;
 	SMgrRelation reln;
 	bool		found;
-	Relation     rd;
-
 
 	if (SMgrRelationHash == NULL)
 	{
@@ -172,8 +167,6 @@ smgropen(RelFileNode rnode, BackendId backend)
 	if (!found)
 	{
 		int			forknum;
-		char        *relname;
-		char        *location;
 
 		/* hash_search already filled in the lookup key */
 		reln->smgr_owner = NULL;
@@ -182,20 +175,12 @@ smgropen(RelFileNode rnode, BackendId backend)
 		reln->smgr_vm_nblocks = InvalidBlockNumber;
 		reln->smgr_which = SMGR_MD;
 
-		/*
-		rd = RelationIdGetRelation(rnode.relNode);
-		reln->smgr_rd = rd;
-
-		// Change smgr if in-memory table
-		relname = RelationGetRelationName(rd);
-		location = strstr(relname, MEM_TABLE);
-
-		if(!IsCatalogRelation(rd) && location != NULL)
+		if(backend == MMBackendId)
 		{
-			elog(WARNING, "Change smgr to %d", SMGR_MM);
+			elog(WARNING, "Update smgr entry for relation :: %d", rnode.relNode);
+			// TODO :: smgr_rd
 			reln->smgr_which = SMGR_MD;
 		}
-		*/
 
 		/* mark it not open */
 		for (forknum = 0; forknum <= MAX_FORKNUM; forknum++)

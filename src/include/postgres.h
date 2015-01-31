@@ -691,6 +691,6 @@ extern void ExceptionalCondition(const char *conditionName,
 /*
  * Print backtrace
  */
-extern void pg_print_backtrace();
+extern void pg_backtrace();
 
 #endif   /* POSTGRES_H */

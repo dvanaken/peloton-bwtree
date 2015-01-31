@@ -18,7 +18,7 @@
 
 #include <execinfo.h>
 
-void pg_print_backtrace()
+void pg_backtrace()
 {
 	int i;
 	int trace_size;

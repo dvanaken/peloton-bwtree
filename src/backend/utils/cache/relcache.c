@@ -156,12 +156,12 @@ static Oid	eoxact_list[MAX_EOXACT_LIST];
 static int	eoxact_list_len = 0;
 static bool eoxact_list_overflowed = false;
 
-#define EOXactListAdd(rel) \
-	do { \
-		if (eoxact_list_len < MAX_EOXACT_LIST) \
-			eoxact_list[eoxact_list_len++] = (rel)->rd_id; \
-		else \
-			eoxact_list_overflowed = true; \
+#define EOXactListAdd(rel)									\
+	do {													\
+		if (eoxact_list_len < MAX_EOXACT_LIST)				\
+			eoxact_list[eoxact_list_len++] = (rel)->rd_id;	\
+		else												\
+			eoxact_list_overflowed = true;					\
 	} while (0)
 
 /*
@@ -176,50 +176,50 @@ static int	EOXactTupleDescArrayLen = 0;
 /*
  *		macros to manipulate the lookup hashtable
  */
-#define RelationCacheInsert(RELATION, replace_allowed)	\
-do { \
-	RelIdCacheEnt *hentry; bool found; \
-	hentry = (RelIdCacheEnt *) hash_search(RelationIdCache, \
-										   (void *) &((RELATION)->rd_id), \
-										   HASH_ENTER, &found); \
-	if (found) \
-	{ \
-		/* see comments in RelationBuildDesc and RelationBuildLocalRelation */ \
-		Relation _old_rel = hentry->reldesc; \
-		Assert(replace_allowed); \
-		hentry->reldesc = (RELATION); \
-		if (RelationHasReferenceCountZero(_old_rel)) \
-			RelationDestroyRelation(_old_rel, false); \
-		else if (!IsBootstrapProcessingMode()) \
-			elog(WARNING, "leaking still-referenced relcache entry for \"%s\"", \
-				 RelationGetRelationName(_old_rel)); \
-	} \
-	else \
-		hentry->reldesc = (RELATION); \
-} while(0)
+#define RelationCacheInsert(RELATION, replace_allowed)					\
+	do {																\
+		RelIdCacheEnt *hentry; bool found;								\
+		hentry = (RelIdCacheEnt *) hash_search(RelationIdCache,			\
+											   (void *) &((RELATION)->rd_id), \
+											   HASH_ENTER, &found);		\
+		if (found)														\
+		{																\
+			/* see comments in RelationBuildDesc and RelationBuildLocalRelation */ \
+			Relation _old_rel = hentry->reldesc;						\
+			Assert(replace_allowed);									\
+			hentry->reldesc = (RELATION);								\
+			if (RelationHasReferenceCountZero(_old_rel))				\
+				RelationDestroyRelation(_old_rel, false);				\
+			else if (!IsBootstrapProcessingMode())						\
+				elog(WARNING, "leaking still-referenced relcache entry for \"%s\"", \
+					 RelationGetRelationName(_old_rel));				\
+		}																\
+		else															\
+			hentry->reldesc = (RELATION);								\
+	} while(0)
 
-#define RelationIdCacheLookup(ID, RELATION) \
-do { \
-	RelIdCacheEnt *hentry; \
-	hentry = (RelIdCacheEnt *) hash_search(RelationIdCache, \
-										   (void *) &(ID), \
-										   HASH_FIND, NULL); \
-	if (hentry) \
-		RELATION = hentry->reldesc; \
-	else \
-		RELATION = NULL; \
-} while(0)
+#define RelationIdCacheLookup(ID, RELATION)							\
+	do {															\
+		RelIdCacheEnt *hentry;										\
+		hentry = (RelIdCacheEnt *) hash_search(RelationIdCache,		\
+											   (void *) &(ID),		\
+											   HASH_FIND, NULL);	\
+		if (hentry)													\
+			RELATION = hentry->reldesc;								\
+		else														\
+			RELATION = NULL;										\
+	} while(0)
 
-#define RelationCacheDelete(RELATION) \
-do { \
-	RelIdCacheEnt *hentry; \
-	hentry = (RelIdCacheEnt *) hash_search(RelationIdCache, \
-										   (void *) &((RELATION)->rd_id), \
-										   HASH_REMOVE, NULL); \
-	if (hentry == NULL) \
-		elog(WARNING, "failed to delete relcache entry for OID %u", \
-			 (RELATION)->rd_id); \
-} while(0)
+#define RelationCacheDelete(RELATION)									\
+	do {																\
+		RelIdCacheEnt *hentry;											\
+		hentry = (RelIdCacheEnt *) hash_search(RelationIdCache,			\
+											   (void *) &((RELATION)->rd_id), \
+											   HASH_REMOVE, NULL);		\
+		if (hentry == NULL)												\
+			elog(WARNING, "failed to delete relcache entry for OID %u", \
+				 (RELATION)->rd_id);									\
+	} while(0)
 
 
 /*
@@ -251,14 +251,14 @@ static void RelationFlushRelation(Relation relation);
 static void RememberToFreeTupleDescAtEOX(TupleDesc td);
 static void AtEOXact_cleanup(Relation relation, bool isCommit);
 static void AtEOSubXact_cleanup(Relation relation, bool isCommit,
-					SubTransactionId mySubid, SubTransactionId parentSubid);
+								SubTransactionId mySubid, SubTransactionId parentSubid);
 static bool load_relcache_init_file(bool shared);
 static void write_relcache_init_file(bool shared);
 static void write_item(const void *data, Size len, FILE *fp);
 
 static void formrdesc(const char *relationName, Oid relationReltype,
-		  bool isshared, bool hasoids,
-		  int natts, const FormData_pg_attribute *attrs);
+					  bool isshared, bool hasoids,
+					  int natts, const FormData_pg_attribute *attrs);
 
 static HeapTuple ScanPgRelation(Oid targetRelId, bool indexOK, bool force_non_historic);
 static Relation AllocateRelationDesc(Form_pg_class relp);
@@ -273,13 +273,13 @@ static void AttrDefaultFetch(Relation relation);
 static void CheckConstraintFetch(Relation relation);
 static List *insert_ordered_oid(List *list, Oid datum);
 static void IndexSupportInitialize(oidvector *indclass,
-					   RegProcedure *indexSupport,
-					   Oid *opFamily,
-					   Oid *opcInType,
-					   StrategyNumber maxSupportNumber,
-					   AttrNumber maxAttributeNumber);
+								   RegProcedure *indexSupport,
+								   Oid *opFamily,
+								   Oid *opcInType,
+								   StrategyNumber maxSupportNumber,
+								   AttrNumber maxAttributeNumber);
 static OpClassCacheEnt *LookupOpclassInfo(Oid operatorClassOid,
-				  StrategyNumber numSupport);
+										  StrategyNumber numSupport);
 static void RelationCacheInitFileRemoveInDir(const char *tblspcpath);
 static void unlink_initfile(const char *initfilename);
 
@@ -434,14 +434,14 @@ RelationParseRelOptions(Relation relation, HeapTuple tuple)
 	/* Fall out if relkind should not have options */
 	switch (relation->rd_rel->relkind)
 	{
-		case RELKIND_RELATION:
-		case RELKIND_TOASTVALUE:
-		case RELKIND_INDEX:
-		case RELKIND_VIEW:
-		case RELKIND_MATVIEW:
-			break;
-		default:
-			return;
+	case RELKIND_RELATION:
+	case RELKIND_TOASTVALUE:
+	case RELKIND_INDEX:
+	case RELKIND_VIEW:
+	case RELKIND_MATVIEW:
+		break;
+	default:
+		return;
 	}
 
 	/*
@@ -619,7 +619,7 @@ RelationBuildTupleDesc(Relation relation)
 			constr->num_check = relation->rd_rel->relchecks;
 			constr->check = (ConstrCheck *)
 				MemoryContextAllocZero(CacheMemoryContext,
-									constr->num_check * sizeof(ConstrCheck));
+									   constr->num_check * sizeof(ConstrCheck));
 			CheckConstraintFetch(relation);
 		}
 		else
@@ -859,7 +859,7 @@ equalPolicy(RowSecurityPolicy *policy1, RowSecurityPolicy *policy2)
 {
 	int			i;
 	Oid		   *r1,
-			   *r2;
+		*r2;
 
 	if (policy1 != NULL)
 	{
@@ -905,8 +905,8 @@ equalPolicy(RowSecurityPolicy *policy1, RowSecurityPolicy *policy2)
 static bool
 equalRSDesc(RowSecurityDesc *rsdesc1, RowSecurityDesc *rsdesc2)
 {
-	ListCell 	*lc,
-				*rc;
+	ListCell	*lc,
+		*rc;
 
 	if (rsdesc1 == NULL && rsdesc2 == NULL)
 		return true;
@@ -991,42 +991,42 @@ RelationBuildDesc(Oid targetRelId, bool insertIt)
 	relation->rd_newRelfilenodeSubid = InvalidSubTransactionId;
 	switch (relation->rd_rel->relpersistence)
 	{
-		case RELPERSISTENCE_UNLOGGED:
-		case RELPERSISTENCE_PERMANENT:
-			relation->rd_backend = InvalidBackendId;
+	case RELPERSISTENCE_UNLOGGED:
+	case RELPERSISTENCE_PERMANENT:
+		relation->rd_backend = InvalidBackendId;
+		relation->rd_islocaltemp = false;
+		break;
+	case RELPERSISTENCE_TEMP:
+		if (isTempOrTempToastNamespace(relation->rd_rel->relnamespace))
+		{
+			relation->rd_backend = MyBackendId;
+			relation->rd_islocaltemp = true;
+		}
+		else
+		{
+			/*
+			 * If it's a temp table, but not one of ours, we have to use
+			 * the slow, grotty method to figure out the owning backend.
+			 *
+			 * Note: it's possible that rd_backend gets set to MyBackendId
+			 * here, in case we are looking at a pg_class entry left over
+			 * from a crashed backend that coincidentally had the same
+			 * BackendId we're using.  We should *not* consider such a
+			 * table to be "ours"; this is why we need the separate
+			 * rd_islocaltemp flag.  The pg_class entry will get flushed
+			 * if/when we clean out the corresponding temp table namespace
+			 * in preparation for using it.
+			 */
+			relation->rd_backend =
+				GetTempNamespaceBackendId(relation->rd_rel->relnamespace);
+			Assert(relation->rd_backend != InvalidBackendId);
 			relation->rd_islocaltemp = false;
-			break;
-		case RELPERSISTENCE_TEMP:
-			if (isTempOrTempToastNamespace(relation->rd_rel->relnamespace))
-			{
-				relation->rd_backend = MyBackendId;
-				relation->rd_islocaltemp = true;
-			}
-			else
-			{
-				/*
-				 * If it's a temp table, but not one of ours, we have to use
-				 * the slow, grotty method to figure out the owning backend.
-				 *
-				 * Note: it's possible that rd_backend gets set to MyBackendId
-				 * here, in case we are looking at a pg_class entry left over
-				 * from a crashed backend that coincidentally had the same
-				 * BackendId we're using.  We should *not* consider such a
-				 * table to be "ours"; this is why we need the separate
-				 * rd_islocaltemp flag.  The pg_class entry will get flushed
-				 * if/when we clean out the corresponding temp table namespace
-				 * in preparation for using it.
-				 */
-				relation->rd_backend =
-					GetTempNamespaceBackendId(relation->rd_rel->relnamespace);
-				Assert(relation->rd_backend != InvalidBackendId);
-				relation->rd_islocaltemp = false;
-			}
-			break;
-		default:
-			elog(ERROR, "invalid relpersistence: %c",
-				 relation->rd_rel->relpersistence);
-			break;
+		}
+		break;
+	default:
+		elog(ERROR, "invalid relpersistence: %c",
+			 relation->rd_rel->relpersistence);
+		break;
 	}
 
 	/*
@@ -1142,7 +1142,7 @@ RelationInitPhysicalAddr(Relation relation)
 			Form_pg_class physrel;
 
 			phys_tuple = ScanPgRelation(RelationGetRelid(relation),
-							   RelationGetRelid(relation) != ClassOidIndexId,
+										RelationGetRelid(relation) != ClassOidIndexId,
 										true);
 			if (!HeapTupleIsValid(phys_tuple))
 				elog(ERROR, "could not find pg_class entry for %u",
@@ -1741,10 +1741,8 @@ Relation
 RelationIdGetRelation(Oid relationId)
 {
 	Relation	rd;
-	/*
 	char        *relname;
 	char        *location;
-	*/
 
 	/* Make sure we're in an xact, even if this ends up being a cache hit */
 	Assert(IsTransactionState());
@@ -1781,17 +1779,14 @@ RelationIdGetRelation(Oid relationId)
 	rd = RelationBuildDesc(relationId, true);
 
 	// Change backend info if in-memory table
-	/*
 	relname = RelationGetRelationName(rd);
 	location = strstr(relname, MEM_TABLE);
 
 	if(!IsCatalogRelation(rd) && location != NULL)
 	{
-		rd->rd_storage_backend = STORAGE_BACKEND_MM;
-		rd->rd_rel->relhasoids = true;
-		mm_relation_allocate(rd);
+		elog(WARNING, "Change backend id for relation %s --%d--", relname, relationId);
+		rd->rd_backend = MMBackendId;
 	}
-	*/
 
 	if (RelationIsValid(rd))
 		RelationIncrementReferenceCount(rd);
@@ -2230,11 +2225,11 @@ RelationClearRelation(Relation relation, bool rebuild)
 		 * to swap the whole structures and then re-swap those few fields we
 		 * didn't want swapped.
 		 */
-#define SWAPFIELD(fldtype, fldname) \
-		do { \
-			fldtype _tmp = newrel->fldname; \
-			newrel->fldname = relation->fldname; \
-			relation->fldname = _tmp; \
+#define SWAPFIELD(fldtype, fldname)					\
+		do {										\
+			fldtype _tmp = newrel->fldname;			\
+			newrel->fldname = relation->fldname;	\
+			relation->fldname = _tmp;				\
 		} while (0)
 
 		/* swap all Relation struct fields */
@@ -2536,7 +2531,7 @@ RememberToFreeTupleDescAtEOX(TupleDesc td)
 		Assert(EOXactTupleDescArrayLen > 0);
 
 		EOXactTupleDescArray = (TupleDesc *) repalloc(EOXactTupleDescArray,
-												 newlen * sizeof(TupleDesc));
+													  newlen * sizeof(TupleDesc));
 		EOXactTupleDescArrayLen = newlen;
 	}
 
@@ -2822,18 +2817,18 @@ RelationBuildLocalRelation(const char *relname,
 	 */
 	switch (relid)
 	{
-		case DatabaseRelationId:
-		case AuthIdRelationId:
-		case AuthMemRelationId:
-		case RelationRelationId:
-		case AttributeRelationId:
-		case ProcedureRelationId:
-		case TypeRelationId:
-			nailit = true;
-			break;
-		default:
-			nailit = false;
-			break;
+	case DatabaseRelationId:
+	case AuthIdRelationId:
+	case AuthMemRelationId:
+	case RelationRelationId:
+	case AttributeRelationId:
+	case ProcedureRelationId:
+	case TypeRelationId:
+		nailit = true;
+		break;
+	default:
+		nailit = false;
+		break;
 	}
 
 	/*
@@ -2917,19 +2912,19 @@ RelationBuildLocalRelation(const char *relname,
 	rel->rd_rel->relpersistence = relpersistence;
 	switch (relpersistence)
 	{
-		case RELPERSISTENCE_UNLOGGED:
-		case RELPERSISTENCE_PERMANENT:
-			rel->rd_backend = InvalidBackendId;
-			rel->rd_islocaltemp = false;
-			break;
-		case RELPERSISTENCE_TEMP:
-			Assert(isTempOrTempToastNamespace(relnamespace));
-			rel->rd_backend = MyBackendId;
-			rel->rd_islocaltemp = true;
-			break;
-		default:
-			elog(ERROR, "invalid relpersistence: %c", relpersistence);
-			break;
+	case RELPERSISTENCE_UNLOGGED:
+	case RELPERSISTENCE_PERMANENT:
+		rel->rd_backend = InvalidBackendId;
+		rel->rd_islocaltemp = false;
+		break;
+	case RELPERSISTENCE_TEMP:
+		Assert(isTempOrTempToastNamespace(relnamespace));
+		rel->rd_backend = MyBackendId;
+		rel->rd_islocaltemp = true;
+		break;
+	default:
+		elog(ERROR, "invalid relpersistence: %c", relpersistence);
+		break;
 	}
 
 	/* if it's a materialized view, it's not populated initially */
@@ -3390,7 +3385,7 @@ RelationCacheInitializePhase3(void)
 			Form_pg_class relp;
 
 			htup = SearchSysCache1(RELOID,
-							   ObjectIdGetDatum(RelationGetRelid(relation)));
+								   ObjectIdGetDatum(RelationGetRelid(relation)));
 			if (!HeapTupleIsValid(htup))
 				elog(FATAL, "cache lookup failed for relation %u",
 					 RelationGetRelid(relation));
@@ -3635,7 +3630,7 @@ AttrDefaultFetch(Relation relation)
 				continue;
 			if (attrdef[i].adbin != NULL)
 				elog(WARNING, "multiple attrdef records found for attr %s of rel %s",
-				NameStr(relation->rd_att->attrs[adform->adnum - 1]->attname),
+					 NameStr(relation->rd_att->attrs[adform->adnum - 1]->attname),
 					 RelationGetRelationName(relation));
 			else
 				found++;
@@ -3645,7 +3640,7 @@ AttrDefaultFetch(Relation relation)
 							  adrel->rd_att, &isnull);
 			if (isnull)
 				elog(WARNING, "null adbin for attr %s of rel %s",
-				NameStr(relation->rd_att->attrs[adform->adnum - 1]->attname),
+					 NameStr(relation->rd_att->attrs[adform->adnum - 1]->attname),
 					 RelationGetRelationName(relation));
 			else
 			{
@@ -4182,14 +4177,14 @@ RelationGetIndexAttrBitmap(Relation relation, IndexAttrBitmapKind attrKind)
 	{
 		switch (attrKind)
 		{
-			case INDEX_ATTR_BITMAP_ALL:
-				return bms_copy(relation->rd_indexattr);
-			case INDEX_ATTR_BITMAP_KEY:
-				return bms_copy(relation->rd_keyattr);
-			case INDEX_ATTR_BITMAP_IDENTITY_KEY:
-				return bms_copy(relation->rd_idattr);
-			default:
-				elog(ERROR, "unknown attrKind %u", attrKind);
+		case INDEX_ATTR_BITMAP_ALL:
+			return bms_copy(relation->rd_indexattr);
+		case INDEX_ATTR_BITMAP_KEY:
+			return bms_copy(relation->rd_keyattr);
+		case INDEX_ATTR_BITMAP_IDENTITY_KEY:
+			return bms_copy(relation->rd_idattr);
+		default:
+			elog(ERROR, "unknown attrKind %u", attrKind);
 		}
 	}
 
@@ -4258,15 +4253,15 @@ RelationGetIndexAttrBitmap(Relation relation, IndexAttrBitmapKind attrKind)
 			if (attrnum != 0)
 			{
 				indexattrs = bms_add_member(indexattrs,
-							   attrnum - FirstLowInvalidHeapAttributeNumber);
+											attrnum - FirstLowInvalidHeapAttributeNumber);
 
 				if (isKey)
 					uindexattrs = bms_add_member(uindexattrs,
-							   attrnum - FirstLowInvalidHeapAttributeNumber);
+												 attrnum - FirstLowInvalidHeapAttributeNumber);
 
 				if (isIDKey)
 					idindexattrs = bms_add_member(idindexattrs,
-							   attrnum - FirstLowInvalidHeapAttributeNumber);
+												  attrnum - FirstLowInvalidHeapAttributeNumber);
 			}
 		}
 
@@ -4305,15 +4300,15 @@ RelationGetIndexAttrBitmap(Relation relation, IndexAttrBitmapKind attrKind)
 	/* We return our original working copy for caller to play with */
 	switch (attrKind)
 	{
-		case INDEX_ATTR_BITMAP_ALL:
-			return indexattrs;
-		case INDEX_ATTR_BITMAP_KEY:
-			return uindexattrs;
-		case INDEX_ATTR_BITMAP_IDENTITY_KEY:
-			return idindexattrs;
-		default:
-			elog(ERROR, "unknown attrKind %u", attrKind);
-			return NULL;
+	case INDEX_ATTR_BITMAP_ALL:
+		return indexattrs;
+	case INDEX_ATTR_BITMAP_KEY:
+		return uindexattrs;
+	case INDEX_ATTR_BITMAP_IDENTITY_KEY:
+		return idindexattrs;
+	default:
+		elog(ERROR, "unknown attrKind %u", attrKind);
+		return NULL;
 	}
 }
 
@@ -4579,11 +4574,11 @@ load_relcache_init_file(bool shared)
 	char		initfilename[MAXPGPATH];
 	Relation   *rels;
 	int			relno,
-				num_rels,
-				max_rels,
-				nailed_rels,
-				nailed_indexes,
-				magic;
+		num_rels,
+		max_rels,
+		nailed_rels,
+		nailed_indexes,
+		magic;
 	int			i;
 
 	if (shared)
@@ -4976,7 +4971,7 @@ write_relcache_init_file(bool shared)
 				(errcode_for_file_access(),
 				 errmsg("could not create relation-cache initialization file \"%s\": %m",
 						tempfilename),
-			  errdetail("Continuing anyway, but there's something wrong.")));
+				 errdetail("Continuing anyway, but there's something wrong.")));
 		return;
 	}
 
@@ -5045,7 +5040,7 @@ write_relcache_init_file(bool shared)
 
 			/* next, write the vector of support procedure OIDs */
 			write_item(rel->rd_support,
-				  relform->relnatts * (am->amsupport * sizeof(RegProcedure)),
+					   relform->relnatts * (am->amsupport * sizeof(RegProcedure)),
 					   fp);
 
 			/* next, write the vector of collation OIDs */
