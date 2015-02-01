@@ -28,101 +28,107 @@
 #include "utils/memutils.h"
 
 /*
- *  MMCacheTag -- Unique triplet for blocks stored by the main memory
- *		  storage manager.
+ *  MMBlockTag -- (DB, Rel, Block #)
  */
-
 typedef struct MMCacheTag {
 	Oid			mmct_dbid;
 	Oid			mmct_relid;
 	BlockNumber		mmct_blkno;
-} MMCacheTag;
+} MMBlockTag;
 
 /*
- *  Shared-memory hash table for main memory relations contains
- *  entries of this form.
+ *  Shmem hash table : (DB, Rel, Block #) -> Buf #
  */
-
 typedef struct MMHashEntry {
-	MMCacheTag		mmhe_tag;
-	int			mmhe_bufno;
+	MMBlockTag		mmhe_tag;
+	int			  mmhe_bufno;
 } MMHashEntry;
 
 /*
- * MMRelTag -- Unique identifier for each relation that is stored in the
- *				main-memory storage manager.
+ * MMRelTag -- (DB, Rel)
  */
-
 typedef struct MMRelTag {
 	Oid		mmrt_dbid;
 	Oid		mmrt_relid;
 } MMRelTag;
 
 /*
- *  Shared-memory hash table for # blocks in main memory relations contains
- *  entries of this form.
+ *  Shmem hash table : (DB, Rel) -> # of blocks
  */
-
 typedef struct MMRelHashEntry {
 	MMRelTag		mmrhe_tag;
 	int			mmrhe_nblocks;
 } MMRelHashEntry;
 
-#define MMNBUFFERS	   10000
-#define MMNRELATIONS   100
+// Main Memory Init # of buffers
+#define MMNBUFFERS	   1000
 
-// XXX Constants
+// Main Memory Init # of relations
+#define MMNRELATIONS   10
 
 #define SM_SUCCESS  0
 #define SM_FAIL    -1
 
 slock_t *	MMCacheLock;
-//extern bool	IsPostmaster;
-extern Oid	MyDatabaseId;
 
 static int		*MMCurTop;
 static int		*MMCurRelno;
-static MMCacheTag	*MMBlockTags;
+static MMBlockTag	*MMBlockTags;
 static char		*MMBlockCache;
-static HTAB		*MMCacheHT;
-static HTAB		*MMRelCacheHT;
+static HTAB		*MMBlockHT;
+static HTAB		*MMRelHT;
 
 void
 mminit()
 {
-	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
-
-	/*
 	char *mmcacheblk;
 	int mmsize = 0;
 	bool found;
 	HASHCTL info;
 
+	elog(WARNING, "%s %d %s", __FILE__, __LINE__, __func__);
+
+	if(MMCacheLock == NULL)
+	{
+		elog(WARNING, "Allocate and initialize MMCacheLock");
+		MMCacheLock = (slock_t*) ShmemAlloc(sizeof(*MMCacheLock));
+		SpinLockInit(MMCacheLock);
+	}
+
 	SpinLockAcquire(MMCacheLock);
 
-	mmsize += MAXALIGN(BLCKSZ * MMNBUFFERS);
+	elog(WARNING, "Allocating");
+
+	/*
+	 * | MMCurTop | MMCurRelno | MMBlockTags ... | MMBlockCache ... |
+	 */
 	mmsize += MAXALIGN(sizeof(*MMCurTop));
 	mmsize += MAXALIGN(sizeof(*MMCurRelno));
-	mmsize += MAXALIGN((MMNBUFFERS * sizeof(MMCacheTag)));
+	mmsize += MAXALIGN((MMNBUFFERS * sizeof(MMBlockTag)));
+	mmsize += MAXALIGN(BLCKSZ * MMNBUFFERS);
+
 	mmcacheblk = (char *) ShmemInitStruct("Main memory smgr", mmsize, &found);
 
 	if (mmcacheblk == (char *) NULL) {
 		SpinLockRelease(MMCacheLock);
-		// FAILURE
+		elog(WARNING, "%s %d %s :: MM Storage init failed ", __FILE__, __LINE__, __func__);
 		return;
 	}
 
-	info.keysize = sizeof(MMCacheTag);
+	info.keysize = sizeof(MMBlockTag);
 	info.entrysize = sizeof(int);
 	info.hash = tag_hash;
 
-	MMCacheHT = (HTAB *) ShmemInitHash("Main memory store HT",
-									   MMNBUFFERS, MMNBUFFERS,
-									   &info, (HASH_ELEM|HASH_FUNCTION));
+	elog(WARNING, "MM Block HT");
 
-	if (MMCacheHT == (HTAB *) NULL) {
+	MMBlockHT = (HTAB *) ShmemInitHash("Main memory block HT",
+									   MMNBUFFERS, MMNBUFFERS,
+									   &info,
+									   (HASH_ELEM|HASH_FUNCTION));
+
+	if (MMBlockHT == (HTAB *) NULL) {
 		SpinLockRelease(MMCacheLock);
-		// FAILURE
+		elog(WARNING, "%s %d %s :: MM Block HT init failed ", __FILE__, __LINE__, __func__);
 		return;
 	}
 
@@ -130,34 +136,33 @@ mminit()
 	info.entrysize = sizeof(int);
 	info.hash = tag_hash;
 
-	MMRelCacheHT = (HTAB *) ShmemInitHash("Main memory rel HT",
-										  MMNRELATIONS, MMNRELATIONS,
-										  &info, (HASH_ELEM|HASH_FUNCTION));
+	elog(WARNING, "MM Rel HT");
 
-	if (MMRelCacheHT == (HTAB *) NULL) {
+	MMRelHT = (HTAB *) ShmemInitHash("Main memory rel HT",
+										  MMNRELATIONS, MMNRELATIONS,
+										  &info,
+										  (HASH_ELEM|HASH_FUNCTION));
+
+	if (MMRelHT == (HTAB *) NULL) {
 		SpinLockRelease(MMCacheLock);
-		// FAILURE
+		elog(WARNING, "%s %d %s :: MM Relation HT init failed ", __FILE__, __LINE__, __func__);
 		return;
 	}
 
-	// XXX Assume that it is NOT postmaster
-	//if (IsPostmaster) {
-	  memset(mmcacheblk, 0, mmsize);
-	  SpinLockRelease(MMCacheLock);
-	  // SUCCESS
-	  return;
-	  //}
-
 	SpinLockRelease(MMCacheLock);
+
+	elog(WARNING, "Set up");
 
 	MMCurTop = (int *) mmcacheblk;
 	mmcacheblk += sizeof(int);
+
 	MMCurRelno = (int *) mmcacheblk;
 	mmcacheblk += sizeof(int);
-	MMBlockTags = (MMCacheTag *) mmcacheblk;
-	mmcacheblk += (MMNBUFFERS * sizeof(MMCacheTag));
+
+	MMBlockTags = (MMBlockTag *) mmcacheblk;
+	mmcacheblk += (MMNBUFFERS * sizeof(MMBlockTag));
+
 	MMBlockCache = mmcacheblk;
-	*/
 }
 
 bool
@@ -195,7 +200,7 @@ mmcreate(SMgrRelation smgr_reln, ForkNumber forknum, bool isRedo)
 	tag.mmrt_relid = rel_rd_id;
 	tag.mmrt_dbid = rel_db_id;
 
-	entry = (MMRelHashEntry *) hash_search(MMRelCacheHT,
+	entry = (MMRelHashEntry *) hash_search(MMRelHT,
 										   (char *) &tag, HASH_ENTER, &found);
 
 	if (entry == (MMRelHashEntry *) NULL) {
@@ -238,7 +243,7 @@ mmunlink(RelFileNodeBackend rnode, ForkNumber forknum, bool isRedo)
 	for (i = 0; i < MMNBUFFERS; i++) {
 		if (MMBlockTags[i].mmct_dbid == rel_db_id
 			&& MMBlockTags[i].mmct_relid == rel_rd_id) {
-			entry = (MMHashEntry *) hash_search(MMCacheHT,
+			entry = (MMHashEntry *) hash_search(MMBlockHT,
 												(char *) &MMBlockTags[i],
 												HASH_REMOVE, &found);
 			if (entry == (MMHashEntry *) NULL || !found) {
@@ -253,7 +258,7 @@ mmunlink(RelFileNodeBackend rnode, ForkNumber forknum, bool isRedo)
 	rtag.mmrt_dbid = rel_db_id;
 	rtag.mmrt_relid = rel_rd_id;
 
-	rentry = (MMRelHashEntry *) hash_search(MMRelCacheHT, (char *) &rtag,
+	rentry = (MMRelHashEntry *) hash_search(MMRelHT, (char *) &rtag,
 											HASH_REMOVE, &found);
 
 	if (rentry == (MMRelHashEntry *) NULL || !found) {
@@ -283,7 +288,7 @@ mmextend(SMgrRelation smgr_reln, ForkNumber forknum,
 	int offset;
 	bool found;
 	MMRelTag rtag;
-	MMCacheTag tag;
+	MMBlockTag tag;
 
 	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
 
@@ -311,7 +316,7 @@ mmextend(SMgrRelation smgr_reln, ForkNumber forknum,
 		(*MMCurTop)++;
 	}
 
-	rentry = (MMRelHashEntry *) hash_search(MMRelCacheHT, (char *) &rtag,
+	rentry = (MMRelHashEntry *) hash_search(MMRelHT, (char *) &rtag,
 											HASH_FIND, &found);
 	if (rentry == (MMRelHashEntry *) NULL || !found) {
 		SpinLockRelease(MMCacheLock);
@@ -320,7 +325,7 @@ mmextend(SMgrRelation smgr_reln, ForkNumber forknum,
 
 	tag.mmct_blkno = rentry->mmrhe_nblocks;
 
-	entry = (MMHashEntry *) hash_search(MMCacheHT, (char *) &tag,
+	entry = (MMHashEntry *) hash_search(MMBlockHT, (char *) &tag,
 										HASH_ENTER, &found);
 	if (entry == (MMHashEntry *) NULL || found) {
 		SpinLockRelease(MMCacheLock);
@@ -367,7 +372,7 @@ mmread(SMgrRelation smgr_reln, ForkNumber forknum, BlockNumber blocknum,
 	MMHashEntry *entry;
 	bool found;
 	int offset;
-	MMCacheTag tag;
+	MMBlockTag tag;
 	Oid rel_rd_id, rel_db_id;
 
 	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
@@ -380,7 +385,7 @@ mmread(SMgrRelation smgr_reln, ForkNumber forknum, BlockNumber blocknum,
 	tag.mmct_blkno = blocknum;
 
 	SpinLockAcquire(MMCacheLock);
-	entry = (MMHashEntry *) hash_search(MMCacheHT, (char *) &tag,
+	entry = (MMHashEntry *) hash_search(MMBlockHT, (char *) &tag,
 										HASH_FIND, &found);
 
 	if (entry == (MMHashEntry *) NULL) {
@@ -414,7 +419,7 @@ mmwrite(SMgrRelation smgr_reln, ForkNumber forknum,
 	MMHashEntry *entry;
 	bool found;
 	int offset;
-	MMCacheTag tag;
+	MMBlockTag tag;
 	Oid rel_rd_id, rel_db_id;
 
 	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
@@ -427,7 +432,7 @@ mmwrite(SMgrRelation smgr_reln, ForkNumber forknum,
 	tag.mmct_blkno = blocknum;
 
 	SpinLockAcquire(MMCacheLock);
-	entry = (MMHashEntry *) hash_search(MMCacheHT, (char *) &tag,
+	entry = (MMHashEntry *) hash_search(MMBlockHT, (char *) &tag,
 										HASH_FIND, &found);
 
 	if (entry == (MMHashEntry *) NULL) {
@@ -449,7 +454,7 @@ mmwrite(SMgrRelation smgr_reln, ForkNumber forknum,
 /*
  *  mmnblocks() -- Get the number of blocks stored in a relation.
  *
- *	Returns # of blocks or InvalidBlockNumber on error.
+ *	Returns # of blocks or 0 on error.
  */
 BlockNumber
 mmnblocks(SMgrRelation smgr_reln, ForkNumber forknum)
@@ -460,17 +465,21 @@ mmnblocks(SMgrRelation smgr_reln, ForkNumber forknum)
 	int nblocks;
 	Oid rel_rd_id, rel_db_id;
 
-	elog(WARNING, "%s %d %s : function", __FILE__, __LINE__, __func__);
+	elog(WARNING, "%s %d %s", __FILE__, __LINE__, __func__);
 
+	nblocks = 0;
 	rel_rd_id = smgr_reln->smgr_rd_id;
 	rel_db_id = smgr_reln->smgr_db_id;
+
+	elog(WARNING, "Relation : %d", rel_rd_id);
+	elog(WARNING, "Database : %d", rel_db_id);
 
 	rtag.mmrt_dbid = rel_db_id;
 	rtag.mmrt_relid = rel_rd_id;
 
 	SpinLockAcquire(MMCacheLock);
 
-	rentry = (MMRelHashEntry *) hash_search(MMRelCacheHT, (char *) &rtag,
+	rentry = (MMRelHashEntry *) hash_search(MMRelHT, (char *) &rtag,
 											HASH_FIND, &found);
 
 	if (rentry == (MMRelHashEntry *) NULL) {
@@ -479,9 +488,12 @@ mmnblocks(SMgrRelation smgr_reln, ForkNumber forknum)
 	}
 
 	if (found)
+	{
+		elog(WARNING, "entry found :: nblocks  %d", nblocks);
 		nblocks = rentry->mmrhe_nblocks;
+	}
 	else
-		nblocks = InvalidBlockNumber;
+		nblocks = 0;
 
 	SpinLockRelease(MMCacheLock);
 
@@ -530,7 +542,7 @@ void mmpostckpt(void)
  *	manager will use.
  */
 int
-mm_shmem_size(void)
+MMShmemSize(void)
 {
 	int size = 0;
 
@@ -543,7 +555,7 @@ mm_shmem_size(void)
 	size += MAXALIGN(BLCKSZ * MMNBUFFERS);
 	size += MAXALIGN(sizeof(*MMCurTop));
 	size += MAXALIGN(sizeof(*MMCurRelno));
-	size += MAXALIGN(MMNBUFFERS * sizeof(MMCacheTag));
+	size += MAXALIGN(MMNBUFFERS * sizeof(MMBlockTag));
 
 	return (size);
 }

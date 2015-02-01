@@ -168,7 +168,7 @@ extern void mmpreckpt(void);
 extern void mmsync(void);
 extern void mmpostckpt(void);
 
-extern int mm_shmem_size(void);
+extern int MMShmemSize(void);
 
 /* smgrtype.c */
 extern Datum smgrout(PG_FUNCTION_ARGS);
