@@ -107,7 +107,9 @@
 #define _(x) gettext(x)
 
 // TODO: Peloton Changes: We enabled NLS
+#ifndef __APPLE__
 #define ENABLE_NLS
+#endif
 #ifdef ENABLE_NLS
 #include <libintl.h>
 #else
