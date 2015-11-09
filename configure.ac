@@ -39,12 +39,6 @@ AC_CHECK_LIB([m], [cos], ,
 AC_CHECK_LIB([dl], [dlsym], ,
              AC_MSG_ERROR([Please install libdl library], 1))
 
-AC_CHECK_LIB([rt], [clock_gettime], ,
-             AC_MSG_ERROR([Please install librt library], 1))
-
-AC_CHECK_LIB([dw], [dwarf_filesrc], ,
-             AC_MSG_ERROR([Please install libdw library : libdw-dev], 1))
-
 ######################################################################
 # OS X Support
 ######################################################################
