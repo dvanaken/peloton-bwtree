@@ -59,10 +59,10 @@ typedef struct _SPI_plan *SPIPlanPtr;
 #define SPI_OK_UPDATE_RETURNING 13
 #define SPI_OK_REWRITTEN		14
 
-extern thread_local PGDLLIMPORT uint32 SPI_processed;
-extern thread_local PGDLLIMPORT Oid SPI_lastoid;
-extern thread_local PGDLLIMPORT SPITupleTable *SPI_tuptable;
-extern thread_local PGDLLIMPORT int SPI_result;
+extern THREAD_LOCAL PGDLLIMPORT uint32 SPI_processed;
+extern THREAD_LOCAL PGDLLIMPORT Oid SPI_lastoid;
+extern THREAD_LOCAL PGDLLIMPORT SPITupleTable *SPI_tuptable;
+extern THREAD_LOCAL PGDLLIMPORT int SPI_result;
 
 extern int	SPI_connect(void);
 extern int	SPI_finish(void);

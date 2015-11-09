@@ -68,7 +68,7 @@
 
 
 /* The main type cache hashtable searched by lookup_type_cache */
-thread_local static HTAB *TypeCacheHash = NULL;
+THREAD_LOCAL static HTAB *TypeCacheHash = NULL;
 
 /* List of type cache entries for domain types */
 static TypeCacheEntry *firstDomainTypeEntry = NULL;
@@ -140,7 +140,7 @@ typedef struct RecordCacheEntry
 	List	   *tupdescs;
 } RecordCacheEntry;
 
-thread_local static HTAB *RecordCacheHash = NULL;
+THREAD_LOCAL static HTAB *RecordCacheHash = NULL;
 
 static TupleDesc *RecordCacheArray = NULL;
 static int32 RecordCacheArrayLen = 0;	/* allocated length of array */

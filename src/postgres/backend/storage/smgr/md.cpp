@@ -115,7 +115,7 @@ typedef struct _MdfdVec
 	struct _MdfdVec *mdfd_chain;	/* next segment, or NULL */
 } MdfdVec;
 
-thread_local static MemoryContext MdCxt;		/* context for all MdfdVec objects */
+THREAD_LOCAL static MemoryContext MdCxt;		/* context for all MdfdVec objects */
 
 
 /*
@@ -155,12 +155,12 @@ typedef struct
 	CycleCtr	cycle_ctr;		/* mdckpt_cycle_ctr when request was made */
 } PendingUnlinkEntry;
 
-thread_local static HTAB *pendingOpsTable = NULL;
-thread_local static List *pendingUnlinks = NIL;
-thread_local static MemoryContext pendingOpsCxt;		/* context for the above  */
+THREAD_LOCAL static HTAB *pendingOpsTable = NULL;
+THREAD_LOCAL static List *pendingUnlinks = NIL;
+THREAD_LOCAL static MemoryContext pendingOpsCxt;		/* context for the above  */
 
-thread_local static CycleCtr mdsync_cycle_ctr = 0;
-thread_local static CycleCtr mdckpt_cycle_ctr = 0;
+THREAD_LOCAL static CycleCtr mdsync_cycle_ctr = 0;
+THREAD_LOCAL static CycleCtr mdckpt_cycle_ctr = 0;
 
 
 typedef enum					/* behavior for mdopen & _mdfd_getseg */

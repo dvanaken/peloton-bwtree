@@ -88,10 +88,10 @@
  *		global variables
  * ----------------
  */
-thread_local const char *debug_query_string; /* client-supplied query string */
+THREAD_LOCAL const char *debug_query_string; /* client-supplied query string */
 
 /* Note: whereToSendOutput is initialized for the bootstrap/standalone case */
-thread_local CommandDest whereToSendOutput = DestDebug;
+THREAD_LOCAL CommandDest whereToSendOutput = DestDebug;
 
 /* flag for logging end of session */
 bool		Log_disconnections = false;
@@ -112,7 +112,7 @@ int			PostAuthDelay = 0;
  */
 
 /* max_stack_depth converted to bytes for speed of checking */
-thread_local static long max_stack_depth_bytes = 100 * 1024L;
+THREAD_LOCAL static long max_stack_depth_bytes = 100 * 1024L;
 
 /*
  * Stack base pointer -- initialized by PostmasterMain and inherited by
@@ -120,7 +120,7 @@ thread_local static long max_stack_depth_bytes = 100 * 1024L;
  * it directly. Newer versions use set_stack_base(), but we want to stay
  * binary-compatible for the time being.
  */
-thread_local char	   *stack_base_ptr = NULL;
+THREAD_LOCAL char	   *stack_base_ptr = NULL;
 
 /*
  * On IA64 we also have to remember the register stack base.
@@ -134,54 +134,54 @@ char	   *register_stack_base_ptr = NULL;
  * will reread the configuration file. (Better than doing the
  * reading in the signal handler, ey?)
  */
-thread_local static volatile sig_atomic_t got_SIGHUP = false;
+THREAD_LOCAL static volatile sig_atomic_t got_SIGHUP = false;
 
 /*
  * Flag to keep track of whether we have started a transaction.
  * For extended query protocol this has to be remembered across messages.
  */
-thread_local static bool xact_started = false;
+THREAD_LOCAL static bool xact_started = false;
 
 /*
  * Flag to indicate that we are doing the outer loop's read-from-client,
  * as opposed to any random read from client that might happen within
  * commands like COPY FROM STDIN.
  */
-thread_local static bool DoingCommandRead = false;
+THREAD_LOCAL static bool DoingCommandRead = false;
 
 /*
  * Flags to implement skip-till-Sync-after-error behavior for messages of
  * the extended query protocol.
  */
-thread_local static bool doing_extended_query_message = false;
-thread_local static bool ignore_till_sync = false;
+THREAD_LOCAL static bool doing_extended_query_message = false;
+THREAD_LOCAL static bool ignore_till_sync = false;
 
 /*
  * If an unnamed prepared statement exists, it's stored here.
  * We keep it separate from the hashtable kept by commands/prepare.c
  * in order to reduce overhead for short-lived queries.
  */
-thread_local static CachedPlanSource *unnamed_stmt_psrc = NULL;
+THREAD_LOCAL static CachedPlanSource *unnamed_stmt_psrc = NULL;
 
 /* assorted command-line switches */
-thread_local static const char *userDoption = NULL;	/* -D switch */
+THREAD_LOCAL static const char *userDoption = NULL;	/* -D switch */
 
-thread_local static bool EchoQuery = false;	/* -E switch */
+THREAD_LOCAL static bool EchoQuery = false;	/* -E switch */
 
 /*
  * people who want to use EOF should #define DONTUSENEWLINE in
  * tcop/tcopdebug.h
  */
 #ifndef TCOP_DONTUSENEWLINE
-thread_local static int	UseNewLine = 1;		/* Use newlines query delimiters (the default) */
+THREAD_LOCAL static int	UseNewLine = 1;		/* Use newlines query delimiters (the default) */
 #else
-thread_local static int	UseNewLine = 0;		/* Use EOF as query delimiters */
+THREAD_LOCAL static int	UseNewLine = 0;		/* Use EOF as query delimiters */
 #endif   /* TCOP_DONTUSENEWLINE */
 
 /* whether or not, and why, we were canceled by conflict with recovery */
-thread_local static bool RecoveryConflictPending = false;
-thread_local static bool RecoveryConflictRetryable = true;
-thread_local static ProcSignalReason RecoveryConflictReason;
+THREAD_LOCAL static bool RecoveryConflictPending = false;
+THREAD_LOCAL static bool RecoveryConflictRetryable = true;
+THREAD_LOCAL static ProcSignalReason RecoveryConflictReason;
 
 /* ----------------------------------------------------------------
  *		decls for routines only used in this file

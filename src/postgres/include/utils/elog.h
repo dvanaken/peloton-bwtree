@@ -249,7 +249,7 @@ typedef struct ErrorContextCallback
 	void	   *arg;
 } ErrorContextCallback;
 
-extern thread_local PGDLLIMPORT ErrorContextCallback *error_context_stack;
+extern THREAD_LOCAL PGDLLIMPORT ErrorContextCallback *error_context_stack;
 
 
 /*----------
@@ -324,7 +324,7 @@ extern thread_local PGDLLIMPORT ErrorContextCallback *error_context_stack;
 	(pg_re_throw(), pg_unreachable())
 #endif
 
-extern thread_local PGDLLIMPORT sigjmp_buf *PG_exception_stack;
+extern THREAD_LOCAL PGDLLIMPORT sigjmp_buf *PG_exception_stack;
 
 
 /* Stuff that error handlers might want to use */
@@ -380,7 +380,7 @@ extern char *GetErrorContextStack(void);
 
 /* Hook for intercepting messages before they are sent to the server log */
 typedef void (*emit_log_hook_type) (ErrorData *edata);
-thread_local extern PGDLLIMPORT emit_log_hook_type emit_log_hook;
+THREAD_LOCAL extern PGDLLIMPORT emit_log_hook_type emit_log_hook;
 
 
 /* GUC-configurable parameters */

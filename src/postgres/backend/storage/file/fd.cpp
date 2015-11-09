@@ -122,7 +122,7 @@ int			max_files_per_process = 1000;
  * Note: the value of max_files_per_process is taken into account while
  * setting this variable, and so need not be tested separately.
  */
-thread_local int			max_safe_fds = 32;	/* default if not changed */
+THREAD_LOCAL int			max_safe_fds = 32;	/* default if not changed */
 
 // Peloton porting issue
 //#ifndef SYNC_FILE_RANGE_WRITE
@@ -177,19 +177,19 @@ typedef struct vfd
  * needed.  'File' values are indexes into this array.
  * Note that VfdCache[0] is not a usable VFD, just a list header.
  */
-thread_local static Vfd *VfdCache;
-thread_local static Size SizeVfdCache = 0;
+THREAD_LOCAL static Vfd *VfdCache;
+THREAD_LOCAL static Size SizeVfdCache = 0;
 
 /*
  * Number of file descriptors known to be in use by VFD entries.
  */
-thread_local static int	nfile = 0;
+THREAD_LOCAL static int	nfile = 0;
 
 /*
  * Flag to tell whether it's worth scanning VfdCache looking for temp files
  * to close
  */
-thread_local static bool have_xact_temporary_files = false;
+THREAD_LOCAL static bool have_xact_temporary_files = false;
 
 /*
  * Tracks the total size of all temporary files.  Note: when temp_file_limit
@@ -197,7 +197,7 @@ thread_local static bool have_xact_temporary_files = false;
  * than INT_MAX kilobytes.  When not enforcing, it could theoretically
  * overflow, but we don't care.
  */
-thread_local static uint64 temporary_files_size = 0;
+THREAD_LOCAL static uint64 temporary_files_size = 0;
 
 /*
  * List of OS handles opened with AllocateFile, AllocateDir and
@@ -223,23 +223,23 @@ typedef struct
 	}			desc;
 } AllocateDesc;
 
-thread_local static int	numAllocatedDescs = 0;
-thread_local static int	maxAllocatedDescs = 0;
-thread_local static AllocateDesc *allocatedDescs = NULL;
+THREAD_LOCAL static int	numAllocatedDescs = 0;
+THREAD_LOCAL static int	maxAllocatedDescs = 0;
+THREAD_LOCAL static AllocateDesc *allocatedDescs = NULL;
 
 /*
  * Number of temporary files opened during the current session;
  * this is used in generation of tempfile names.
  */
-thread_local static long tempFileCounter = 0;
+THREAD_LOCAL static long tempFileCounter = 0;
 
 /*
  * Array of OIDs of temp tablespaces.  When numTempTableSpaces is -1,
  * this has not been set in the current transaction.
  */
-thread_local static Oid *tempTableSpaces = NULL;
-thread_local static int	numTempTableSpaces = -1;
-thread_local static int	nextTempTableSpace = 0;
+THREAD_LOCAL static Oid *tempTableSpaces = NULL;
+THREAD_LOCAL static int	numTempTableSpaces = -1;
+THREAD_LOCAL static int	nextTempTableSpace = 0;
 
 
 /*--------------------

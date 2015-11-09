@@ -32,7 +32,7 @@
 #include "utils/guc.h"
 
 extern char **environ;
-thread_local bool		update_process_title = true;
+THREAD_LOCAL bool		update_process_title = true;
 
 
 /*
@@ -87,21 +87,21 @@ thread_local bool		update_process_title = true;
 #ifndef PS_USE_CLOBBER_ARGV
 /* all but one option need a buffer to write their ps line in */
 #define PS_BUFFER_SIZE 256
-thread_local static char ps_buffer[PS_BUFFER_SIZE];
+THREAD_LOCAL static char ps_buffer[PS_BUFFER_SIZE];
 static const size_t ps_buffer_size = PS_BUFFER_SIZE;
 #else							/* PS_USE_CLOBBER_ARGV */
-thread_local static char *ps_buffer;			/* will point to argv area */
-thread_local static size_t ps_buffer_size;	/* space determined at run time */
-thread_local static size_t last_status_len;	/* use to minimize length of clobber */
+THREAD_LOCAL static char *ps_buffer;			/* will point to argv area */
+THREAD_LOCAL static size_t ps_buffer_size;	/* space determined at run time */
+THREAD_LOCAL static size_t last_status_len;	/* use to minimize length of clobber */
 #endif   /* PS_USE_CLOBBER_ARGV */
 
-thread_local static size_t ps_buffer_cur_len;	/* nominal strlen(ps_buffer) */
+THREAD_LOCAL static size_t ps_buffer_cur_len;	/* nominal strlen(ps_buffer) */
 
-thread_local static size_t ps_buffer_fixed_size;		/* size of the constant prefix */
+THREAD_LOCAL static size_t ps_buffer_fixed_size;		/* size of the constant prefix */
 
 /* save the original argv[] location here */
-thread_local static int	save_argc;
-thread_local static char **save_argv;
+THREAD_LOCAL static int	save_argc;
+THREAD_LOCAL static char **save_argv;
 
 
 /*

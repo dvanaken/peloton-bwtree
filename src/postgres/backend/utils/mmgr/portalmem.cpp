@@ -49,7 +49,7 @@ typedef struct portalhashent
 	Portal		portal;
 } PortalHashEnt;
 
-thread_local static HTAB *PortalHashTable = NULL;
+THREAD_LOCAL static HTAB *PortalHashTable = NULL;
 
 #define PortalHashTableLookup(NAME, PORTAL) \
 do { \
@@ -86,7 +86,7 @@ do { \
 		elog(WARNING, "trying to delete portal name that does not exist"); \
 } while(0)
 
-thread_local static MemoryContext PortalMemory = NULL;
+THREAD_LOCAL static MemoryContext PortalMemory = NULL;
 
 
 /* ----------------------------------------------------------------

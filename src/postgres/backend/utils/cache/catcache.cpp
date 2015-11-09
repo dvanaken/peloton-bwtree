@@ -70,7 +70,7 @@
 #endif
 
 /* Cache management header --- pointer is NULL until created */
-thread_local static CatCacheHeader *CacheHdr = NULL;
+THREAD_LOCAL static CatCacheHeader *CacheHdr = NULL;
 
 
 static uint32 CatalogCacheComputeHashValue(CatCache *cache, int nkeys,

@@ -86,11 +86,11 @@ static const char *err_gettext(const char *str) pg_attribute_format_arg(1);
 static void set_errdata_field(MemoryContextData *cxt, char **ptr, const char *str);
 
 /* Global variables */
-thread_local ErrorContextCallback *error_context_stack = NULL;
+THREAD_LOCAL ErrorContextCallback *error_context_stack = NULL;
 
-thread_local sigjmp_buf *PG_exception_stack = NULL;
+THREAD_LOCAL sigjmp_buf *PG_exception_stack = NULL;
 
-thread_local extern bool redirection_done;
+THREAD_LOCAL extern bool redirection_done;
 
 /*
  * Hook for intercepting messages before they are sent to the server log.
@@ -99,7 +99,7 @@ thread_local extern bool redirection_done;
  * libraries will miss any log messages that are generated before the
  * library is loaded.
  */
-thread_local emit_log_hook_type emit_log_hook = NULL;
+THREAD_LOCAL emit_log_hook_type emit_log_hook = NULL;
 
 /* GUC parameters */
 int			Log_error_verbosity = PGERROR_VERBOSE;
@@ -120,9 +120,9 @@ char	   *Log_destination_string = NULL;
 #define PG_SYSLOG_LIMIT 900
 #endif
 
-thread_local static bool openlog_done = false;
-thread_local static char *syslog_ident = NULL;
-thread_local static int	syslog_facility = LOG_LOCAL0;
+THREAD_LOCAL static bool openlog_done = false;
+THREAD_LOCAL static char *syslog_ident = NULL;
+THREAD_LOCAL static int	syslog_facility = LOG_LOCAL0;
 
 static void write_syslog(int level, const char *line);
 #endif
@@ -137,19 +137,19 @@ static void write_eventlog(int level, const char *line, int len);
 /* We provide a small stack of ErrorData records for re-entrant cases */
 #define ERRORDATA_STACK_SIZE  5
 
-thread_local static ErrorData errordata[ERRORDATA_STACK_SIZE];
+THREAD_LOCAL static ErrorData errordata[ERRORDATA_STACK_SIZE];
 
-thread_local static int	errordata_stack_depth = -1; /* index of topmost active frame */
+THREAD_LOCAL static int	errordata_stack_depth = -1; /* index of topmost active frame */
 
-thread_local static int	recursion_depth = 0;	/* to detect actual recursion */
+THREAD_LOCAL static int	recursion_depth = 0;	/* to detect actual recursion */
 
 /* buffers for formatted timestamps that might be used by both
  * log_line_prefix and csv logs.
  */
 
 #define FORMATTED_TS_LEN 128
-thread_local static char formatted_start_time[FORMATTED_TS_LEN];
-thread_local static char formatted_log_time[FORMATTED_TS_LEN];
+THREAD_LOCAL static char formatted_start_time[FORMATTED_TS_LEN];
+THREAD_LOCAL static char formatted_log_time[FORMATTED_TS_LEN];
 
 
 /* Macro for checking errordata_stack_depth is reasonable */

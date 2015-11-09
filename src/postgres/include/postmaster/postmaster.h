@@ -23,7 +23,7 @@ extern int	Unix_socket_permissions;
 extern char *Unix_socket_group;
 extern char *Unix_socket_directories;
 extern char *ListenAddresses;
-extern thread_local bool ClientAuthInProgress;
+extern THREAD_LOCAL bool ClientAuthInProgress;
 extern int	PreAuthDelay;
 extern int	AuthenticationTimeout;
 extern bool Log_connections;
@@ -35,7 +35,7 @@ extern bool restart_after_crash;
 #ifdef WIN32
 extern HANDLE PostmasterHandle;
 #else
-thread_local extern int	postmaster_alive_fds[2];
+THREAD_LOCAL extern int	postmaster_alive_fds[2];
 
 /*
  * Constants that represent which of postmaster_alive_fds is held by

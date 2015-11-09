@@ -880,8 +880,8 @@ extern PgStat_MsgBgWriter BgWriterStats;
 /*
  * Updated by pgstat_count_buffer_*_time macros
  */
-extern thread_local PgStat_Counter pgStatBlockReadTime;
-extern thread_local PgStat_Counter pgStatBlockWriteTime;
+extern THREAD_LOCAL PgStat_Counter pgStatBlockReadTime;
+extern THREAD_LOCAL PgStat_Counter pgStatBlockWriteTime;
 
 /* ----------
  * Functions called from postmaster

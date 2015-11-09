@@ -178,10 +178,10 @@ static dlist_head BackendList = DLIST_STATIC_INIT(BackendList);
 
 //#ifdef EXEC_BACKEND
 //TODO: Peloton Changes
-thread_local static Backend *ShmemBackendArray;
+THREAD_LOCAL static Backend *ShmemBackendArray;
 //#endif
 
-thread_local BackgroundWorker *MyBgworkerEntry = NULL;
+THREAD_LOCAL BackgroundWorker *MyBgworkerEntry = NULL;
 
 /* The socket number we are listening for connections on */
 int PostPortNumber;
@@ -205,12 +205,12 @@ int ReservedBackends;
 
 /* The socket(s) we're listening to. */
 #define MAXLISTEN	64
-thread_local static pgsocket ListenSocket[MAXLISTEN];
+THREAD_LOCAL static pgsocket ListenSocket[MAXLISTEN];
 
 /*
  * Set by the -o option
  */
-thread_local static char ExtraOptions[MAXPGPATH];
+THREAD_LOCAL static char ExtraOptions[MAXPGPATH];
 
 /*
  * These globals control the behavior of the postmaster in case some
@@ -237,7 +237,7 @@ char *bonjour_name;
 bool restart_after_crash = true;
 
 /* PIDs of special child processes; 0 when not running */
-thread_local static pid_t StartupPID = 0, BgWriterPID = 0, CheckpointerPID = 0,
+THREAD_LOCAL static pid_t StartupPID = 0, BgWriterPID = 0, CheckpointerPID = 0,
     WalWriterPID = 0, WalReceiverPID = 0, AutoVacPID = 0, PgArchPID = 0,
     PgStatPID = 0, SysLoggerPID = 0;
 
@@ -321,10 +321,10 @@ static time_t AbortStartTime;
 
 static bool ReachedNormalRunning = false; /* T if we've reached PM_RUN */
 
-thread_local bool ClientAuthInProgress = false; /* T during new___-client
+THREAD_LOCAL bool ClientAuthInProgress = false; /* T during new___-client
  * authentication */
 
-thread_local bool redirection_done = false; /* stderr redirected for syslogger? */
+THREAD_LOCAL bool redirection_done = false; /* stderr redirected for syslogger? */
 
 /* received START_AUTOVAC_LAUNCHER signal */
 static volatile sig_atomic_t start_autovac_launcher = false;
@@ -519,7 +519,7 @@ static void ShmemBackendArrayRemove(Backend *bn);
  * File descriptors for pipe used to monitor if postmaster is alive.
  * First is POSTMASTER_FD_WATCH, second is POSTMASTER_FD_OWN.
  */
-thread_local int postmaster_alive_fds[2] = { -1, -1 };
+THREAD_LOCAL int postmaster_alive_fds[2] = { -1, -1 };
 #else
 /* Process handle of postmaster used for the same purpose on Windows */
 HANDLE PostmasterHandle;
@@ -5355,12 +5355,12 @@ bool PostmasterMarkPIDForWorkerNotify(int pid) {
  * The following need to be available to the save/restore_backend_variables
  * functions.  They are marked NON_EXEC_STATIC in their home modules.
  */
-thread_local extern slock_t *ShmemLock;
-thread_local extern slock_t *ProcStructLock;
-thread_local extern PGPROC *AuxiliaryProcs;
-thread_local extern PMSignalData *PMSignalState;
-thread_local extern pgsocket pgStatSock;
-thread_local extern pg_time_t first_syslogger_file_time;
+THREAD_LOCAL extern slock_t *ShmemLock;
+THREAD_LOCAL extern slock_t *ProcStructLock;
+THREAD_LOCAL extern PGPROC *AuxiliaryProcs;
+THREAD_LOCAL extern PMSignalData *PMSignalState;
+THREAD_LOCAL extern pgsocket pgStatSock;
+THREAD_LOCAL extern pg_time_t first_syslogger_file_time;
 
 #ifndef WIN32
 #define write_inheritable_socket(dest, src, childpid) ((*(dest) = (src)), true)

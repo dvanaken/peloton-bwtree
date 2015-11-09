@@ -43,13 +43,13 @@
  * so that an ereport() from an on_proc_exit routine cannot get us out
  * of the exit procedure.  We do NOT want to go back to the idle loop...
  */
-thread_local bool		proc_exit_inprogress = false;
+THREAD_LOCAL bool		proc_exit_inprogress = false;
 
 /*
  * This flag tracks whether we've called atexit() in the current process
  * (or in the parent postmaster).
  */
-thread_local static bool atexit_callback_setup = false;
+THREAD_LOCAL static bool atexit_callback_setup = false;
 
 /* local functions */
 static void proc_exit_prepare(int code);
@@ -77,11 +77,11 @@ struct ONEXIT
 	Datum		arg;
 };
 
-thread_local static struct ONEXIT on_proc_exit_list[MAX_ON_EXITS];
-thread_local static struct ONEXIT on_shmem_exit_list[MAX_ON_EXITS];
-thread_local static struct ONEXIT before_shmem_exit_list[MAX_ON_EXITS];
+THREAD_LOCAL static struct ONEXIT on_proc_exit_list[MAX_ON_EXITS];
+THREAD_LOCAL static struct ONEXIT on_shmem_exit_list[MAX_ON_EXITS];
+THREAD_LOCAL static struct ONEXIT before_shmem_exit_list[MAX_ON_EXITS];
 
-thread_local static int	on_proc_exit_index,
+THREAD_LOCAL static int	on_proc_exit_index,
 			on_shmem_exit_index,
 			before_shmem_exit_index;
 

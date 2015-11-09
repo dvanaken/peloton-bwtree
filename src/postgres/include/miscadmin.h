@@ -77,16 +77,16 @@
 
 /* in globals.c */
 /* these are marked volatile because they are set by signal handlers: */
-extern thread_local PGDLLIMPORT volatile bool InterruptPending;
-extern thread_local PGDLLIMPORT volatile bool QueryCancelPending;
-extern thread_local PGDLLIMPORT volatile bool ProcDiePending;
+extern THREAD_LOCAL PGDLLIMPORT volatile bool InterruptPending;
+extern THREAD_LOCAL PGDLLIMPORT volatile bool QueryCancelPending;
+extern THREAD_LOCAL PGDLLIMPORT volatile bool ProcDiePending;
 
-extern thread_local volatile bool ClientConnectionLost;
+extern THREAD_LOCAL volatile bool ClientConnectionLost;
 
 /* these are marked volatile because they are examined by signal handlers: */
-extern thread_local PGDLLIMPORT volatile uint32 InterruptHoldoffCount;
-extern thread_local PGDLLIMPORT volatile uint32 QueryCancelHoldoffCount;
-extern thread_local PGDLLIMPORT volatile uint32 CritSectionCount;
+extern THREAD_LOCAL PGDLLIMPORT volatile uint32 InterruptHoldoffCount;
+extern THREAD_LOCAL PGDLLIMPORT volatile uint32 QueryCancelHoldoffCount;
+extern THREAD_LOCAL PGDLLIMPORT volatile uint32 CritSectionCount;
 
 /* in tcop/postgres.c */
 extern void ProcessInterrupts(void);
@@ -142,32 +142,32 @@ do { \
 /*
  * from utils/init/globals.c
  */
-extern thread_local pid_t PostmasterPid;
-extern thread_local bool IsPostmasterEnvironment;
-extern thread_local PGDLLIMPORT bool IsUnderPostmaster;
-extern thread_local bool IsBackgroundWorker;
-extern thread_local PGDLLIMPORT bool IsBinaryUpgrade;
-extern thread_local bool IsBackend;
+extern THREAD_LOCAL pid_t PostmasterPid;
+extern THREAD_LOCAL bool IsPostmasterEnvironment;
+extern THREAD_LOCAL PGDLLIMPORT bool IsUnderPostmaster;
+extern THREAD_LOCAL bool IsBackgroundWorker;
+extern THREAD_LOCAL PGDLLIMPORT bool IsBinaryUpgrade;
+extern THREAD_LOCAL bool IsBackend;
 
-extern thread_local bool ExitOnAnyError;
+extern THREAD_LOCAL bool ExitOnAnyError;
 
-extern thread_local PGDLLIMPORT char *DataDir;
+extern THREAD_LOCAL PGDLLIMPORT char *DataDir;
 
 extern PGDLLIMPORT int NBuffers;
-extern thread_local int	MaxBackends;
+extern THREAD_LOCAL int	MaxBackends;
 extern int	MaxConnections;
 extern int	max_worker_processes;
 
-extern thread_local PGDLLIMPORT int MyProcPid;
-extern thread_local PGDLLIMPORT pg_time_t MyStartTime;
-extern thread_local PGDLLIMPORT struct Port *MyProcPort;
-extern thread_local PGDLLIMPORT struct Latch *MyLatch;
-extern thread_local long MyCancelKey;
-extern thread_local int	MyPMChildSlot;
+extern THREAD_LOCAL PGDLLIMPORT int MyProcPid;
+extern THREAD_LOCAL PGDLLIMPORT pg_time_t MyStartTime;
+extern THREAD_LOCAL PGDLLIMPORT struct Port *MyProcPort;
+extern THREAD_LOCAL PGDLLIMPORT struct Latch *MyLatch;
+extern THREAD_LOCAL long MyCancelKey;
+extern THREAD_LOCAL int	MyPMChildSlot;
 
-extern thread_local char OutputFileName[];
-extern thread_local PGDLLIMPORT char my_exec_path[];
-extern thread_local char pkglib_path[];
+extern THREAD_LOCAL char OutputFileName[];
+extern THREAD_LOCAL PGDLLIMPORT char my_exec_path[];
+extern THREAD_LOCAL char pkglib_path[];
 
 #ifdef EXEC_BACKEND
 extern char postgres_exec_path[];
@@ -178,9 +178,9 @@ extern char postgres_exec_path[];
  *
  * extern BackendId    MyBackendId;
  */
-extern thread_local PGDLLIMPORT Oid MyDatabaseId;
+extern THREAD_LOCAL PGDLLIMPORT Oid MyDatabaseId;
 
-extern thread_local PGDLLIMPORT Oid MyDatabaseTableSpace;
+extern THREAD_LOCAL PGDLLIMPORT Oid MyDatabaseTableSpace;
 
 /*
  * Date/Time Configuration
@@ -289,7 +289,7 @@ extern int	trace_recovery(int trace_level);
 #define SECURITY_RESTRICTED_OPERATION	0x0002
 #define SECURITY_ROW_LEVEL_DISABLED		0x0004
 
-extern thread_local char *DatabasePath;
+extern THREAD_LOCAL char *DatabasePath;
 
 /* now in utils/init/miscinit.c */
 extern void InitPostmasterChild(void);
@@ -356,7 +356,7 @@ typedef enum ProcessingMode
 	NormalProcessing			/* normal processing */
 } ProcessingMode;
 
-extern thread_local ProcessingMode Mode;
+extern THREAD_LOCAL ProcessingMode Mode;
 
 #define IsBootstrapProcessingMode() (Mode == BootstrapProcessing)
 #define IsInitProcessingMode()		(Mode == InitProcessing)
@@ -416,7 +416,7 @@ extern void InitPostgres(const char *in_dbname, Oid dboid, const char *username,
 extern void BaseInit(void);
 
 /* in utils/init/miscinit.c */
-extern thread_local bool IgnoreSystemIndexes;
+extern THREAD_LOCAL bool IgnoreSystemIndexes;
 extern PGDLLIMPORT bool process_shared_preload_libraries_in_progress;
 extern char *session_preload_libraries_string;
 extern char *shared_preload_libraries_string;

@@ -82,10 +82,10 @@
 
 
 /* Set at postmaster start */
-thread_local extern TimestampTz PgStartTime;
+THREAD_LOCAL extern TimestampTz PgStartTime;
 
 /* Set at configuration reload */
-thread_local extern TimestampTz PgReloadTime;
+THREAD_LOCAL extern TimestampTz PgReloadTime;
 
 
 /*

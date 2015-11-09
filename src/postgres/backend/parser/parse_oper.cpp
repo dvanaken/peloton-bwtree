@@ -1001,7 +1001,7 @@ make_scalar_array_op(ParseState *pstate, List *opname,
  */
 
 /* The operator___ cache hashtable */
-thread_local static HTAB *OprCacheHash = NULL;
+THREAD_LOCAL static HTAB *OprCacheHash = NULL;
 
 
 /*

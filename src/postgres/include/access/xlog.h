@@ -29,7 +29,7 @@
 #define SYNC_METHOD_OPEN_DSYNC	4		/* for O_DSYNC */
 extern int	sync_method;
 
-thread_local extern PGDLLIMPORT TimeLineID ThisTimeLineID;	/* current TLI */
+THREAD_LOCAL extern PGDLLIMPORT TimeLineID ThisTimeLineID;	/* current TLI */
 
 /*
  * Prior to 8.4, all activity during recovery was carried out by the startup
@@ -38,7 +38,7 @@ thread_local extern PGDLLIMPORT TimeLineID ThisTimeLineID;	/* current TLI */
  * potentially perform work during recovery should check RecoveryInProgress().
  * See XLogCtl notes in xlog.c.
  */
-thread_local extern bool InRecovery;
+THREAD_LOCAL extern bool InRecovery;
 
 /*
  * Like InRecovery, standbyState is only valid in the startup process.
@@ -69,7 +69,7 @@ typedef enum
 	STANDBY_SNAPSHOT_READY
 } HotStandbyState;
 
-thread_local extern HotStandbyState standbyState;
+THREAD_LOCAL extern HotStandbyState standbyState;
 
 #define InHotStandby (standbyState >= STANDBY_SNAPSHOT_PENDING)
 
@@ -86,10 +86,10 @@ typedef enum
 	RECOVERY_TARGET_IMMEDIATE
 } RecoveryTargetType;
 
-thread_local extern XLogRecPtr XactLastRecEnd;
-thread_local extern PGDLLIMPORT XLogRecPtr XactLastCommitEnd;
+THREAD_LOCAL extern XLogRecPtr XactLastRecEnd;
+THREAD_LOCAL extern PGDLLIMPORT XLogRecPtr XactLastCommitEnd;
 
-extern thread_local bool reachedConsistency;
+extern THREAD_LOCAL bool reachedConsistency;
 
 /* these variables are GUC parameters related to XLOG */
 extern int	min_wal_size;
@@ -105,7 +105,7 @@ extern bool wal_log_hints;
 extern bool wal_compression;
 extern bool log_checkpoints;
 
-thread_local extern int	CheckPointSegments;
+THREAD_LOCAL extern int	CheckPointSegments;
 
 /* Archive modes */
 typedef enum ArchiveMode
@@ -201,7 +201,7 @@ typedef struct CheckpointStatsData
 										 * the entire sync phase. */
 } CheckpointStatsData;
 
-thread_local extern CheckpointStatsData CheckpointStats;
+THREAD_LOCAL extern CheckpointStatsData CheckpointStats;
 
 struct XLogRecData;
 

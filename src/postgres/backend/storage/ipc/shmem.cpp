@@ -75,16 +75,16 @@
 
 /* shared memory global variables */
 
-thread_local static PGShmemHeader *ShmemSegHdr;		/* shared mem segment header */
+THREAD_LOCAL static PGShmemHeader *ShmemSegHdr;		/* shared mem segment header */
 
-thread_local static void *ShmemBase;			/* start address of shared memory */
+THREAD_LOCAL static void *ShmemBase;			/* start address of shared memory */
 
-thread_local static void *ShmemEnd;			/* end+1 address of shared memory */
+THREAD_LOCAL static void *ShmemEnd;			/* end+1 address of shared memory */
 
-thread_local slock_t    *ShmemLock;			/* spinlock for shared memory and LWLock
+THREAD_LOCAL slock_t    *ShmemLock;			/* spinlock for shared memory and LWLock
 								 * allocation */
 
-thread_local static HTAB *ShmemIndex = NULL; /* primary index hashtable for shmem */
+THREAD_LOCAL static HTAB *ShmemIndex = NULL; /* primary index hashtable for shmem */
 
 
 /*

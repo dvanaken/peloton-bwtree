@@ -65,10 +65,10 @@ typedef struct
  * Spurious wakeups must be expected.  Make sure that the flag is cleared
  * in the error path.
  */
-thread_local bool		set_latch_on_sigusr1;
+THREAD_LOCAL bool		set_latch_on_sigusr1;
 
-thread_local static ProcSignalSlot *ProcSignalSlots = NULL;
-thread_local static volatile ProcSignalSlot *MyProcSignalSlot = NULL;
+THREAD_LOCAL static ProcSignalSlot *ProcSignalSlots = NULL;
+THREAD_LOCAL static volatile ProcSignalSlot *MyProcSignalSlot = NULL;
 
 static bool CheckProcSignal(ProcSignalReason reason);
 static void CleanupProcSignalState(int status, Datum arg);

@@ -18,8 +18,8 @@
 #include "storage/buf_internals.h"
 
 
-thread_local BufferDescPadded *BufferDescriptors;
-thread_local char	   *BufferBlocks;
+THREAD_LOCAL BufferDescPadded *BufferDescriptors;
+THREAD_LOCAL char	   *BufferBlocks;
 
 
 /*

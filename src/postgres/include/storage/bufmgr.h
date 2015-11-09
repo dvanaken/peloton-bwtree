@@ -56,12 +56,12 @@ extern bool track_io_timing;
 extern int	target_prefetch_pages;
 
 /* in buf_init.c */
-thread_local extern PGDLLIMPORT char *BufferBlocks;
+THREAD_LOCAL extern PGDLLIMPORT char *BufferBlocks;
 
 /* in localbuf.c */
-extern thread_local PGDLLIMPORT int NLocBuffer;
-extern thread_local PGDLLIMPORT Block *LocalBufferBlockPointers;
-extern thread_local PGDLLIMPORT int32 *LocalRefCount;
+extern THREAD_LOCAL PGDLLIMPORT int NLocBuffer;
+extern THREAD_LOCAL PGDLLIMPORT Block *LocalBufferBlockPointers;
+extern THREAD_LOCAL PGDLLIMPORT int32 *LocalRefCount;
 
 /* special block number for ReadBuffer() */
 #define P_NEW	InvalidBlockNumber		/* grow the file to get a new___ page */

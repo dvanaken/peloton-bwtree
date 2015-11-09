@@ -40,10 +40,10 @@ typedef key_t IpcMemoryKey;		/* shared memory key passed to shmget(2) */
 typedef int IpcMemoryId;		/* shared memory ID returned by shmget(2) */
 
 
-thread_local unsigned long UsedShmemSegID = 0;
-thread_local void	   *UsedShmemSegAddr = NULL;
-thread_local Size AnonymousShmemSize;
-thread_local void *AnonymousShmem = NULL;
+THREAD_LOCAL unsigned long UsedShmemSegID = 0;
+THREAD_LOCAL void	   *UsedShmemSegAddr = NULL;
+THREAD_LOCAL Size AnonymousShmemSize;
+THREAD_LOCAL void *AnonymousShmem = NULL;
 
 static void *InternalIpcMemoryCreate(IpcMemoryKey memKey, Size size);
 static void IpcMemoryDetach(int status, Datum shmaddr);

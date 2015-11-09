@@ -30,7 +30,7 @@
 #include "utils/relmapper.h"
 
 /* Hash table for informations about each relfilenode <-> oid pair */
-thread_local static HTAB *RelfilenodeMapHash = NULL;
+THREAD_LOCAL static HTAB *RelfilenodeMapHash = NULL;
 
 /* built first time through in InitializeRelfilenodeMap */
 static ScanKeyData relfilenode_skey[2];

@@ -22,6 +22,6 @@ typedef int BackendId;			/* unique currently active backend identifier */
 
 #define InvalidBackendId		(-1)
 
-extern thread_local PGDLLIMPORT BackendId MyBackendId;		/* backend id of this backend */
+extern THREAD_LOCAL PGDLLIMPORT BackendId MyBackendId;		/* backend id of this backend */
 
 #endif   /* BACKENDID_H */

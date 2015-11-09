@@ -45,7 +45,7 @@
 #include "storage/spin.h"
 
 
-thread_local shmem_startup_hook_type shmem_startup_hook = NULL;
+THREAD_LOCAL shmem_startup_hook_type shmem_startup_hook = NULL;
 
 static Size total_addin_request = 0;
 static bool addin_request_allowed = true;
@@ -233,8 +233,8 @@ CreateSharedMemoryAndSemaphores(bool makePrivate, int port)
 	 */
 	if (!IsUnderPostmaster)
 		InitProcGlobal();
-	CreateSharedProcArray();  // sth in this are not thread_local
-	CreateSharedBackendStatus(); // sth in this are not thread_local
+	CreateSharedProcArray();  // sth in this are not THREAD_LOCAL
+	CreateSharedBackendStatus(); // sth in this are not THREAD_LOCAL
 	TwoPhaseShmemInit();
 	BackgroundWorkerShmemInit();
 	elog(DEBUG3, "process table created :: PID: %d, TID : %d", pid, thread_id);

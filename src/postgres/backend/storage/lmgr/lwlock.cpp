@@ -95,7 +95,7 @@
 
 
 /* We use the ShmemLock spinlock to protect LWLockAssign */
-thread_local extern slock_t *ShmemLock;
+THREAD_LOCAL extern slock_t *ShmemLock;
 
 #define LW_FLAG_HAS_WAITERS			((uint32) 1 << 30)
 #define LW_FLAG_RELEASE_OK			((uint32) 1 << 29)
@@ -126,7 +126,7 @@ static int	LWLockTranchesAllocated = 0;
  * the pointer by fork from the postmaster (except in the EXEC_BACKEND case,
  * where we have special measures to pass it down).
  */
-thread_local LWLockPadded *MainLWLockArray = NULL;
+THREAD_LOCAL LWLockPadded *MainLWLockArray = NULL;
 static LWLockTranche MainLWLockTranche;
 
 /*
@@ -144,11 +144,11 @@ typedef struct LWLockHandle
 	LWLockMode	mode;
 } LWLockHandle;
 
-thread_local static int	num_held_lwlocks = 0;
-thread_local static LWLockHandle held_lwlocks[MAX_SIMUL_LWLOCKS];
+THREAD_LOCAL static int	num_held_lwlocks = 0;
+THREAD_LOCAL static LWLockHandle held_lwlocks[MAX_SIMUL_LWLOCKS];
 
-thread_local static int	lock_addin_request = 0;
-thread_local static bool lock_addin_request_allowed = true;
+THREAD_LOCAL static int	lock_addin_request = 0;
+THREAD_LOCAL static bool lock_addin_request_allowed = true;
 
 static inline bool LWLockAcquireCommon(LWLock *l, LWLockMode mode,
 					uint64 *valptr, uint64 val);

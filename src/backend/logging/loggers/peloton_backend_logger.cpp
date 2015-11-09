@@ -21,7 +21,7 @@ namespace peloton {
 namespace logging {
 
 PelotonBackendLogger* PelotonBackendLogger::GetInstance(){
-  thread_local static PelotonBackendLogger pInstance;
+  THREAD_LOCAL static PelotonBackendLogger pInstance;
   return &pInstance;
 }
 

@@ -21,7 +21,7 @@
 /*
  * GUC variables
  */
-thread_local extern int	max_predicate_locks_per_xact;
+THREAD_LOCAL extern int	max_predicate_locks_per_xact;
 
 
 /* Number of SLRU buffers to use for predicate locking */

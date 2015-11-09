@@ -103,7 +103,7 @@ int			Unix_socket_permissions;
 char	   *Unix_socket_group;
 
 /* Where the Unix socket files are (list of palloc'd strings) */
-thread_local static List *sock_paths = NIL;
+THREAD_LOCAL static List *sock_paths = NIL;
 
 /*
  * Buffers for low-level I/O.
@@ -115,21 +115,21 @@ thread_local static List *sock_paths = NIL;
 #define PQ_SEND_BUFFER_SIZE 8192
 #define PQ_RECV_BUFFER_SIZE 8192
 
-static thread_local char *PqSendBuffer;
-static thread_local int	PqSendBufferSize;	/* Size send buffer */
-static thread_local int	PqSendPointer;		/* Next index to store a byte in PqSendBuffer */
-static thread_local int	PqSendStart;		/* Next index to send a byte in PqSendBuffer */
+static THREAD_LOCAL char *PqSendBuffer;
+static THREAD_LOCAL int	PqSendBufferSize;	/* Size send buffer */
+static THREAD_LOCAL int	PqSendPointer;		/* Next index to store a byte in PqSendBuffer */
+static THREAD_LOCAL int	PqSendStart;		/* Next index to send a byte in PqSendBuffer */
 
-static thread_local char PqRecvBuffer[PQ_RECV_BUFFER_SIZE];
-static thread_local int	PqRecvPointer;		/* Next index to read a byte from PqRecvBuffer */
-static thread_local int	PqRecvLength;		/* End of data available in PqRecvBuffer */
+static THREAD_LOCAL char PqRecvBuffer[PQ_RECV_BUFFER_SIZE];
+static THREAD_LOCAL int	PqRecvPointer;		/* Next index to read a byte from PqRecvBuffer */
+static THREAD_LOCAL int	PqRecvLength;		/* End of data available in PqRecvBuffer */
 
 /*
  * Message status
  */
-static thread_local bool PqCommBusy;			/* busy sending data to the client */
-static thread_local bool PqCommReadingMsg;	/* in the middle of reading a message */
-static thread_local bool DoingCopyOut;		/* in old-protocol COPY OUT processing */
+static THREAD_LOCAL bool PqCommBusy;			/* busy sending data to the client */
+static THREAD_LOCAL bool PqCommReadingMsg;	/* in the middle of reading a message */
+static THREAD_LOCAL bool DoingCopyOut;		/* in old-protocol COPY OUT processing */
 
 
 /* Internal functions */
@@ -152,7 +152,7 @@ static int	Lock_AF_UNIX(char *unixSocketDir, char *unixSocketPath);
 static int	Setup_AF_UNIX(char *sock_path);
 #endif   /* HAVE_UNIX_SOCKETS */
 
-thread_local static PQcommMethods PqCommSocketMethods = {
+THREAD_LOCAL static PQcommMethods PqCommSocketMethods = {
 	socket_comm_reset,
 	socket_flush,
 	socket_flush_if_writable,

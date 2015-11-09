@@ -128,7 +128,7 @@ PgStat_MsgBgWriter BgWriterStats;
  * Local data
  * ----------
  */
-thread_local NON_EXEC_STATIC pgsocket pgStatSock = PGINVALID_SOCKET;
+THREAD_LOCAL NON_EXEC_STATIC pgsocket pgStatSock = PGINVALID_SOCKET;
 
 static struct sockaddr_storage pgStatAddr;
 
@@ -156,19 +156,19 @@ typedef struct TabStatusArray
 	PgStat_TableStatus tsa_entries[TABSTAT_QUANTUM];	/* per-table data */
 } TabStatusArray;
 
-thread_local static TabStatusArray *pgStatTabList = NULL;
+THREAD_LOCAL static TabStatusArray *pgStatTabList = NULL;
 
 /*
  * Backends store per-function info that's waiting to be sent to the collector
  * in this hash table (indexed by function OID).
  */
-thread_local static HTAB *pgStatFunctions = NULL;
+THREAD_LOCAL static HTAB *pgStatFunctions = NULL;
 
 /*
  * Indicates if backend has some function stats that it hasn't yet
  * sent to the collector.
  */
-thread_local static bool have_function_stats = false;
+THREAD_LOCAL static bool have_function_stats = false;
 
 /*
  * Tuple insertion/deletion counts for an open transaction can't be propagated
@@ -184,12 +184,12 @@ typedef struct PgStat_SubXactStatus
 	PgStat_TableXactStatus *first;		/* head of list for this subxact */
 } PgStat_SubXactStatus;
 
-thread_local static PgStat_SubXactStatus *pgStatXactStack = NULL;
+THREAD_LOCAL static PgStat_SubXactStatus *pgStatXactStack = NULL;
 
-thread_local static int	pgStatXactCommit = 0;
-thread_local static int	pgStatXactRollback = 0;
-thread_local PgStat_Counter pgStatBlockReadTime = 0;
-thread_local PgStat_Counter pgStatBlockWriteTime = 0;
+THREAD_LOCAL static int	pgStatXactCommit = 0;
+THREAD_LOCAL static int	pgStatXactRollback = 0;
+THREAD_LOCAL PgStat_Counter pgStatBlockReadTime = 0;
+THREAD_LOCAL PgStat_Counter pgStatBlockWriteTime = 0;
 
 /* Record that's written to 2PC state file when pgstat state is persisted */
 typedef struct TwoPhasePgStatRecord
@@ -208,10 +208,10 @@ typedef struct TwoPhasePgStatRecord
 /*
  * Info about current "snapshot" of stats file
  */
-thread_local static MemoryContext pgStatLocalContext = NULL;
-thread_local static HTAB *pgStatDBHash = NULL;
-thread_local static LocalPgBackendStatus *localBackendStatusTable = NULL;
-thread_local static int	localNumBackends = 0;
+THREAD_LOCAL static MemoryContext pgStatLocalContext = NULL;
+THREAD_LOCAL static HTAB *pgStatDBHash = NULL;
+THREAD_LOCAL static LocalPgBackendStatus *localBackendStatusTable = NULL;
+THREAD_LOCAL static int	localNumBackends = 0;
 
 /*
  * Cluster wide statistics, kept in the stats collector.
@@ -2476,14 +2476,14 @@ pgstat_fetch_global(void)
  * ------------------------------------------------------------
  */
 
-thread_local static PgBackendStatus *BackendStatusArray = NULL;
-thread_local static PgBackendStatus *MyBEEntry = NULL;
-thread_local static char *BackendClientHostnameBuffer = NULL;
-thread_local static char *BackendAppnameBuffer = NULL;
-thread_local static char *BackendActivityBuffer = NULL;
-thread_local static Size BackendActivityBufferSize = 0;
+THREAD_LOCAL static PgBackendStatus *BackendStatusArray = NULL;
+THREAD_LOCAL static PgBackendStatus *MyBEEntry = NULL;
+THREAD_LOCAL static char *BackendClientHostnameBuffer = NULL;
+THREAD_LOCAL static char *BackendAppnameBuffer = NULL;
+THREAD_LOCAL static char *BackendActivityBuffer = NULL;
+THREAD_LOCAL static Size BackendActivityBufferSize = 0;
 #ifdef USE_SSL
-thread_local static PgBackendSSLStatus *BackendSslStatusBuffer = NULL;
+THREAD_LOCAL static PgBackendSSLStatus *BackendSslStatusBuffer = NULL;
 #endif
 
 

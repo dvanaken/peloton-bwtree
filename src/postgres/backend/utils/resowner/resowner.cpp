@@ -110,9 +110,9 @@ typedef struct ResourceOwnerData
  *	  GLOBAL MEMORY															 *
  *****************************************************************************/
 
-thread_local ResourceOwner CurrentResourceOwner = NULL;
-thread_local ResourceOwner CurTransactionResourceOwner = NULL;
-thread_local ResourceOwner TopTransactionResourceOwner = NULL;
+THREAD_LOCAL ResourceOwner CurrentResourceOwner = NULL;
+THREAD_LOCAL ResourceOwner CurTransactionResourceOwner = NULL;
+THREAD_LOCAL ResourceOwner TopTransactionResourceOwner = NULL;
 
 /*
  * List of add-on callbacks for resource releasing
@@ -124,7 +124,7 @@ typedef struct ResourceReleaseCallbackItem
 	void	   *arg;
 } ResourceReleaseCallbackItem;
 
-thread_local static ResourceReleaseCallbackItem *ResourceRelease_callbacks = NULL;
+THREAD_LOCAL static ResourceReleaseCallbackItem *ResourceRelease_callbacks = NULL;
 
 
 /* Internal routines */

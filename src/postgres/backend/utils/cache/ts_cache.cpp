@@ -59,13 +59,13 @@
 #define MAXDICTSPERTT	100
 
 
-thread_local static HTAB *TSParserCacheHash = NULL;
+THREAD_LOCAL static HTAB *TSParserCacheHash = NULL;
 static TSParserCacheEntry *lastUsedParser = NULL;
 
-thread_local static HTAB *TSDictionaryCacheHash = NULL;
+THREAD_LOCAL static HTAB *TSDictionaryCacheHash = NULL;
 static TSDictionaryCacheEntry *lastUsedDictionary = NULL;
 
-thread_local static HTAB *TSConfigCacheHash = NULL;
+THREAD_LOCAL static HTAB *TSConfigCacheHash = NULL;
 static TSConfigCacheEntry *lastUsedConfig = NULL;
 
 /*

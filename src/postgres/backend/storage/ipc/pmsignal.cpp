@@ -69,7 +69,7 @@ struct PMSignalData
 	sig_atomic_t PMChildFlags[FLEXIBLE_ARRAY_MEMBER];
 };
 
-thread_local NON_EXEC_STATIC volatile PMSignalData *PMSignalState = NULL;
+THREAD_LOCAL NON_EXEC_STATIC volatile PMSignalData *PMSignalState = NULL;
 
 
 /*

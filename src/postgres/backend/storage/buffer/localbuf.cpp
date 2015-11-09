@@ -37,15 +37,15 @@ typedef struct
 #define LocalBufHdrGetBlock(bufHdr) \
 	LocalBufferBlockPointers[-((bufHdr)->buf_id + 2)]
 
-thread_local int			NLocBuffer = 0;		/* until buffers are initialized */
+THREAD_LOCAL int			NLocBuffer = 0;		/* until buffers are initialized */
 
-thread_local BufferDesc *LocalBufferDescriptors = NULL;
-thread_local Block	   *LocalBufferBlockPointers = NULL;
-thread_local int32	   *LocalRefCount = NULL;
+THREAD_LOCAL BufferDesc *LocalBufferDescriptors = NULL;
+THREAD_LOCAL Block	   *LocalBufferBlockPointers = NULL;
+THREAD_LOCAL int32	   *LocalRefCount = NULL;
 
-thread_local static int	nextFreeLocalBuf = 0;
+THREAD_LOCAL static int	nextFreeLocalBuf = 0;
 
-thread_local static HTAB *LocalBufHash = NULL;
+THREAD_LOCAL static HTAB *LocalBufHash = NULL;
 
 
 static void InitLocalBuffers(void);

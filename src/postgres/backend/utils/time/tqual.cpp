@@ -70,9 +70,9 @@
 
 
 /* Static variables representing various special snapshot semantics */
-thread_local SnapshotData SnapshotSelfData = {HeapTupleSatisfiesSelf};
-thread_local SnapshotData SnapshotAnyData = {HeapTupleSatisfiesAny};
-thread_local SnapshotData SnapshotToastData = {HeapTupleSatisfiesToast};
+THREAD_LOCAL SnapshotData SnapshotSelfData = {HeapTupleSatisfiesSelf};
+THREAD_LOCAL SnapshotData SnapshotAnyData = {HeapTupleSatisfiesAny};
+THREAD_LOCAL SnapshotData SnapshotToastData = {HeapTupleSatisfiesToast};
 
 /* local functions */
 static bool XidInMVCCSnapshot(TransactionId xid, Snapshot snapshot);

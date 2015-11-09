@@ -60,8 +60,8 @@ int			LockTimeout = 0;
 bool		log_lock_waits = false;
 
 /* Pointer to this process's PGPROC and PGXACT structs, if any */
-thread_local PGPROC	   *MyProc = NULL;
-thread_local PGXACT	   *MyPgXact = NULL;
+THREAD_LOCAL PGPROC	   *MyProc = NULL;
+THREAD_LOCAL PGXACT	   *MyPgXact = NULL;
 
 /*
  * This spinlock protects the freelist of recycled PGPROC structures.
@@ -70,20 +70,20 @@ thread_local PGXACT	   *MyPgXact = NULL;
  * relatively infrequently (only at backend startup or shutdown) and not for
  * very long, so a spinlock is okay.
  */
-thread_local NON_EXEC_STATIC slock_t *ProcStructLock = NULL;
+THREAD_LOCAL NON_EXEC_STATIC slock_t *ProcStructLock = NULL;
 
 /* Pointers to shared-memory structures */
 PROC_HDR   *ProcGlobal = NULL;
-thread_local NON_EXEC_STATIC PGPROC *AuxiliaryProcs = NULL;
-thread_local PGPROC	   *PreparedXactProcs = NULL;
+THREAD_LOCAL NON_EXEC_STATIC PGPROC *AuxiliaryProcs = NULL;
+THREAD_LOCAL PGPROC	   *PreparedXactProcs = NULL;
 
 /* If we are waiting for a lock, this points to the associated LOCALLOCK */
-thread_local static LOCALLOCK *lockAwaited = NULL;
+THREAD_LOCAL static LOCALLOCK *lockAwaited = NULL;
 
-thread_local static DeadLockState deadlock_state = DS_NOT_YET_CHECKED;
+THREAD_LOCAL static DeadLockState deadlock_state = DS_NOT_YET_CHECKED;
 
 /* Is a deadlock check pending? */
-thread_local static volatile sig_atomic_t got_deadlock_timeout;
+THREAD_LOCAL static volatile sig_atomic_t got_deadlock_timeout;
 
 static void RemoveProcFromArray(int code, Datum arg);
 static void ProcKill(int code, Datum arg);

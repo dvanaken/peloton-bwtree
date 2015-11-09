@@ -18,7 +18,7 @@
 #include "utils/portal.h"
 
 
-extern thread_local PGDLLIMPORT Portal ActivePortal;
+extern THREAD_LOCAL PGDLLIMPORT Portal ActivePortal;
 
 
 extern PortalStrategy ChoosePortalStrategy(List *stmts);

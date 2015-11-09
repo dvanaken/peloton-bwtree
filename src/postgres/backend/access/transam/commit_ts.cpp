@@ -87,11 +87,11 @@ typedef struct CommitTimestampShared
 	CommitTimestampEntry dataLastCommit;
 } CommitTimestampShared;
 
-thread_local CommitTimestampShared	*commitTsShared;
+THREAD_LOCAL CommitTimestampShared	*commitTsShared;
 
 
 /* GUC variable */
-thread_local bool	track_commit_timestamp;
+THREAD_LOCAL bool	track_commit_timestamp;
 
 static void SetXidCommitTsInPage(TransactionId xid, int nsubxids,
 					 TransactionId *subxids, TimestampTz ts,

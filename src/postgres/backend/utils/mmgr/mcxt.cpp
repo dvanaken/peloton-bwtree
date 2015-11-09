@@ -38,22 +38,22 @@
  * CurrentMemoryContext
  *		Default memory context for allocations.
  */
-thread_local MemoryContext CurrentMemoryContext = NULL;
+THREAD_LOCAL MemoryContext CurrentMemoryContext = NULL;
 
 /*
  * Standard top-level contexts. For a description of the purpose of each
  * of these contexts, refer to src/backend/utils/mmgr/README
  */
-thread_local MemoryContext TopMemoryContext = NULL;
-thread_local MemoryContext ErrorContext = NULL;
-thread_local MemoryContext PostmasterContext = NULL;
-thread_local MemoryContext CacheMemoryContext = NULL;
-thread_local MemoryContext MessageContext = NULL;
-thread_local MemoryContext TopTransactionContext = NULL;
-thread_local MemoryContext CurTransactionContext = NULL;
+THREAD_LOCAL MemoryContext TopMemoryContext = NULL;
+THREAD_LOCAL MemoryContext ErrorContext = NULL;
+THREAD_LOCAL MemoryContext PostmasterContext = NULL;
+THREAD_LOCAL MemoryContext CacheMemoryContext = NULL;
+THREAD_LOCAL MemoryContext MessageContext = NULL;
+THREAD_LOCAL MemoryContext TopTransactionContext = NULL;
+THREAD_LOCAL MemoryContext CurTransactionContext = NULL;
 
 /* This is a transient link to the active portal's memory context: */
-thread_local MemoryContext PortalContext = NULL;
+THREAD_LOCAL MemoryContext PortalContext = NULL;
 
 static void MemoryContextCallResetCallbacks(MemoryContext context);
 static void MemoryContextStatsInternal(MemoryContext context, int level);

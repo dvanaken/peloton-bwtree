@@ -28,7 +28,7 @@ namespace bridge {
 const PlanTransformer::TransformOptions PlanTransformer::DefaultOptions;
 
 PlanTransformer &PlanTransformer::GetInstance() {
-  thread_local static PlanTransformer transformer;
+  THREAD_LOCAL static PlanTransformer transformer;
   return transformer;
 }
 

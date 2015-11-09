@@ -21,7 +21,7 @@ namespace peloton {
 namespace logging {
 
 AriesBackendLogger* AriesBackendLogger::GetInstance(){
-  thread_local static AriesBackendLogger aries_backend_logger;
+  THREAD_LOCAL static AriesBackendLogger aries_backend_logger;
   return &aries_backend_logger;
 }
 

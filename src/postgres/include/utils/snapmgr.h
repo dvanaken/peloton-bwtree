@@ -18,12 +18,12 @@
 #include "utils/snapshot.h"
 
 
-extern thread_local bool FirstSnapshotSet;
+extern THREAD_LOCAL bool FirstSnapshotSet;
 
-extern thread_local TransactionId TransactionXmin;
-extern thread_local TransactionId RecentXmin;
-extern thread_local TransactionId RecentGlobalXmin;
-extern thread_local TransactionId RecentGlobalDataXmin;
+extern THREAD_LOCAL TransactionId TransactionXmin;
+extern THREAD_LOCAL TransactionId RecentXmin;
+extern THREAD_LOCAL TransactionId RecentGlobalXmin;
+extern THREAD_LOCAL TransactionId RecentGlobalDataXmin;
 
 extern Snapshot GetTransactionSnapshot(void);
 extern Snapshot GetLatestSnapshot(void);

@@ -340,7 +340,7 @@ typedef struct OldSerXidControlData
 
 typedef struct OldSerXidControlData *OldSerXidControl;
 
-thread_local static OldSerXidControl oldSerXidControl;
+THREAD_LOCAL static OldSerXidControl oldSerXidControl;
 
 /*
  * When the oldest committed transaction on the "finished" list is moved to
@@ -348,11 +348,11 @@ thread_local static OldSerXidControl oldSerXidControl;
  * collapsing duplicate targets.  When a duplicate is found, the later
  * commitSeqNo is used.
  */
-thread_local static SERIALIZABLEXACT *OldCommittedSxact;
+THREAD_LOCAL static SERIALIZABLEXACT *OldCommittedSxact;
 
 
 /* This configuration variable is used to set the predicate lock table size */
-thread_local int			max_predicate_locks_per_xact;		/* set by guc.c */
+THREAD_LOCAL int			max_predicate_locks_per_xact;		/* set by guc.c */
 
 /*
  * This provides a list of objects in order to track transactions
@@ -363,45 +363,45 @@ thread_local int			max_predicate_locks_per_xact;		/* set by guc.c */
  * number of entries in the list, and the size allowed for each entry is
  * fixed upon creation.
  */
-thread_local static PredXactList PredXact;
+THREAD_LOCAL static PredXactList PredXact;
 
 /*
  * This provides a pool of RWConflict data elements to use in conflict lists
  * between transactions.
  */
-thread_local static RWConflictPoolHeader RWConflictPool;
+THREAD_LOCAL static RWConflictPoolHeader RWConflictPool;
 
 /*
  * The predicate locking hash tables are in shared memory.
  * Each backend keeps pointers to them.
  */
-thread_local static HTAB *SerializableXidHash;
-thread_local static HTAB *PredicateLockTargetHash;
-thread_local static HTAB *PredicateLockHash;
-thread_local static SHM_QUEUE *FinishedSerializableTransactions;
+THREAD_LOCAL static HTAB *SerializableXidHash;
+THREAD_LOCAL static HTAB *PredicateLockTargetHash;
+THREAD_LOCAL static HTAB *PredicateLockHash;
+THREAD_LOCAL static SHM_QUEUE *FinishedSerializableTransactions;
 
 /*
  * Tag for a dummy entry in PredicateLockTargetHash. By temporarily removing
  * this entry, you can ensure that there's enough scratch space available for
  * inserting one entry in the hash table. This is an otherwise-invalid tag.
  */
-thread_local static const PREDICATELOCKTARGETTAG ScratchTargetTag = {0, 0, 0, 0};
-thread_local static uint32 ScratchTargetTagHash;
-thread_local static LWLock *ScratchPartitionLock;
+THREAD_LOCAL static const PREDICATELOCKTARGETTAG ScratchTargetTag = {0, 0, 0, 0};
+THREAD_LOCAL static uint32 ScratchTargetTagHash;
+THREAD_LOCAL static LWLock *ScratchPartitionLock;
 
 /*
  * The local hash table used to determine when to combine multiple fine-
  * grained locks into a single courser-grained lock.
  */
-thread_local static HTAB *LocalPredicateLockHash = NULL;
+THREAD_LOCAL static HTAB *LocalPredicateLockHash = NULL;
 
 /*
  * Keep a pointer to the currently-running serializable transaction (if any)
  * for quick reference. Also, remember if we have written anything that could
  * cause a rw-conflict.
  */
-thread_local static SERIALIZABLEXACT *MySerializableXact = InvalidSerializableXact;
-thread_local static bool MyXactDidWrite = false;
+THREAD_LOCAL static SERIALIZABLEXACT *MySerializableXact = InvalidSerializableXact;
+THREAD_LOCAL static bool MyXactDidWrite = false;
 
 /* local functions */
 

@@ -113,7 +113,7 @@ static int	gmt_is_set = 0;
  * Thanks to Paul Eggert for noting this.
  */
 
-thread_local static struct pg_tm tm;
+THREAD_LOCAL static struct pg_tm tm;
 
 
 static long

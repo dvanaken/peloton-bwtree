@@ -29,7 +29,7 @@ namespace peloton {
 namespace concurrency {
 
 // Current transaction for the backend thread
-thread_local Transaction *current_txn;
+THREAD_LOCAL Transaction *current_txn;
 
 TransactionManager::TransactionManager() {
   next_txn_id = ATOMIC_VAR_INIT(START_TXN_ID);

@@ -30,8 +30,8 @@
 #define XACT_REPEATABLE_READ	2
 #define XACT_SERIALIZABLE		3
 
-extern thread_local int	DefaultXactIsoLevel;
-extern thread_local PGDLLIMPORT int XactIsoLevel;
+extern THREAD_LOCAL int	DefaultXactIsoLevel;
+extern THREAD_LOCAL PGDLLIMPORT int XactIsoLevel;
 
 /*
  * We implement three isolation levels internally.
@@ -44,15 +44,15 @@ extern thread_local PGDLLIMPORT int XactIsoLevel;
 #define IsolationIsSerializable() (XactIsoLevel == XACT_SERIALIZABLE)
 
 /* Xact read-only state */
-extern thread_local bool DefaultXactReadOnly;
-extern thread_local bool XactReadOnly;
+extern THREAD_LOCAL bool DefaultXactReadOnly;
+extern THREAD_LOCAL bool XactReadOnly;
 
 /*
  * Xact is deferrable -- only meaningful (currently) for read only
  * SERIALIZABLE transactions
  */
-extern thread_local bool DefaultXactDeferrable;
-extern thread_local bool XactDeferrable;
+extern THREAD_LOCAL bool DefaultXactDeferrable;
+extern THREAD_LOCAL bool XactDeferrable;
 
 typedef enum
 {
@@ -67,10 +67,10 @@ typedef enum
 #define SYNCHRONOUS_COMMIT_ON	SYNCHRONOUS_COMMIT_REMOTE_FLUSH
 
 /* Synchronous commit level */
-extern thread_local int	synchronous_commit;
+extern THREAD_LOCAL int	synchronous_commit;
 
 /* Kluge for 2PC support */
-extern thread_local bool MyXactAccessedTempRel;
+extern THREAD_LOCAL bool MyXactAccessedTempRel;
 
 /*
  *	start- and end-of-transaction callbacks for dynamically loaded modules

@@ -27,7 +27,7 @@ typedef unsigned int TransactionId;
 
 class Transaction;
 
-extern thread_local Transaction *current_txn;
+extern THREAD_LOCAL Transaction *current_txn;
 
 //===--------------------------------------------------------------------===//
 // Transaction Manager

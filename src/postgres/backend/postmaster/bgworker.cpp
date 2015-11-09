@@ -91,7 +91,7 @@ struct BackgroundWorkerHandle
 	uint64		generation;
 };
 
-thread_local static BackgroundWorkerArray *BackgroundWorkerData;
+THREAD_LOCAL static BackgroundWorkerArray *BackgroundWorkerData;
 
 /*
  * Calculate shared memory needed.

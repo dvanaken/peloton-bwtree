@@ -57,7 +57,7 @@
 /*
  * Link to shared-memory data structures for SUBTRANS control
  */
-thread_local static SlruCtlData SubTransCtlData;
+THREAD_LOCAL static SlruCtlData SubTransCtlData;
 
 #define SubTransCtl  (&SubTransCtlData)
 

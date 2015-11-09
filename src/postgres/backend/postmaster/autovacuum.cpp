@@ -262,7 +262,7 @@ typedef struct
 	WorkerInfo	av_startingWorker;
 } AutoVacuumShmemStruct;
 
-thread_local static AutoVacuumShmemStruct *AutoVacuumShmem;
+THREAD_LOCAL static AutoVacuumShmemStruct *AutoVacuumShmem;
 
 /*
  * the database list (of avl_dbase elements) in the launcher, and the context

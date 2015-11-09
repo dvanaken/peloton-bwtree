@@ -89,11 +89,11 @@ bool		track_io_timing = false;
 int			target_prefetch_pages = 0;
 
 /* local state for StartBufferIO and related functions */
-thread_local static volatile BufferDesc *InProgressBuf = NULL;
-thread_local static bool IsForInput;
+THREAD_LOCAL static volatile BufferDesc *InProgressBuf = NULL;
+THREAD_LOCAL static bool IsForInput;
 
 /* local state for LockBufferForCleanup */
-thread_local static volatile BufferDesc *PinCountWaitBuf = NULL;
+THREAD_LOCAL static volatile BufferDesc *PinCountWaitBuf = NULL;
 
 /*
  * Backend-Private refcount management:
@@ -125,11 +125,11 @@ thread_local static volatile BufferDesc *PinCountWaitBuf = NULL;
  * memory allocations in NewPrivateRefCountEntry() which can be important
  * because in some scenarios it's called with a spinlock held...
  */
-thread_local static struct PrivateRefCountEntry PrivateRefCountArray[REFCOUNT_ARRAY_ENTRIES];
-thread_local static HTAB *PrivateRefCountHash = NULL;
-thread_local static int32 PrivateRefCountOverflowed = 0;
-thread_local static uint32 PrivateRefCountClock = 0;
-thread_local static PrivateRefCountEntry *ReservedRefCountEntry = NULL;
+THREAD_LOCAL static struct PrivateRefCountEntry PrivateRefCountArray[REFCOUNT_ARRAY_ENTRIES];
+THREAD_LOCAL static HTAB *PrivateRefCountHash = NULL;
+THREAD_LOCAL static int32 PrivateRefCountOverflowed = 0;
+THREAD_LOCAL static uint32 PrivateRefCountClock = 0;
+THREAD_LOCAL static PrivateRefCountEntry *ReservedRefCountEntry = NULL;
 
 static void ReservePrivateRefCountEntry(void);
 static PrivateRefCountEntry* NewPrivateRefCountEntry(Buffer buffer);

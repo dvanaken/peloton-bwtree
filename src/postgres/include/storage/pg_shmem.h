@@ -53,13 +53,13 @@ typedef enum
 }	HugePagesType;
 
 #ifndef WIN32
-extern thread_local unsigned long UsedShmemSegID;
+extern THREAD_LOCAL unsigned long UsedShmemSegID;
 #else
 extern HANDLE UsedShmemSegID;
 #endif
-extern thread_local void *UsedShmemSegAddr;
-extern thread_local void *AnonymousShmem;
-extern thread_local Size AnonymousShmemSize;
+extern THREAD_LOCAL void *UsedShmemSegAddr;
+extern THREAD_LOCAL void *AnonymousShmem;
+extern THREAD_LOCAL Size AnonymousShmemSize;
 
 //TODO: peloton changes
 //#ifdef EXEC_BACKEND

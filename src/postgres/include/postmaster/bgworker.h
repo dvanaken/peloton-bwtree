@@ -119,7 +119,7 @@ WaitForBackgroundWorkerShutdown(BackgroundWorkerHandle *);
 extern void TerminateBackgroundWorker(BackgroundWorkerHandle *handle);
 
 /* This is valid in a running worker */
-extern thread_local PGDLLIMPORT BackgroundWorker *MyBgworkerEntry;
+extern THREAD_LOCAL PGDLLIMPORT BackgroundWorker *MyBgworkerEntry;
 
 /*
  * Connect to the specified database, as the specified user.  Only a worker

@@ -122,9 +122,9 @@ extern void RelationCacheInitFilePostInvalidate(void);
 extern void RelationCacheInitFileRemove(void);
 
 /* should be used only by relcache.c and catcache.c */
-extern thread_local bool criticalRelcachesBuilt;
+extern THREAD_LOCAL bool criticalRelcachesBuilt;
 
 /* should be used only by relcache.c and postinit.c */
-extern thread_local bool criticalSharedRelcachesBuilt;
+extern THREAD_LOCAL bool criticalSharedRelcachesBuilt;
 
 #endif   /* RELCACHE_H */

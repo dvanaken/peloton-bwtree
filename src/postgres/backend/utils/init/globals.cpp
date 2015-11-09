@@ -26,21 +26,21 @@
 // TODO: Peloton Changes
 #include "backend/common/message_queue.h"
 
-thread_local ProtocolVersion FrontendProtocol;
+THREAD_LOCAL ProtocolVersion FrontendProtocol;
 
-thread_local volatile bool InterruptPending = false;
-thread_local volatile bool QueryCancelPending = false;
-thread_local volatile bool ProcDiePending = false;
-thread_local volatile bool ClientConnectionLost = false;
-thread_local volatile uint32 InterruptHoldoffCount = 0;
-thread_local volatile uint32 QueryCancelHoldoffCount = 0;
-thread_local volatile uint32 CritSectionCount = 0;
+THREAD_LOCAL volatile bool InterruptPending = false;
+THREAD_LOCAL volatile bool QueryCancelPending = false;
+THREAD_LOCAL volatile bool ProcDiePending = false;
+THREAD_LOCAL volatile bool ClientConnectionLost = false;
+THREAD_LOCAL volatile uint32 InterruptHoldoffCount = 0;
+THREAD_LOCAL volatile uint32 QueryCancelHoldoffCount = 0;
+THREAD_LOCAL volatile uint32 CritSectionCount = 0;
 
-thread_local int			MyProcPid;
-thread_local pg_time_t	MyStartTime;
-thread_local struct Port *MyProcPort;
-thread_local long		MyCancelKey;
-thread_local int			MyPMChildSlot;
+THREAD_LOCAL int			MyProcPid;
+THREAD_LOCAL pg_time_t	MyStartTime;
+THREAD_LOCAL struct Port *MyProcPort;
+THREAD_LOCAL long		MyCancelKey;
+THREAD_LOCAL int			MyPMChildSlot;
 
 /*
  * MyLatch points to the latch that should be used for signal handling by the
@@ -49,7 +49,7 @@ thread_local int			MyPMChildSlot;
  * PGPROC->procLatch if it has. Thus it can always be used in signal handlers,
  * without checking for its existence.
  */
-thread_local struct Latch *MyLatch;
+THREAD_LOCAL struct Latch *MyLatch;
 
 /*
  * DataDir is the absolute path to the top level of the PGDATA directory tree.
@@ -57,12 +57,12 @@ thread_local struct Latch *MyLatch;
  * most code therefore can simply use relative paths and not reference DataDir
  * explicitly.
  */
-thread_local char	   *DataDir = NULL;
+THREAD_LOCAL char	   *DataDir = NULL;
 
-thread_local char		OutputFileName[MAXPGPATH];	/* debugging output file */
+THREAD_LOCAL char		OutputFileName[MAXPGPATH];	/* debugging output file */
 
-thread_local char		my_exec_path[MAXPGPATH];	/* full path to my executable */
-thread_local char		pkglib_path[MAXPGPATH];		/* full path to lib directory */
+THREAD_LOCAL char		my_exec_path[MAXPGPATH];	/* full path to my executable */
+THREAD_LOCAL char		pkglib_path[MAXPGPATH];		/* full path to lib directory */
 
 #ifdef EXEC_BACKEND
 char		postgres_exec_path[MAXPGPATH];		/* full path to backend */
@@ -70,21 +70,21 @@ char		postgres_exec_path[MAXPGPATH];		/* full path to backend */
 /* note: currently this is not valid in backend processes */
 #endif
 
-thread_local BackendId	MyBackendId = InvalidBackendId;
+THREAD_LOCAL BackendId	MyBackendId = InvalidBackendId;
 
-thread_local mqd_t MyBackendQueue = InvalidBackendId;
+THREAD_LOCAL mqd_t MyBackendQueue = InvalidBackendId;
 
-thread_local Oid  MyDatabaseId = InvalidOid;
+THREAD_LOCAL Oid  MyDatabaseId = InvalidOid;
 
-thread_local Oid			MyDatabaseTableSpace = InvalidOid;
+THREAD_LOCAL Oid			MyDatabaseTableSpace = InvalidOid;
 
 /*
  * DatabasePath is the path (relative to DataDir) of my database's
  * primary directory, ie, its directory in the default tablespace.
  */
-thread_local char	   *DatabasePath = NULL;
+THREAD_LOCAL char	   *DatabasePath = NULL;
 
-thread_local pid_t		PostmasterPid = 0;
+THREAD_LOCAL pid_t		PostmasterPid = 0;
 
 /*
  * IsPostmasterEnvironment is true in a postmaster process and any postmaster
@@ -97,13 +97,13 @@ thread_local pid_t		PostmasterPid = 0;
  *
  * These are initialized for the bootstrap/standalone case.
  */
-thread_local bool		IsPostmasterEnvironment = false;
-thread_local bool		IsUnderPostmaster = false;
-thread_local bool		IsBinaryUpgrade = false;
-thread_local bool		IsBackgroundWorker = false;
-thread_local bool   IsBackend = false;
+THREAD_LOCAL bool		IsPostmasterEnvironment = false;
+THREAD_LOCAL bool		IsUnderPostmaster = false;
+THREAD_LOCAL bool		IsBinaryUpgrade = false;
+THREAD_LOCAL bool		IsBackgroundWorker = false;
+THREAD_LOCAL bool   IsBackend = false;
 
-thread_local bool		ExitOnAnyError = false;
+THREAD_LOCAL bool		ExitOnAnyError = false;
 
 int			DateStyle = USE_ISO_DATES;
 int			DateOrder = DATEORDER_MDY;
@@ -123,7 +123,7 @@ int			maintenance_work_mem = 16384;
 int			NBuffers = 1000;
 int			MaxConnections = 90;
 int			max_worker_processes = 8;
-thread_local int			MaxBackends = 0;
+THREAD_LOCAL int			MaxBackends = 0;
 
 int			VacuumCostPageHit = 1;		/* GUC parameters for vacuum */
 int			VacuumCostPageMiss = 10;

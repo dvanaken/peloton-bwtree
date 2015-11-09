@@ -138,7 +138,7 @@ typedef struct TwoPhaseStateData
 	GlobalTransaction prepXacts[FLEXIBLE_ARRAY_MEMBER];
 } TwoPhaseStateData;
 
-thread_local static TwoPhaseStateData *TwoPhaseState;
+THREAD_LOCAL static TwoPhaseStateData *TwoPhaseState;
 
 /*
  * Global transaction entry currently locked by us, if any.

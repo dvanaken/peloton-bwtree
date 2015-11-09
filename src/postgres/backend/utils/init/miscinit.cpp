@@ -51,12 +51,12 @@
 
 #define DIRECTORY_LOCK_FILE		"postmaster.pid"
 
-thread_local ProcessingMode Mode = InitProcessing;
+THREAD_LOCAL ProcessingMode Mode = InitProcessing;
 
 /* List of lock files to be removed at proc exit */
-thread_local static List *lock_files = NIL;
+THREAD_LOCAL static List *lock_files = NIL;
 
-thread_local static Latch LocalLatchData;
+THREAD_LOCAL static Latch LocalLatchData;
 
 /* ----------------------------------------------------------------
  *		ignoring system indexes support stuff
@@ -68,7 +68,7 @@ thread_local static Latch LocalLatchData;
  * ----------------------------------------------------------------
  */
 
-thread_local bool		IgnoreSystemIndexes = false;
+THREAD_LOCAL bool		IgnoreSystemIndexes = false;
 
 
 /* ----------------------------------------------------------------
@@ -150,19 +150,19 @@ ChangeToDataDir(void)
  * convenient way to do it.
  * ----------------------------------------------------------------
  */
-thread_local static Oid	AuthenticatedUserId = InvalidOid;
-thread_local static Oid	SessionUserId = InvalidOid;
-thread_local static Oid	OuterUserId = InvalidOid;
-thread_local static Oid	CurrentUserId = InvalidOid;
+THREAD_LOCAL static Oid	AuthenticatedUserId = InvalidOid;
+THREAD_LOCAL static Oid	SessionUserId = InvalidOid;
+THREAD_LOCAL static Oid	OuterUserId = InvalidOid;
+THREAD_LOCAL static Oid	CurrentUserId = InvalidOid;
 
 /* We also have to remember the superuser state of some of these levels */
-thread_local static bool AuthenticatedUserIsSuperuser = false;
-thread_local static bool SessionUserIsSuperuser = false;
+THREAD_LOCAL static bool AuthenticatedUserIsSuperuser = false;
+THREAD_LOCAL static bool SessionUserIsSuperuser = false;
 
-thread_local static int	SecurityRestrictionContext = 0;
+THREAD_LOCAL static int	SecurityRestrictionContext = 0;
 
 /* We also remember if a SET ROLE is currently active */
-thread_local static bool SetRoleIsActive = false;
+THREAD_LOCAL static bool SetRoleIsActive = false;
 
 /*
  * Initialize the basic environment for a postmaster child

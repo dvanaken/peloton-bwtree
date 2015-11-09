@@ -728,7 +728,7 @@ typedef struct
 static const char *memory_units_hint =
 	gettext_noop("Valid units for this parameter are \"kB\", \"MB\", \"GB\", and \"TB\".");
 
-thread_local static const unit_conversion memory_unit_conversion_table[] =
+THREAD_LOCAL static const unit_conversion memory_unit_conversion_table[] =
 {
 	{ "TB",		GUC_UNIT_KB,	 	1024*1024*1024 },
 	{ "GB",		GUC_UNIT_KB,	 	1024*1024 },
@@ -753,10 +753,10 @@ thread_local static const unit_conversion memory_unit_conversion_table[] =
 	{ "" }		/* end of table marker */
 };
 
-thread_local static const char *time_units_hint =
+THREAD_LOCAL static const char *time_units_hint =
 	gettext_noop("Valid units for this parameter are \"ms\", \"s\", \"min\", \"h\", and \"d\".");
 
-thread_local static const unit_conversion time_unit_conversion_table[] =
+THREAD_LOCAL static const unit_conversion time_unit_conversion_table[] =
 {
 	{ "d",		GUC_UNIT_MS,	1000 * 60 * 60 * 24 },
 	{ "h",		GUC_UNIT_MS,	1000 * 60 * 60 },
@@ -3729,7 +3729,7 @@ struct config_enum ConfigureNamesEnum[] =
  * should be mapped to a new___ one only if the new___ variable has very similar
  * semantics to the old.
  */
-thread_local static const char *const map_old_guc_names[] = {
+THREAD_LOCAL static const char *const map_old_guc_names[] = {
 	"sort_mem", "work_mem",
 	"vacuum_mem", "maintenance_work_mem",
 	NULL
@@ -3739,10 +3739,10 @@ thread_local static const char *const map_old_guc_names[] = {
 /*
  * Actual lookup of variables is done through this single, sorted array.
  */
-thread_local static struct config_generic **guc_variables;
+THREAD_LOCAL static struct config_generic **guc_variables;
 
 /* Current number of variables contained in the vector */
-thread_local static int	num_guc_variables;
+THREAD_LOCAL static int	num_guc_variables;
 
 /*
  * Lookup of variables for pg_file_settings view.
@@ -3755,20 +3755,20 @@ typedef struct ConfigFileVariable
 	char	*filename;
 	int		sourceline;
 } ConfigFileVariable;
-thread_local static struct ConfigFileVariable *guc_file_variables;
+THREAD_LOCAL static struct ConfigFileVariable *guc_file_variables;
 
 /* Number of file variables */
-thread_local static int	num_guc_file_variables;
+THREAD_LOCAL static int	num_guc_file_variables;
 
 /* Vector capacity */
-thread_local static int	size_guc_variables;
+THREAD_LOCAL static int	size_guc_variables;
 
 
-thread_local static bool guc_dirty;			/* TRUE if need to do commit/abort work */
+THREAD_LOCAL static bool guc_dirty;			/* TRUE if need to do commit/abort work */
 
-thread_local static bool reporting_enabled;	/* TRUE to enable GUC_REPORT */
+THREAD_LOCAL static bool reporting_enabled;	/* TRUE to enable GUC_REPORT */
 
-thread_local static int	GUCNestLevel = 0;	/* 1 when in main transaction */
+THREAD_LOCAL static int	GUCNestLevel = 0;	/* 1 when in main transaction */
 
 
 static int	guc_var_compare(const void *a, const void *b);

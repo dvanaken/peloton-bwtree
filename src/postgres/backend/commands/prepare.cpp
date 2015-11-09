@@ -41,7 +41,7 @@
  * The keys for this hash table are the arguments to PREPARE and EXECUTE
  * (statement names); the entries are PreparedStatement structs.
  */
-thread_local static HTAB *prepared_queries = NULL;
+THREAD_LOCAL static HTAB *prepared_queries = NULL;
 
 static void InitQueryHashTable(void);
 static ParamListInfo EvaluateParams(PreparedStatement *pstmt, List *params,

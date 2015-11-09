@@ -182,9 +182,9 @@ typedef struct RI_CompareHashEntry
  * Local data
  * ----------
  */
-thread_local static HTAB *ri_constraint_cache = NULL;
-thread_local static HTAB *ri_query_cache = NULL;
-thread_local static HTAB *ri_compare_cache = NULL;
+THREAD_LOCAL static HTAB *ri_constraint_cache = NULL;
+THREAD_LOCAL static HTAB *ri_query_cache = NULL;
+THREAD_LOCAL static HTAB *ri_compare_cache = NULL;
 
 
 /* ----------

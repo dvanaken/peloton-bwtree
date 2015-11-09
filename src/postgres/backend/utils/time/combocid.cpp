@@ -51,7 +51,7 @@
 
 
 /* Hash table to lookup combo cids by cmin and cmax */
-thread_local static HTAB *comboHash = NULL;
+THREAD_LOCAL static HTAB *comboHash = NULL;
 
 /* Key and entry structures for the hash table */
 typedef struct
@@ -78,9 +78,9 @@ typedef ComboCidEntryData *ComboCidEntry;
  * An array of cmin,cmax pairs, indexed by combo command id.
  * To convert a combo cid to cmin and cmax, you do a simple array lookup.
  */
-thread_local static ComboCidKey comboCids = NULL;
-thread_local static int	usedComboCids = 0;	/* number of elements in comboCids */
-thread_local static int	sizeComboCids = 0;	/* allocated size of array */
+THREAD_LOCAL static ComboCidKey comboCids = NULL;
+THREAD_LOCAL static int	usedComboCids = 0;	/* number of elements in comboCids */
+THREAD_LOCAL static int	sizeComboCids = 0;	/* allocated size of array */
 
 /* Initial size of the array */
 #define CCID_ARRAY_SIZE			100

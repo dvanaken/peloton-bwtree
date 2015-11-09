@@ -190,7 +190,7 @@ typedef struct SISeg
 } SISeg;
 
 
-thread_local static SISeg *shmInvalBuffer;	/* pointer to the shared inval buffer */
+THREAD_LOCAL static SISeg *shmInvalBuffer;	/* pointer to the shared inval buffer */
 
 
 static LocalTransactionId nextLocalTransactionId;
