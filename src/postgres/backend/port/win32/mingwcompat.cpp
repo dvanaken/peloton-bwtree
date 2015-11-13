@@ -42,7 +42,7 @@ LoadKernel32()
 	kernel32 = LoadLibraryEx("kernel32.dll", NULL, 0);
 	if (kernel32 == NULL)
 		ereport(FATAL,
-			  (errmsg_internal("could not load kernel32.dll: error code %lu",
+			  (errmsg_internal("could not load kernel32.dll: error code %" PRIu64 "",
 							   GetLastError())));
 }
 
@@ -73,7 +73,7 @@ RegisterWaitForSingleObject(PHANDLE phNewWaitObject,
 
 		if (_RegisterWaitForSingleObject == NULL)
 			ereport(FATAL,
-					(errmsg_internal("could not locate RegisterWaitForSingleObject in kernel32.dll: error code %lu",
+					(errmsg_internal("could not locate RegisterWaitForSingleObject in kernel32.dll: error code %" PRIu64 "",
 									 GetLastError())));
 	}
 

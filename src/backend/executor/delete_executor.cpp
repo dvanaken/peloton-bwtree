@@ -76,16 +76,16 @@ bool DeleteExecutor::DExecute() {
   auto tile_group_id = tile_group->GetTileGroupId();
   auto transaction_ = executor_context_->GetTransaction();
 
-  LOG_INFO("Source tile : %p Tuples : %lu \n", source_tile.get(),
+  LOG_INFO("Source tile : %p Tuples : %lu\n", source_tile.get(),
             source_tile->GetTupleCount());
 
-  LOG_INFO("Transaction ID: %lu\n", transaction_->GetTransactionId());
+  LOG_INFO("Transaction ID: %" PRIu64 "\n", transaction_->GetTransactionId());
 
   // Delete each tuple
   for (oid_t visible_tuple_id : *source_tile) {
     oid_t physical_tuple_id = pos_lists[0][visible_tuple_id];
 
-    LOG_INFO("Visible Tuple id : %lu, Physical Tuple id : %lu \n",
+    LOG_INFO("Visible Tuple id : %" PRIu64 ", Physical Tuple id : %" PRIu64 " \n",
               visible_tuple_id, physical_tuple_id);
 
     peloton::ItemPointer delete_location(tile_group_id, physical_tuple_id);

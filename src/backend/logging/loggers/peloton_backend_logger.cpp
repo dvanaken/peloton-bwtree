@@ -17,12 +17,17 @@
 #include "backend/logging/log_manager.h"
 #include "backend/logging/frontend_logger.h"
 
+#include <boost/thread/tss.hpp>
+
 namespace peloton {
 namespace logging {
 
 PelotonBackendLogger* PelotonBackendLogger::GetInstance(){
-  THREAD_LOCAL static PelotonBackendLogger pInstance;
-  return &pInstance;
+  static boost::thread_specific_ptr<PelotonBackendLogger> pInstance;
+  if (!pInstance.get()) {
+    pInstance.reset(new PelotonBackendLogger);
+  }
+  return pInstance.get();
 }
 
 /**

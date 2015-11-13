@@ -1464,7 +1464,7 @@ varstr_cmp(char *arg1, int len1, char *arg2, int len2, Oid collid)
 										(LPWSTR) a1p, a1len / 2);
 				if (!r)
 					ereport(ERROR,
-							(errmsg("could not convert string to UTF-16: error code %lu",
+							(errmsg("could not convert string to UTF-16: error code %" PRIu64 "",
 									GetLastError())));
 			}
 			((LPWSTR) a1p)[r] = 0;
@@ -1477,7 +1477,7 @@ varstr_cmp(char *arg1, int len1, char *arg2, int len2, Oid collid)
 										(LPWSTR) a2p, a2len / 2);
 				if (!r)
 					ereport(ERROR,
-							(errmsg("could not convert string to UTF-16: error code %lu",
+							(errmsg("could not convert string to UTF-16: error code %" PRIu64 "",
 									GetLastError())));
 			}
 			((LPWSTR) a2p)[r] = 0;

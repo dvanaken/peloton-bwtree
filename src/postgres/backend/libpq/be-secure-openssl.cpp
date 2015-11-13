@@ -1034,7 +1034,7 @@ SSLerrmessage(void)
 	errreason = ERR_reason_error_string(errcode);
 	if (errreason != NULL)
 		return errreason;
-	snprintf(errbuf, sizeof(errbuf), _("SSL error code %lu"), errcode);
+	snprintf(errbuf, sizeof(errbuf), _("SSL error code %" PRIu64 ""), errcode);
 	return errbuf;
 }
 

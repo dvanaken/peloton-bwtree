@@ -184,7 +184,7 @@ bool AggregateExecutor::DExecute() {
   }
 
   done = true;
-  LOG_INFO("Result tiles : %lu \n", result.size());
+  LOG_INFO("Result tiles : %lu\n", result.size());
 
   SetOutput(result[result_itr]);
   result_itr++;

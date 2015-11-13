@@ -646,19 +646,19 @@ AddUserToTokenDacl(HANDLE hToken)
 			ptdd = (TOKEN_DEFAULT_DACL *) LocalAlloc(LPTR, dwSize);
 			if (ptdd == NULL)
 			{
-				log_error("could not allocate %lu bytes of memory", dwSize);
+				log_error("could not allocate %" PRIu64 " bytes of memory", dwSize);
 				goto cleanup;
 			}
 
 			if (!GetTokenInformation(hToken, tic, (LPVOID) ptdd, dwSize, &dwSize))
 			{
-				log_error("could not get token information: error code %lu", GetLastError());
+				log_error("could not get token information: error code %" PRIu64 "", GetLastError());
 				goto cleanup;
 			}
 		}
 		else
 		{
-			log_error("could not get token information buffer size: error code %lu", GetLastError());
+			log_error("could not get token information buffer size: error code %" PRIu64 "", GetLastError());
 			goto cleanup;
 		}
 	}
@@ -668,7 +668,7 @@ AddUserToTokenDacl(HANDLE hToken)
 						   (DWORD) sizeof(ACL_SIZE_INFORMATION),
 						   AclSizeInformation))
 	{
-		log_error("could not get ACL information: error code %lu", GetLastError());
+		log_error("could not get ACL information: error code %" PRIu64 "", GetLastError());
 		goto cleanup;
 	}
 
@@ -678,7 +678,7 @@ AddUserToTokenDacl(HANDLE hToken)
 	 */
 	if (!GetTokenUser(hToken, &pTokenUser))
 	{
-		log_error("could not get user token: error code %lu", GetLastError());
+		log_error("could not get user token: error code %" PRIu64 "", GetLastError());
 		goto cleanup;
 	}
 
@@ -690,13 +690,13 @@ AddUserToTokenDacl(HANDLE hToken)
 	pacl = (PACL) LocalAlloc(LPTR, dwNewAclSize);
 	if (pacl == NULL)
 	{
-		log_error("could not allocate %lu bytes of memory", dwNewAclSize);
+		log_error("could not allocate %" PRIu64 " bytes of memory", dwNewAclSize);
 		goto cleanup;
 	}
 
 	if (!InitializeAcl(pacl, dwNewAclSize, ACL_REVISION))
 	{
-		log_error("could not initialize ACL: error code %lu", GetLastError());
+		log_error("could not initialize ACL: error code %" PRIu64 "", GetLastError());
 		goto cleanup;
 	}
 
@@ -705,13 +705,13 @@ AddUserToTokenDacl(HANDLE hToken)
 	{
 		if (!GetAce(ptdd->DefaultDacl, i, (LPVOID *) &pace))
 		{
-			log_error("could not get ACE: error code %lu", GetLastError());
+			log_error("could not get ACE: error code %" PRIu64 "", GetLastError());
 			goto cleanup;
 		}
 
 		if (!AddAce(pacl, ACL_REVISION, MAXDWORD, pace, ((PACE_HEADER) pace)->AceSize))
 		{
-			log_error("could not add ACE: error code %lu", GetLastError());
+			log_error("could not add ACE: error code %" PRIu64 "", GetLastError());
 			goto cleanup;
 		}
 	}
@@ -719,7 +719,7 @@ AddUserToTokenDacl(HANDLE hToken)
 	/* Add the new___ ACE for the current user */
 	if (!AddAccessAllowedAceEx(pacl, ACL_REVISION, OBJECT_INHERIT_ACE, GENERIC_ALL, pTokenUser->User.Sid))
 	{
-		log_error("could not add access allowed ACE: error code %lu", GetLastError());
+		log_error("could not add access allowed ACE: error code %" PRIu64 "", GetLastError());
 		goto cleanup;
 	}
 
@@ -728,7 +728,7 @@ AddUserToTokenDacl(HANDLE hToken)
 
 	if (!SetTokenInformation(hToken, tic, (LPVOID) &tddNew, dwNewAclSize))
 	{
-		log_error("could not set token information: error code %lu", GetLastError());
+		log_error("could not set token information: error code %" PRIu64 "", GetLastError());
 		goto cleanup;
 	}
 
@@ -774,13 +774,13 @@ GetTokenUser(HANDLE hToken, PTOKEN_USER *ppTokenUser)
 
 			if (*ppTokenUser == NULL)
 			{
-				log_error("could not allocate %lu bytes of memory", dwLength);
+				log_error("could not allocate %" PRIu64 " bytes of memory", dwLength);
 				return FALSE;
 			}
 		}
 		else
 		{
-			log_error("could not get token information buffer size: error code %lu", GetLastError());
+			log_error("could not get token information buffer size: error code %" PRIu64 "", GetLastError());
 			return FALSE;
 		}
 	}
@@ -794,7 +794,7 @@ GetTokenUser(HANDLE hToken, PTOKEN_USER *ppTokenUser)
 		LocalFree(*ppTokenUser);
 		*ppTokenUser = NULL;
 
-		log_error("could not get token information: error code %lu", GetLastError());
+		log_error("could not get token information: error code %" PRIu64 "", GetLastError());
 		return FALSE;
 	}
 

@@ -23,7 +23,7 @@ ACX_PTHREAD([], [AC_MSG_ERROR([Please install pthread library : libpthread-stubs
 : ${CXXFLAGS=""}
 
 AC_LANG([C++])
-AC_PROG_CXX([g++])
+AC_PROG_CXX([g++-5])
 
 AC_PROG_YACC
 AC_PROG_LEX
@@ -171,7 +171,7 @@ ${PACKAGE_NAME}
 Version        : ${PACKAGE_VERSION}
 OS             : ${build_os}
 Prefix         : ${prefix}
-Compiler       : ${CC}
+Compiler       : ${CXX}
 CPP Flags      : ${CPPFLAGS} ${DEBUG_CPPFLAGS}
 C++ Flags      : ${CXXFLAGS} ${DEBUG_CXXFLAGS}
 Make Flags     : ${MAKEFLAGS}

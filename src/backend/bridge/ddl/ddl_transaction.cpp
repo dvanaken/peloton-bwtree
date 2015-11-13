@@ -39,7 +39,7 @@ bool DDLTransaction::ExecTransactionStmt(TransactionStmt *stmt) {
       LOG_INFO("BEGIN");
       auto txn = txn_manager.BeginTransaction();
       assert(txn);
-      LOG_INFO("Started new peloton txn : %lu \n", txn->GetTransactionId());
+      LOG_INFO("Started new peloton txn : %" PRIu64 " \n", txn->GetTransactionId());
     } break;
 
     case TRANS_STMT_COMMIT: {

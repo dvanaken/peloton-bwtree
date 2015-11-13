@@ -94,11 +94,11 @@ bool DDLDatabase::CreateDatabase(oid_t database_oid) {
     storage::Database *db = new storage::Database(database_oid);
     manager.AddDatabase(db);
   } else {
-    LOG_TRACE("Database(%lu) already exists", database_oid);
+    LOG_TRACE("Database(%" PRIu64 ") already exists", database_oid);
     return false;
   }
 
-  LOG_INFO("Create database (%lu)", database_oid);
+  LOG_INFO("Create database (%" PRIu64 ")", database_oid);
   return true;
 }
 
@@ -111,7 +111,7 @@ bool DDLDatabase::DropDatabase(oid_t database_oid) {
   auto &manager = catalog::Manager::GetInstance();
   manager.DropDatabaseWithOid(database_oid);
 
-  LOG_INFO("Dropped database with oid : %lu\n", database_oid);
+  LOG_INFO("Dropped database with oid : %" PRIu64 "\n", database_oid);
   return true;
 }
 

@@ -18,7 +18,7 @@
 #define MEMUTILS_H
 
 #include "nodes/memnodes.h"
-#include <mm.h>
+//#include <mm.h>
 
 /*
  * MaxAllocSize, MaxAllocHugeSize
@@ -137,12 +137,12 @@ extern MemoryContext AllocSetContextCreate(MemoryContext parent,
 					  Size maxBlockSize);
 
 /* shmset.c */
-extern MemoryContext SHMAllocSetContextCreate(MemoryContext parent,
-             const char *name,
-             Size minContextSize,
-             Size initBlockSize,
-             Size maxBlockSize,
-             MM * cxt);
+//extern MemoryContext SHMAllocSetContextCreate(MemoryContext parent,
+//             const char *name,
+//             Size minContextSize,
+//             Size initBlockSize,
+//             Size maxBlockSize,
+//             MM * cxt);
 
 /*
  * Recommended default alloc parameters, suitable for "ordinary" contexts
@@ -165,7 +165,7 @@ extern MemoryContext SHMAllocSetContextCreate(MemoryContext parent,
 #define SHM_DEFAULT_SEGMENT      mm_query_segment
 #define SHM_DEFAULT_SIZE         (128 * 1024 * 1024)
 
-extern MM  *mm_query_segment;
+//extern MM  *mm_query_segment;
 
 extern void SHMContextShutdown(void);
 extern void SHMContextInit(void);
@@ -177,9 +177,9 @@ extern void SHMContextResetAndDeleteChildren(MemoryContext context);
 extern void SHMContextStats(MemoryContext context);
 extern void SHMContextCheck(MemoryContext context);
 extern bool SHMContextContains(MemoryContext context, void *pointer);
-extern MemoryContext SHMContextCreate(NodeTag tag, Size size,
-         MemoryContextMethods *methods, MemoryContext parent,
-         const char *name,  MM * shmcxt);
+//extern MemoryContext SHMContextCreate(NodeTag tag, Size size,
+//         MemoryContextMethods *methods, MemoryContext parent,
+//         const char *name,  MM * shmcxt);
 
 struct SHMcxtstate
 {
@@ -187,7 +187,7 @@ struct SHMcxtstate
 };
 
 
-MM   *SHMFindMMContext(MemoryContext ac);
+//MM   *SHMFindMMContext(MemoryContext ac);
 
 #define SHMPointerIsValid(pointer) ((void*)(pointer) != NULL)
 

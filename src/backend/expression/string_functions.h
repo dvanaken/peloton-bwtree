@@ -19,6 +19,14 @@
 #include <locale>
 #include <iomanip>
 
+
+#ifndef ENABLE_NLS
+#undef gettext
+#undef dgettext
+#undef ngettext
+#undef dngettext
+#endif
+
 #include <boost/algorithm/string.hpp>
 #include <boost/locale.hpp>
 #include <boost/scoped_array.hpp>

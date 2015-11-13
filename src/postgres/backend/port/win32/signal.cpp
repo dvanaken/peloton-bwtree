@@ -83,7 +83,7 @@ pgwin32_signal_initialize(void)
 	pgwin32_signal_event = CreateEvent(NULL, TRUE, FALSE, NULL);
 	if (pgwin32_signal_event == NULL)
 		ereport(FATAL,
-				(errmsg_internal("could not create signal event: error code %lu", GetLastError())));
+				(errmsg_internal("could not create signal event: error code %" PRIu64 "", GetLastError())));
 
 	/* Create thread for handling signals */
 	signal_thread_handle = CreateThread(NULL, 0, pg_signal_thread, NULL, 0, NULL);
@@ -190,7 +190,7 @@ pgwin32_create_signal_listener(pid_t pid)
 
 	if (pipe == INVALID_HANDLE_VALUE)
 		ereport(ERROR,
-				(errmsg("could not create signal listener pipe for PID %d: error code %lu",
+				(errmsg("could not create signal listener pipe for PID %d: error code %" PRIu64 "",
 						(int) pid, GetLastError())));
 
 	return pipe;
@@ -255,7 +255,7 @@ pg_signal_thread(LPVOID param)
 	char		pipename[128];
 	HANDLE		pipe = pgwin32_initial_signal_pipe;
 
-	snprintf(pipename, sizeof(pipename), "\\\\.\\pipe\\pgsignal_%lu", GetCurrentProcessId());
+	snprintf(pipename, sizeof(pipename), "\\\\.\\pipe\\pgsignal_%" PRIu64 "", GetCurrentProcessId());
 
 	for (;;)
 	{
@@ -270,7 +270,7 @@ pg_signal_thread(LPVOID param)
 
 			if (pipe == INVALID_HANDLE_VALUE)
 			{
-				write_stderr("could not create signal listener pipe: error code %lu; retrying\n", GetLastError());
+				write_stderr("could not create signal listener pipe: error code %" PRIu64 "; retrying\n", GetLastError());
 				SleepEx(500, FALSE);
 				continue;
 			}
@@ -302,7 +302,7 @@ pg_signal_thread(LPVOID param)
 				 * is nothing else we can do other than abort the whole
 				 * process which will be even worse.
 				 */
-				write_stderr("could not create signal listener pipe: error code %lu; retrying\n", GetLastError());
+				write_stderr("could not create signal listener pipe: error code %" PRIu64 "; retrying\n", GetLastError());
 
 				/*
 				 * Keep going so we at least dispatch this signal. Hopefully,
@@ -313,7 +313,7 @@ pg_signal_thread(LPVOID param)
 						  (LPTHREAD_START_ROUTINE) pg_signal_dispatch_thread,
 								   (LPVOID) pipe, 0, NULL);
 			if (hThread == INVALID_HANDLE_VALUE)
-				write_stderr("could not create signal dispatch thread: error code %lu\n",
+				write_stderr("could not create signal dispatch thread: error code %" PRIu64 "\n",
 							 GetLastError());
 			else
 				CloseHandle(hThread);

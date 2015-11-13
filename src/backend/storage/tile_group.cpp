@@ -69,7 +69,7 @@ TileGroup::~TileGroup() {
 oid_t TileGroup::InsertTuple(txn_id_t transaction_id, const Tuple *tuple) {
   oid_t tuple_slot_id = tile_group_header->GetNextEmptyTupleSlot();
 
-  LOG_TRACE("Tile Group Id :: %lu status :: %lu out of %lu slots \n",
+  LOG_TRACE("Tile Group Id :: %" PRIu64 " status :: %" PRIu64 " out of %" PRIu64 " slots \n",
             tile_group_id, tuple_slot_id, num_tuple_slots);
 
   // No more slots
@@ -127,7 +127,7 @@ oid_t TileGroup::InsertTuple(txn_id_t transaction_id, oid_t tuple_slot_id, const
   // No more slots
   if (status == false) return INVALID_OID;
 
-  LOG_TRACE("Tile Group Id :: %lu status :: %lu out of %lu slots \n",
+  LOG_TRACE("Tile Group Id :: %" PRIu64 " status :: %" PRIu64 " out of %" PRIu64 " slots \n",
             tile_group_id, tuple_slot_id, num_tuple_slots);
 
   oid_t tile_column_count;
@@ -217,7 +217,7 @@ bool TileGroup::DeleteTuple(txn_id_t transaction_id, oid_t tuple_slot_id, cid_t 
     }
   } else if (tile_group_header->GetTransactionId(tuple_slot_id) == transaction_id) {
     // is a own insert, is already latched by myself and is safe to set
-    LOG_INFO("is this a own insert? txn_id = %lu, cbeg = %lu, cend = %lu", tile_group_header->GetTransactionId(tuple_slot_id),
+    LOG_INFO("is this a own insert? txn_id = %" PRIu64 ", cbeg = %" PRIu64 ", cend = %" PRIu64 "", tile_group_header->GetTransactionId(tuple_slot_id),
              tile_group_header->GetBeginCommitId(tuple_slot_id),
              tile_group_header->GetEndCommitId(tuple_slot_id));
     assert(tile_group_header->GetBeginCommitId(tuple_slot_id) == MAX_CID);
@@ -225,7 +225,7 @@ bool TileGroup::DeleteTuple(txn_id_t transaction_id, oid_t tuple_slot_id, cid_t 
     tile_group_header->SetTransactionId(tuple_slot_id, INVALID_TXN_ID);
     return true;
   } else {
-    LOG_INFO("Delete failed: Latch failed and Ownership check failed: %lu != %lu",
+    LOG_INFO("Delete failed: Latch failed and Ownership check failed: %" PRIu64 " != %" PRIu64 "",
              tile_group_header->GetTransactionId(tuple_slot_id), transaction_id);
     return false;
   }

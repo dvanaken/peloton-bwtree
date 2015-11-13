@@ -125,8 +125,8 @@ union SharedInvalidationMessage
 	SharedInvalSnapshotMsg sn;
 
 	/* Peloton porting: since sm has non-trivial ctor
-	 * This union's default ctor is implictly deleted
-	 * The work aroud is to define ctor and dtor manually */
+	 * This union's default ctor is implicitly deleted
+	 * The work around is to define ctor and dtor manually */
 	SharedInvalidationMessage() : sm() {}
 	~SharedInvalidationMessage() {};
 

@@ -24,7 +24,6 @@
 #include "storage/backendid.h"
 
 // TODO: Peloton Changes
-#include "backend/common/message_queue.h"
 
 THREAD_LOCAL ProtocolVersion FrontendProtocol;
 
@@ -72,7 +71,7 @@ char		postgres_exec_path[MAXPGPATH];		/* full path to backend */
 
 THREAD_LOCAL BackendId	MyBackendId = InvalidBackendId;
 
-THREAD_LOCAL mqd_t MyBackendQueue = InvalidBackendId;
+//THREAD_LOCAL mqd_t MyBackendQueue = InvalidBackendId;
 
 THREAD_LOCAL Oid  MyDatabaseId = InvalidOid;
 

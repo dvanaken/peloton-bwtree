@@ -144,11 +144,11 @@ pgwin32_waitforsinglesocket(SOCKET s, int what, int timeout)
 
 		if (waitevent == INVALID_HANDLE_VALUE)
 			ereport(ERROR,
-					(errmsg_internal("could not create socket waiting event: error code %lu", GetLastError())));
+					(errmsg_internal("could not create socket waiting event: error code %" PRIu64 "", GetLastError())));
 	}
 	else if (!ResetEvent(waitevent))
 		ereport(ERROR,
-				(errmsg_internal("could not reset socket waiting event: error code %lu", GetLastError())));
+				(errmsg_internal("could not reset socket waiting event: error code %" PRIu64 "", GetLastError())));
 
 	/*
 	 * Track whether socket is UDP or not.  (NB: most likely, this is both
@@ -231,7 +231,7 @@ pgwin32_waitforsinglesocket(SOCKET s, int what, int timeout)
 		return 0;
 	}
 	ereport(ERROR,
-			(errmsg_internal("unrecognized return value from WaitForMultipleObjects: %d (error code %lu)", r, GetLastError())));
+			(errmsg_internal("unrecognized return value from WaitForMultipleObjects: %d (error code %" PRIu64 ")", r, GetLastError())));
 	return 0;
 }
 
@@ -659,7 +659,7 @@ pgwin32_socket_strerror(int err)
 		handleDLL = LoadLibraryEx("netmsg.dll", NULL, DONT_RESOLVE_DLL_REFERENCES | LOAD_LIBRARY_AS_DATAFILE);
 		if (handleDLL == NULL)
 			ereport(FATAL,
-					(errmsg_internal("could not load netmsg.dll: error code %lu", GetLastError())));
+					(errmsg_internal("could not load netmsg.dll: error code %" PRIu64 "", GetLastError())));
 	}
 
 	ZeroMemory(&wserrbuf, sizeof(wserrbuf));

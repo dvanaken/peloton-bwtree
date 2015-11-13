@@ -586,7 +586,7 @@ strftime_win32(char *dst, size_t dstlen,
 	len = MultiByteToWideChar(CP_UTF8, 0, format, -1,
 							  wformat, lengthof(wformat));
 	if (len == 0)
-		elog(ERROR, "could not convert format string from UTF-8: error code %lu",
+		elog(ERROR, "could not convert format string from UTF-8: error code %" PRIu64 "",
 			 GetLastError());
 
 	len = wcsftime(wbuf, MAX_L10N_DATA, wformat, tm);
@@ -602,7 +602,7 @@ strftime_win32(char *dst, size_t dstlen,
 	len = WideCharToMultiByte(CP_UTF8, 0, wbuf, len, dst, dstlen - 1,
 							  NULL, NULL);
 	if (len == 0)
-		elog(ERROR, "could not convert string to UTF-8: error code %lu",
+		elog(ERROR, "could not convert string to UTF-8: error code %" PRIu64 "",
 			 GetLastError());
 
 	dst[len] = '\0';

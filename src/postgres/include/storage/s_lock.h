@@ -219,7 +219,9 @@ typedef unsigned char slock_t;
 static __inline__ int
 tas(volatile slock_t *lock)
 {
-	register slock_t _res = 1;
+	//register slock_t _res = 1;
+	//Peloton change
+	slock_t _res = 1;
 
 	__asm__ __volatile__(
 		"	lock			\n"

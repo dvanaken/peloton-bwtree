@@ -25,7 +25,6 @@
 #include <map>
 
 #include "backend/common/logger.h"
-#include "backend/common/message_queue.h"
 #include "backend/common/stack_trace.h"
 #include "backend/bridge/ddl/configuration.h"
 #include "backend/bridge/ddl/ddl.h"
@@ -170,13 +169,13 @@ peloton_dml(PlanState *planstate,
 
   // Get our plan
   if (prepStmtName) {
-    mapped_plan_ptr = peloton::bridge::PlanTransformer::GetInstance().GetCachedPlan(prepStmtName);
+    mapped_plan_ptr = peloton::bridge::PlanTransformer::GetInstance()->GetCachedPlan(prepStmtName);
   }
 
   /* A cache miss or an unnamed plan */
   if (mapped_plan_ptr.get() == nullptr) {
     auto plan_state = peloton::bridge::DMLUtils::peloton_prepare_data(planstate);
-    mapped_plan_ptr = peloton::bridge::PlanTransformer::GetInstance().TransformPlan(plan_state, prepStmtName);
+    mapped_plan_ptr = peloton::bridge::PlanTransformer::GetInstance()->TransformPlan(plan_state, prepStmtName);
   }
 
   // Ignore empty plans

@@ -20,3 +20,5 @@
  * filesystems, because those don't support O_DIRECT.
  */
 #define PLATFORM_DEFAULT_SYNC_METHOD	SYNC_METHOD_FDATASYNC
+
+#define THREAD_LOCAL thread_local

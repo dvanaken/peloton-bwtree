@@ -329,16 +329,16 @@ DMLUtils::PrepareLimitState(LimitState *limit_plan_state) {
   int64 limit;
   int64 offset;
   bool noLimit;
-  bool noOffset;
+  bool noOffset = true;
 
   /* Resolve limit and offset */
   if (limit_plan_state->limitOffset) {
     val = ExecEvalExprSwitchContext(limit_plan_state->limitOffset, econtext,
                                     &isNull, NULL);
     /* Interpret NULL offset as no offset */
-    if (isNull)
+    if (isNull) {
       offset = 0;
-    else {
+    } else {
       offset = DatumGetInt64(val);
       if (offset < 0) {
         LOG_ERROR("OFFSET must not be negative, offset = %ld", offset);

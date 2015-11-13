@@ -77,7 +77,7 @@ CreateRestrictedProcess(char *cmd, PROCESS_INFORMATION *processInfo, const char 
 	/* Open the current token to use as a base for the restricted one */
 	if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ALL_ACCESS, &origToken))
 	{
-		fprintf(stderr, _("%s: could not open process token: error code %lu\n"), progname, GetLastError());
+		fprintf(stderr, _("%s: could not open process token: error code %" PRIu64 "\n"), progname, GetLastError());
 		return 0;
 	}
 
@@ -90,7 +90,7 @@ CreateRestrictedProcess(char *cmd, PROCESS_INFORMATION *processInfo, const char 
 	SECURITY_BUILTIN_DOMAIN_RID, DOMAIN_ALIAS_RID_POWER_USERS, 0, 0, 0, 0, 0,
 								  0, &dropSids[1].Sid))
 	{
-		fprintf(stderr, _("%s: could not allocate SIDs: error code %lu\n"),
+		fprintf(stderr, _("%s: could not allocate SIDs: error code %" PRIu64 "\n"),
 				progname, GetLastError());
 		return 0;
 	}
@@ -110,7 +110,7 @@ CreateRestrictedProcess(char *cmd, PROCESS_INFORMATION *processInfo, const char 
 
 	if (!b)
 	{
-		fprintf(stderr, _("%s: could not create restricted token: error code %lu\n"),
+		fprintf(stderr, _("%s: could not create restricted token: error code %" PRIu64 "\n"),
 				progname, GetLastError());
 		return 0;
 	}
@@ -132,7 +132,7 @@ CreateRestrictedProcess(char *cmd, PROCESS_INFORMATION *processInfo, const char 
 							 processInfo))
 
 	{
-		fprintf(stderr, _("%s: could not start process for command \"%s\": error code %lu\n"), progname, cmd, GetLastError());
+		fprintf(stderr, _("%s: could not start process for command \"%s\": error code %" PRIu64 "\n"), progname, cmd, GetLastError());
 		return 0;
 	}
 
@@ -170,7 +170,7 @@ get_restricted_token(const char *progname)
 
 		if ((restrictedToken = CreateRestrictedProcess(cmdline, &pi, progname)) == 0)
 		{
-			fprintf(stderr, _("%s: could not re-execute with restricted token: error code %lu\n"), progname, GetLastError());
+			fprintf(stderr, _("%s: could not re-execute with restricted token: error code %" PRIu64 "\n"), progname, GetLastError());
 		}
 		else
 		{
@@ -186,7 +186,7 @@ get_restricted_token(const char *progname)
 
 			if (!GetExitCodeProcess(pi.hProcess, &x))
 			{
-				fprintf(stderr, _("%s: could not get exit code from subprocess: error code %lu\n"), progname, GetLastError());
+				fprintf(stderr, _("%s: could not get exit code from subprocess: error code %" PRIu64 "\n"), progname, GetLastError());
 				exit(1);
 			}
 			exit(x);

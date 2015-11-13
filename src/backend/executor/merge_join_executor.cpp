@@ -130,12 +130,12 @@ bool MergeJoinExecutor::DExecute() {
       column_itr++)
     position_lists.push_back(std::vector<oid_t>());
 
-  //LOG_INFO("left col count: %lu, right col count: %lu", left_tile_column_count,
+  //LOG_INFO("left col count: %" PRIu64 ", right col count: %" PRIu64 "", left_tile_column_count,
   //          right_tile_column_count);
-  //LOG_INFO("left col count: %lu, right col count: %lu",
+  //LOG_INFO("left col count: %" PRIu64 ", right col count: %" PRIu64 "",
   //          left_tile.get()->GetColumnCount(),
   //          right_tile.get()->GetColumnCount());
-  //LOG_INFO("left row count: %lu, right row count: %lu", left_tile_row_count,
+  //LOG_INFO("left row count: %" PRIu64 ", right row count: %" PRIu64 "", left_tile_row_count,
   //          right_tile_row_count);
 
   size_t left_start_row = 0;

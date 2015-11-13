@@ -378,7 +378,7 @@ class IntsEqualityChecker {
  */
 template<std::size_t KeySize>
 struct IntsHasher : std::unary_function<IntsKey<KeySize>, std::size_t> {
-  IntsHasher(catalog::Schema *key_schema) {
+  IntsHasher() {
   }
 
   inline size_t operator()(IntsKey<KeySize> const &p) const {

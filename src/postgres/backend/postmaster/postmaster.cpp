@@ -3992,7 +3992,7 @@ internal_forkexec(int argc, char *argv[], Port *port)
   return -1; /* log made by save_backend_variables */
 
   /* Calculate name for temp file */
-  snprintf(tmpfilename, MAXPGPATH, "%s/%s.backend_var.%d.%lu",
+  snprintf(tmpfilename, MAXPGPATH, "%s/%s.backend_var.%d.%" PRIu64 "",
       PG_TEMP_FILES_DIR, PG_TEMP_FILE_PREFIX,
       MyProcPid, ++tmpBackendFileNum);
 
@@ -4103,7 +4103,7 @@ internal_forkexec(int argc, char *argv[], Port *port)
       NULL);
   if (paramHandle == INVALID_HANDLE_VALUE)
   {
-    elog(LOG, "could not create backend parameter file mapping: error code %lu",
+    elog(LOG, "could not create backend parameter file mapping: error code %" PRIu64 "",
         GetLastError());
     return -1;
   }
@@ -4111,7 +4111,7 @@ internal_forkexec(int argc, char *argv[], Port *port)
   param = MapViewOfFile(paramHandle, FILE_MAP_WRITE, 0, 0, sizeof(BackendParameters));
   if (!param)
   {
-    elog(LOG, "could not map backend parameter memory: error code %lu",
+    elog(LOG, "could not map backend parameter memory: error code %" PRIu64 "",
         GetLastError());
     CloseHandle(paramHandle);
     return -1;
@@ -4121,7 +4121,7 @@ internal_forkexec(int argc, char *argv[], Port *port)
 #ifdef _WIN64
   sprintf(paramHandleStr, "%llu", (LONG_PTR) paramHandle);
 #else
-  sprintf(paramHandleStr, "%lu", (DWORD) paramHandle);
+  sprintf(paramHandleStr, "%" PRIu64 "", (DWORD) paramHandle);
 #endif
   argv[2] = paramHandleStr;
 
@@ -4152,7 +4152,7 @@ internal_forkexec(int argc, char *argv[], Port *port)
   if (!CreateProcess(NULL, cmdLine, NULL, NULL, TRUE, CREATE_SUSPENDED,
           NULL, NULL, &si, &pi))
   {
-    elog(LOG, "CreateProcess call failed: %m (error code %lu)",
+    elog(LOG, "CreateProcess call failed: %m (error code %" PRIu64 ")",
         GetLastError());
     return -1;
   }
@@ -4165,7 +4165,7 @@ internal_forkexec(int argc, char *argv[], Port *port)
      */
     if (!TerminateProcess(pi.hProcess, 255))
     ereport(LOG,
-        (errmsg_internal("could not terminate unstarted process: error code %lu",
+        (errmsg_internal("could not terminate unstarted process: error code %" PRIu64 "",
                 GetLastError())));
     CloseHandle(pi.hProcess);
     CloseHandle(pi.hThread);
@@ -4174,10 +4174,10 @@ internal_forkexec(int argc, char *argv[], Port *port)
 
   /* Drop the parameter shared memory that is now inherited to the backend */
   if (!UnmapViewOfFile(param))
-  elog(LOG, "could not unmap view of backend parameter file: error code %lu",
+  elog(LOG, "could not unmap view of backend parameter file: error code %" PRIu64 "",
       GetLastError());
   if (!CloseHandle(paramHandle))
-  elog(LOG, "could not close handle to backend parameter file: error code %lu",
+  elog(LOG, "could not close handle to backend parameter file: error code %" PRIu64 "",
       GetLastError());
 
   /*
@@ -4192,7 +4192,7 @@ internal_forkexec(int argc, char *argv[], Port *port)
      */
     if (!TerminateProcess(pi.hProcess, 255))
     ereport(LOG,
-        (errmsg_internal("could not terminate process that failed to reserve memory: error code %lu",
+        (errmsg_internal("could not terminate process that failed to reserve memory: error code %" PRIu64 "",
                 GetLastError())));
     CloseHandle(pi.hProcess);
     CloseHandle(pi.hThread);
@@ -4210,7 +4210,7 @@ internal_forkexec(int argc, char *argv[], Port *port)
     if (!TerminateProcess(pi.hProcess, 255))
     {
       ereport(LOG,
-          (errmsg_internal("could not terminate unstartable process: error code %lu",
+          (errmsg_internal("could not terminate unstartable process: error code %" PRIu64 "",
                   GetLastError())));
       CloseHandle(pi.hProcess);
       CloseHandle(pi.hThread);
@@ -4219,7 +4219,7 @@ internal_forkexec(int argc, char *argv[], Port *port)
     CloseHandle(pi.hProcess);
     CloseHandle(pi.hThread);
     ereport(LOG,
-        (errmsg_internal("could not resume thread of unstarted process: error code %lu",
+        (errmsg_internal("could not resume thread of unstarted process: error code %" PRIu64 "",
                 GetLastError())));
     return -1;
   }
@@ -4248,7 +4248,7 @@ internal_forkexec(int argc, char *argv[], Port *port)
           INFINITE,
           WT_EXECUTEONLYONCE | WT_EXECUTEINWAITTHREAD))
   ereport(FATAL,
-      (errmsg_internal("could not register process for wait: error code %lu",
+      (errmsg_internal("could not register process for wait: error code %" PRIu64 "",
               GetLastError())));
 
   /* Don't close pi.hProcess here - the wait thread needs access to it */
@@ -5467,7 +5467,7 @@ write_duplicated_handle(HANDLE *dest, HANDLE src, HANDLE childProcess)
           DUPLICATE_CLOSE_SOURCE | DUPLICATE_SAME_ACCESS))
   {
     ereport(LOG,
-        (errmsg_internal("could not duplicate handle to be written to backend parameter file: error code %lu",
+        (errmsg_internal("could not duplicate handle to be written to backend parameter file: error code %" PRIu64 "",
                 GetLastError())));
     return false;
   }
@@ -5581,7 +5581,7 @@ static void read_backend_variables(char *id, Port *port) {
   paramp = MapViewOfFile(paramHandle, FILE_MAP_READ, 0, 0, 0);
   if (!paramp)
   {
-    write_stderr("could not map view of backend variables: error code %lu\n",
+    write_stderr("could not map view of backend variables: error code %" PRIu64 "\n",
         GetLastError());
     exit(1);
   }
@@ -5590,14 +5590,14 @@ static void read_backend_variables(char *id, Port *port) {
 
   if (!UnmapViewOfFile(paramp))
   {
-    write_stderr("could not unmap view of backend variables: error code %lu\n",
+    write_stderr("could not unmap view of backend variables: error code %" PRIu64 "\n",
         GetLastError());
     exit(1);
   }
 
   if (!CloseHandle(paramHandle))
   {
-    write_stderr("could not close handle to backend parameter variables: error code %lu\n",
+    write_stderr("could not close handle to backend parameter variables: error code %" PRIu64 "\n",
         GetLastError());
     exit(1);
   }
@@ -5818,7 +5818,7 @@ static void InitPostmasterDeathWatchHandle(void) {
           TRUE,
           DUPLICATE_SAME_ACCESS) == 0)
   ereport(FATAL,
-      (errmsg_internal("could not duplicate postmaster handle: error code %lu",
+      (errmsg_internal("could not duplicate postmaster handle: error code %" PRIu64 "",
               GetLastError())));
 #endif   /* WIN32 */
 }

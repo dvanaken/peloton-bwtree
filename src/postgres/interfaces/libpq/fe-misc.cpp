@@ -209,7 +209,7 @@ pqGetnchar(char *s, size_t len, PGconn *conn)
 
 	if (conn->Pfdebug)
 	{
-		fprintf(conn->Pfdebug, "From backend (%lu)> ", (unsigned long) len);
+		fprintf(conn->Pfdebug, "From backend (%" PRIu64 ")> ", (uint64_t) len);
 		fputnbytes(conn->Pfdebug, s, len);
 		fprintf(conn->Pfdebug, "\n");
 	}
@@ -233,7 +233,7 @@ pqSkipnchar(size_t len, PGconn *conn)
 
 	if (conn->Pfdebug)
 	{
-		fprintf(conn->Pfdebug, "From backend (%lu)> ", (unsigned long) len);
+		fprintf(conn->Pfdebug, "From backend (%" PRIu64 ")> ", (uint64_t) len);
 		fputnbytes(conn->Pfdebug, conn->inBuffer + conn->inCursor, len);
 		fprintf(conn->Pfdebug, "\n");
 	}
@@ -292,13 +292,13 @@ pqGetInt(int *result, size_t bytes, PGconn *conn)
 			break;
 		default:
 			pqInternalNotice(&conn->noticeHooks,
-							 "integer of size %lu not supported by pqGetInt",
-							 (unsigned long) bytes);
+							 "integer of size %" PRIu64 " not supported by pqGetInt",
+							 (uint64_t) bytes);
 			return EOF;
 	}
 
 	if (conn->Pfdebug)
-		fprintf(conn->Pfdebug, "From backend (#%lu)> %d\n", (unsigned long) bytes, *result);
+		fprintf(conn->Pfdebug, "From backend (#%" PRIu64 ")> %d\n", (uint64_t) bytes, *result);
 
 	return 0;
 }
@@ -328,13 +328,13 @@ pqPutInt(int value, size_t bytes, PGconn *conn)
 			break;
 		default:
 			pqInternalNotice(&conn->noticeHooks,
-							 "integer of size %lu not supported by pqPutInt",
-							 (unsigned long) bytes);
+							 "integer of size %" PRIu64 " not supported by pqPutInt",
+							 (uint64_t) bytes);
 			return EOF;
 	}
 
 	if (conn->Pfdebug)
-		fprintf(conn->Pfdebug, "To backend (%lu#)> %d\n", (unsigned long) bytes, value);
+		fprintf(conn->Pfdebug, "To backend (%" PRIu64 "#)> %d\n", (uint64_t) bytes, value);
 
 	return 0;
 }

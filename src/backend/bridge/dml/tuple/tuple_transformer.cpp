@@ -256,7 +256,7 @@ TupleTableSlot *TupleTransformer::GetPostgresTuple(storage::Tuple *tuple,
   bool *nulls;
 
   if (tuple->GetColumnCount() != natts) {
-    LOG_WARN("tuple attr count : %lu , tuple desc attr count : %d \n",
+    LOG_WARN("tuple attr count : %" PRIu64 " , tuple desc attr count : %d \n",
              tuple->GetColumnCount(), natts);
     return nullptr;
   }

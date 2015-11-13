@@ -183,10 +183,10 @@ _dosmaperr(unsigned long e)
 
 #ifndef FRONTEND
 			ereport(DEBUG5,
-					(errmsg_internal("mapped win32 error code %lu to %d",
+					(errmsg_internal("mapped win32 error code %" PRIu64 " to %d",
 									 e, doserr)));
 #elif FRONTEND_DEBUG
-			fprintf(stderr, _("mapped win32 error code %lu to %d"), e, doserr);
+			fprintf(stderr, _("mapped win32 error code %" PRIu64 " to %d"), e, doserr);
 #endif
 			errno = doserr;
 			return;
@@ -195,10 +195,10 @@ _dosmaperr(unsigned long e)
 
 #ifndef FRONTEND
 	ereport(LOG,
-			(errmsg_internal("unrecognized win32 error code: %lu",
+			(errmsg_internal("unrecognized win32 error code: %" PRIu64 "",
 							 e)));
 #else
-	fprintf(stderr, _("unrecognized win32 error code: %lu"), e);
+	fprintf(stderr, _("unrecognized win32 error code: %" PRIu64 ""), e);
 #endif
 
 	errno = EINVAL;

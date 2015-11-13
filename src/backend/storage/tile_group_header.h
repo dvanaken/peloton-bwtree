@@ -193,8 +193,8 @@ class TileGroupHeader {
                                txn_id_t transaction_id) {
     txn_id_t* txn_id = (txn_id_t *) (data + (tuple_slot_id * header_entry_size));
     if (!atomic_cas(txn_id, transaction_id, INITIAL_TXN_ID)) {
-      LOG_INFO("Release failed, expecting a deleted own insert: %lu",
-               GetTransactionId(tuple_slot_id));
+      LOG_INFO("Release failed, expecting a deleted own insert: %" PRIu64 "",
+    		  GetTransactionId(tuple_slot_id));
       assert(GetTransactionId(tuple_slot_id) == INVALID_TXN_ID);
       return false;
     }
@@ -249,24 +249,24 @@ class TileGroupHeader {
     bool invalidated = (at_lcid >= tuple_end_cid);
 
     // Own
-    LOG_TRACE("Own :: %d txn id : %lu tuple txn id : %lu", own, txn_id,
+    LOG_TRACE("Own :: %d txn id : %" PRIu64 " tuple txn id : %" PRIu64 "", own, txn_id,
               tuple_txn_id);
 
     // Activated
     if (tuple_begin_cid == MAX_CID) {
-      LOG_TRACE("Activated :: %d cid : %lu tuple begin cid : MAX_CID",
+      LOG_TRACE("Activated :: %d cid : %" PRIu64 " tuple begin cid : MAX_CID",
                 activated, at_lcid);
     } else {
-      LOG_TRACE("Activated :: %d , lcid : %lu , tuple begin cid : %lu",
+      LOG_TRACE("Activated :: %d , lcid : %" PRIu64 " , tuple begin cid : %" PRIu64 "",
                 activated, at_lcid, tuple_begin_cid);
     }
 
     // Invalidated
     if (tuple_end_cid == MAX_CID) {
-      LOG_TRACE("Invalidated:: %d cid : %lu tuple end cid : MAX_CID",
+      LOG_TRACE("Invalidated:: %d cid : %" PRIu64 " tuple end cid : MAX_CID",
                 invalidated, at_lcid);
     } else {
-      LOG_TRACE("Invalidated:: %d cid : %lu tuple end cid : %lu", invalidated,
+      LOG_TRACE("Invalidated:: %d cid : %" PRIu64 " tuple end cid : %" PRIu64 "", invalidated,
                 at_lcid, tuple_end_cid);
     }
 
@@ -282,14 +282,14 @@ class TileGroupHeader {
         bool insert_commit = GetInsertCommit(tuple_slot_id);
         bool delete_commit = GetDeleteCommit(tuple_slot_id);
         if (!insert_commit || delete_commit) {
-          LOG_TRACE("Uncommited:: tuple begin cid : %lu", tuple_begin_cid);
+          LOG_TRACE("Uncommited:: tuple begin cid : %" PRIu64 "", tuple_begin_cid);
           visible = false;
         }
       }
     }
 
     LOG_INFO(
-        "<%p, %lu> :(vtid, vbeg, vend) = (%lu, %lu, %lu), (tid, lcid) = (%lu, %lu), visible = %d",
+        "<%p, %" PRIu64 "> :(vtid, vbeg, vend) = (%" PRIu64 ", %" PRIu64 ", %" PRIu64 "), (tid, lcid) = (%" PRIu64 ", %" PRIu64 "), visible = %d",
         this, tuple_slot_id, tuple_txn_id, tuple_begin_cid, tuple_end_cid,
         txn_id, at_lcid, visible);
 
@@ -309,7 +309,7 @@ class TileGroupHeader {
     bool deletable = tuple_end_cid == MAX_CID;
 
     LOG_INFO(
-        "<%p, %lu> :(vtid, vbeg, vend) = (%lu, %lu, %lu), (tid, lcid) = (%lu, %lu), deletable = %d",
+        "<%p, %" PRIu64 "> :(vtid, vbeg, vend) = (%" PRIu64 ", %" PRIu64 ", %" PRIu64 "), (tid, lcid) = (%" PRIu64 ", %" PRIu64 "), deletable = %d",
         this, tuple_slot_id, tuple_txn_id, tuple_begin_cid, tuple_end_cid,
         txn_id, at_lcid, deletable);
 

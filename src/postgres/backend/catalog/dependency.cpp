@@ -1043,7 +1043,7 @@ reportDependentObjects(const ObjectAddresses *targetObjects,
 	}
 
 	if (numNotReportedClient > 0)
-		appendStringInfo(&clientdetail, ngettext("\nand %d other object "
+		appendStringInfo(&clientdetail,ngettext("\nand %d other object "
 												 "(see server log for list)",
 												 "\nand %d other objects "
 												 "(see server log for list)",

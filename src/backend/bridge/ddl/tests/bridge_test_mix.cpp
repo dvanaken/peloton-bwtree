@@ -164,7 +164,7 @@ void BridgeTest::DDL_MIX_TEST_2() {
     // Setting values
     Value integerValue = ValueFactory::GetIntegerValue(243432);
     Value stringValue = ValueFactory::GetStringValue("dude");
-    Value timestampValue = ValueFactory::GetTimestampValue(10.22);
+    Value timestampValue = ValueFactory::GetTimestampValue(static_cast<int64_t>(10.22));
     Value doubleValue = ValueFactory::GetDoubleValue(244643.1236);
 
     tuple.SetValue(0, integerValue);

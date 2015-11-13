@@ -17,12 +17,17 @@
 #include "backend/logging/log_manager.h"
 #include "backend/logging/frontend_logger.h"
 
+#include <boost/thread/tss.hpp>
+
 namespace peloton {
 namespace logging {
 
 AriesBackendLogger* AriesBackendLogger::GetInstance(){
-  THREAD_LOCAL static AriesBackendLogger aries_backend_logger;
-  return &aries_backend_logger;
+  static boost::thread_specific_ptr<AriesBackendLogger> aries_backend_logger;
+  if (!aries_backend_logger.get()) {
+    aries_backend_logger.reset(new AriesBackendLogger);
+  }
+  return aries_backend_logger.get();
 }
 
 /**

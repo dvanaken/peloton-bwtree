@@ -24,7 +24,7 @@ include $(srcdir)/backend/message/Makefile.am
 include $(srcdir)/backend/planner/Makefile.am
 include $(srcdir)/backend/storage/Makefile.am
 include $(srcdir)/backend/logging/Makefile.am
-include $(srcdir)/backend/benchmark/Makefile.am
+#include $(srcdir)/backend/benchmark/Makefile.am
 
 include $(srcdir)/postgres/backend/Makefile.am
 include $(srcdir)/postgres/common/Makefile.am
@@ -34,7 +34,7 @@ include $(srcdir)/postgres/timezone/Makefile.am
 
 include $(top_srcdir)/third_party/Makefile.am
 
-bin_peloton_PROGRAMS = peloton hyadapt ycsb tpcc
+bin_peloton_PROGRAMS = peloton #hyadapt ycsb tpcc
 
 bin_pelotondir = /usr/local/peloton/bin
 

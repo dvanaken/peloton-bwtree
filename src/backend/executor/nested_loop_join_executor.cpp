@@ -163,12 +163,12 @@ bool NestedLoopJoinExecutor::DExecute() {
          column_itr++)
       position_lists.push_back(std::vector<oid_t>());
 
-    LOG_TRACE("left col count: %lu, right col count: %lu", left_tile_column_count,
+    LOG_TRACE("left col count: %" PRIu64 ", right col count: %" PRIu64 "", left_tile_column_count,
               right_tile_column_count);
-    LOG_TRACE("left col count: %lu, right col count: %lu",
+    LOG_TRACE("left col count: %" PRIu64 ", right col count: %" PRIu64 "",
               left_tile->GetColumnCount(),
               right_tile->GetColumnCount());
-    LOG_TRACE("left row count: %lu, right row count: %lu", left_tile_row_count,
+    LOG_TRACE("left row count: %" PRIu64 ", right row count: %" PRIu64 "", left_tile_row_count,
               right_tile_row_count);
 
     unsigned int removed = 0;

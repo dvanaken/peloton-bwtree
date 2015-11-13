@@ -46,7 +46,7 @@ GetSharedMemName(void)
 
 	bufsize = GetFullPathName(DataDir, 0, NULL, NULL);
 	if (bufsize == 0)
-		elog(FATAL, "could not get size for full pathname of datadir %s: error code %lu",
+		elog(FATAL, "could not get size for full pathname of datadir %s: error code %" PRIu64 "",
 			 DataDir, GetLastError());
 
 	retptr = malloc(bufsize + 18);		/* 18 for Global\PostgreSQL: */
@@ -56,7 +56,7 @@ GetSharedMemName(void)
 	strcpy(retptr, "Global\\PostgreSQL:");
 	r = GetFullPathName(DataDir, bufsize, retptr + 18, NULL);
 	if (r == 0 || r > bufsize)
-		elog(FATAL, "could not generate full pathname for datadir %s: error code %lu",
+		elog(FATAL, "could not generate full pathname for datadir %s: error code %" PRIu64 "",
 			 DataDir, GetLastError());
 
 	/*
@@ -172,7 +172,7 @@ PGSharedMemoryCreate(Size size, bool makePrivate, int port,
 
 		if (!hmap)
 			ereport(FATAL,
-					(errmsg("could not create shared memory segment: error code %lu", GetLastError()),
+					(errmsg("could not create shared memory segment: error code %" PRIu64 "", GetLastError()),
 					 errdetail("Failed system call was CreateFileMapping(size=%zu, name=%s).",
 							   size, szShareMem)));
 
@@ -207,7 +207,7 @@ PGSharedMemoryCreate(Size size, bool makePrivate, int port,
 	 */
 	if (!DuplicateHandle(GetCurrentProcess(), hmap, GetCurrentProcess(), &hmap2, 0, TRUE, DUPLICATE_SAME_ACCESS))
 		ereport(FATAL,
-				(errmsg("could not create shared memory segment: error code %lu", GetLastError()),
+				(errmsg("could not create shared memory segment: error code %" PRIu64 "", GetLastError()),
 				 errdetail("Failed system call was DuplicateHandle.")));
 
 	/*
@@ -215,7 +215,7 @@ PGSharedMemoryCreate(Size size, bool makePrivate, int port,
 	 * care.
 	 */
 	if (!CloseHandle(hmap))
-		elog(LOG, "could not close handle to shared memory: error code %lu", GetLastError());
+		elog(LOG, "could not close handle to shared memory: error code %" PRIu64 "", GetLastError());
 
 
 	/* Register on-exit routine to delete the new___ segment */
@@ -228,7 +228,7 @@ PGSharedMemoryCreate(Size size, bool makePrivate, int port,
 	memAddress = MapViewOfFileEx(hmap2, FILE_MAP_WRITE | FILE_MAP_READ, 0, 0, 0, NULL);
 	if (!memAddress)
 		ereport(FATAL,
-				(errmsg("could not create shared memory segment: error code %lu", GetLastError()),
+				(errmsg("could not create shared memory segment: error code %" PRIu64 "", GetLastError()),
 				 errdetail("Failed system call was MapViewOfFileEx.")));
 
 
@@ -281,12 +281,12 @@ PGSharedMemoryReAttach(void)
 	 * Release memory region reservation that was made by the postmaster
 	 */
 	if (VirtualFree(UsedShmemSegAddr, 0, MEM_RELEASE) == 0)
-		elog(FATAL, "failed to release reserved memory region (addr=%p): error code %lu",
+		elog(FATAL, "failed to release reserved memory region (addr=%p): error code %" PRIu64 "",
 			 UsedShmemSegAddr, GetLastError());
 
 	hdr = (PGShmemHeader *) MapViewOfFileEx(UsedShmemSegID, FILE_MAP_READ | FILE_MAP_WRITE, 0, 0, 0, UsedShmemSegAddr);
 	if (!hdr)
-		elog(FATAL, "could not reattach to shared memory (key=%p, addr=%p): error code %lu",
+		elog(FATAL, "could not reattach to shared memory (key=%p, addr=%p): error code %" PRIu64 "",
 			 UsedShmemSegID, UsedShmemSegAddr, GetLastError());
 	if (hdr != origUsedShmemSegAddr)
 		elog(FATAL, "reattaching to shared memory returned unexpected address (got %p, expected %p)",
@@ -312,7 +312,7 @@ PGSharedMemoryDetach(void)
 	if (UsedShmemSegAddr != NULL)
 	{
 		if (!UnmapViewOfFile(UsedShmemSegAddr))
-			elog(LOG, "could not unmap view of shared memory: error code %lu", GetLastError());
+			elog(LOG, "could not unmap view of shared memory: error code %" PRIu64 "", GetLastError());
 
 		UsedShmemSegAddr = NULL;
 	}
@@ -328,7 +328,7 @@ pgwin32_SharedMemoryDelete(int status, Datum shmId)
 {
 	PGSharedMemoryDetach();
 	if (!CloseHandle(DatumGetPointer(shmId)))
-		elog(LOG, "could not close handle to shared memory: error code %lu", GetLastError());
+		elog(LOG, "could not close handle to shared memory: error code %" PRIu64 "", GetLastError());
 }
 
 /*
@@ -361,7 +361,7 @@ pgwin32_ReserveSharedMemoryRegion(HANDLE hChild)
 	if (address == NULL)
 	{
 		/* Don't use FATAL since we're running in the postmaster */
-		elog(LOG, "could not reserve shared memory region (addr=%p) for child %p: error code %lu",
+		elog(LOG, "could not reserve shared memory region (addr=%p) for child %p: error code %" PRIu64 "",
 			 UsedShmemSegAddr, hChild, GetLastError());
 		return false;
 	}

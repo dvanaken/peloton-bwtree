@@ -48,7 +48,7 @@ InitLatch(volatile Latch *latch)
 
 	latch->event = CreateEvent(NULL, TRUE, FALSE, NULL);
 	if (latch->event == NULL)
-		elog(ERROR, "CreateEvent failed: error code %lu", GetLastError());
+		elog(ERROR, "CreateEvent failed: error code %" PRIu64 "", GetLastError());
 }
 
 void
@@ -69,7 +69,7 @@ InitSharedLatch(volatile Latch *latch)
 
 	latch->event = CreateEvent(&sa, TRUE, FALSE, NULL);
 	if (latch->event == NULL)
-		elog(ERROR, "CreateEvent failed: error code %lu", GetLastError());
+		elog(ERROR, "CreateEvent failed: error code %" PRIu64 "", GetLastError());
 }
 
 void
@@ -186,7 +186,7 @@ WaitLatchOrSocket(volatile Latch *latch, int wakeEvents, pgsocket sock,
 		 * will return immediately.
 		 */
 		if (!ResetEvent(latchevent))
-			elog(ERROR, "ResetEvent failed: error code %lu", GetLastError());
+			elog(ERROR, "ResetEvent failed: error code %" PRIu64 "", GetLastError());
 
 		if ((wakeEvents & WL_LATCH_SET) && latch->is_set)
 		{
@@ -202,7 +202,7 @@ WaitLatchOrSocket(volatile Latch *latch, int wakeEvents, pgsocket sock,
 		rc = WaitForMultipleObjects(numevents, events, FALSE, cur_timeout);
 
 		if (rc == WAIT_FAILED)
-			elog(ERROR, "WaitForMultipleObjects() failed: error code %lu",
+			elog(ERROR, "WaitForMultipleObjects() failed: error code %" PRIu64 "",
 				 GetLastError());
 		else if (rc == WAIT_TIMEOUT)
 		{
@@ -262,7 +262,7 @@ WaitLatchOrSocket(volatile Latch *latch, int wakeEvents, pgsocket sock,
 				result |= WL_POSTMASTER_DEATH;
 		}
 		else
-			elog(ERROR, "unexpected return code from WaitForMultipleObjects(): %lu", rc);
+			elog(ERROR, "unexpected return code from WaitForMultipleObjects(): %" PRIu64 "", rc);
 
 		/* If we're not done, update cur_timeout for next iteration */
 		if (result == 0 && cur_timeout != INFINITE)

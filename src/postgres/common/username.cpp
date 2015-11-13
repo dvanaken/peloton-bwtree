@@ -59,7 +59,7 @@ get_user_name(char **errstr)
 
 	if (!GetUserName(username, &len))
 	{
-		*errstr = psprintf(_("user name lookup failure: error code %lu"),
+		*errstr = psprintf(_("user name lookup failure: error code %" PRIu64 ""),
 						   GetLastError());
 		return NULL;
 	}

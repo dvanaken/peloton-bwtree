@@ -750,7 +750,7 @@ pg_fe_getauthname(PQExpBuffer errorMessage)
 		name = username;
 	else if (errorMessage)
 		printfPQExpBuffer(errorMessage,
-				 libpq_gettext("user name lookup failure: error code %lu\n"),
+				 libpq_gettext("user name lookup failure: error code %" PRIu64 "\n"),
 						  GetLastError());
 #else
 	pwerr = pqGetpwuid(user_id, &pwdstr, pwdbuf, sizeof(pwdbuf), &pw);

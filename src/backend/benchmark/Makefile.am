@@ -14,8 +14,8 @@ hyadapt_SOURCES =  \
                     backend/benchmark/hyadapt/workload.cpp \
                     backend/benchmark/hyadapt/loader.cpp
 
-hyadapt_LDFLAGS =
-hyadapt_CPPFLAGS = -I. -I$(top_srcdir)/src -I.. $(postgres_common_INCLUDES) $(AM_CPPFLAGS)  \
+hyadapt_LDFLAGS = 
+hyadapt_CPPFLAGS = -I. -I$(top_srcdir)/src -I.. $(postgres_common_INCLUDES) $(AM_CPPFLAGS) \
 				   $(third_party_INCLUDES) \
 				   -I$(srcdir)/backend/benchmark
  
@@ -31,7 +31,7 @@ ycsb_SOURCES =  \
                 backend/benchmark/ycsb/workload.cpp \
                 backend/benchmark/ycsb/loader.cpp
                                        
-ycsb_LDFLAGS =
+ycsb_LDFLAGS = -stdlib=libstdc++ 
 ycsb_CPPFLAGS = -I. -I$(top_srcdir)/src -I.. $(postgres_common_INCLUDES) $(AM_CPPFLAGS)  \
 				$(third_party_INCLUDES) \
 				-I$(srcdir)/backend/benchmark
@@ -48,9 +48,9 @@ tpcc_SOURCES =  \
                 backend/benchmark/tpcc/workload.cpp \
                 backend/benchmark/tpcc/loader.cpp
                                        
-tpcc_LDFLAGS =
+tpcc_LDFLAGS = -stdlib=libstdc++ 
 tpcc_CPPFLAGS = -I. -I$(top_srcdir)/src -I.. $(postgres_common_INCLUDES) $(AM_CPPFLAGS)  \
 				$(third_party_INCLUDES) \
 				-I$(srcdir)/backend/benchmark
 
-tpcc_LDADD = libpelotonpg.la libpeloton.la     
+tpcc_LDADD = libpelotonpg.la libpeloton.la

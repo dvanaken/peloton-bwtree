@@ -189,7 +189,7 @@ const planner::ProjectInfo *PlanTransformer::BuildProjectInfo(
     out_col_ids.push_back(out_col_id);
   }
   col_count = out_col_ids.size();
-  LOG_TRACE("Direct Map :: COL COUNT :: %lu \n", out_col_ids.size());
+  LOG_TRACE("Direct Map :: COL COUNT :: %" PRIu64 " \n", out_col_ids.size());
 
   foreach (item, pg_pi->tuple_idxs)
   {

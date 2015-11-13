@@ -22,14 +22,19 @@
 #include "utils/lsyscache.h"
 #include "parser/parsetree.h"
 
+#include <boost/thread/tss.hpp>
+
 namespace peloton {
 namespace bridge {
 
-const PlanTransformer::TransformOptions PlanTransformer::DefaultOptions;
+const PlanTransformer::TransformOptions PlanTransformer::DefaultOptions {};
 
-PlanTransformer &PlanTransformer::GetInstance() {
-  THREAD_LOCAL static PlanTransformer transformer;
-  return transformer;
+PlanTransformer *PlanTransformer::GetInstance() {
+  static boost::thread_specific_ptr<PlanTransformer> instance;
+  if (!instance.get()) {
+    instance.reset(new PlanTransformer);
+  }
+  return instance.get();
 }
 
 std::shared_ptr<const planner::AbstractPlan> PlanTransformer::GetCachedPlan(

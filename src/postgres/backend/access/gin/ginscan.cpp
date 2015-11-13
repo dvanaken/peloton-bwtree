@@ -154,7 +154,10 @@ ginFillScanKey(GinScanOpaque so, OffsetNumber attnum,
 	key->nuserentries = nUserQueryValues;
 
 	key->scanEntry = (GinScanEntry *) palloc(sizeof(GinScanEntry) * nQueryValues);
-	key->entryRes = (bool *) palloc0(sizeof(bool) * nQueryValues);
+
+	//Peleton porting: this is not necessarily bool, as it is a ternary condition, true, false, maybe!!
+	//key->entryRes = (bool *) palloc0(sizeof(bool) * nQueryValues);
+	key->entryRes = (char *) palloc0(sizeof(char) * nQueryValues);
 
 	key->query = query;
 	key->queryValues = queryValues;

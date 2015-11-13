@@ -66,7 +66,7 @@
    (struct s)' as it overestimates the size. Use 'offsetof (struct s, d)'
    instead. Don't use 'offsetof (struct s, d[0])', as this doesn't work with
    MSVC and with C++ compilers. */
-#define FLEXIBLE_ARRAY_MEMBER /**/
+#define FLEXIBLE_ARRAY_MEMBER 0/**/
 
 /* float4 values are passed by value if 'true', by reference if 'false' */
 #define FLOAT4PASSBYVAL true

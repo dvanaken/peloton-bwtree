@@ -785,7 +785,7 @@ typedef struct GinScanKeyData
 	int			nadditional;
 
 	/* array of check flags, reported to consistentFn */
-	bool	   *entryRes;
+	char	   *entryRes;
 	bool		(*boolConsistentFn) (GinScanKey key);
 	GinTernaryValue (*triConsistentFn) (GinScanKey key);
 	FmgrInfo   *consistentFmgrInfo;

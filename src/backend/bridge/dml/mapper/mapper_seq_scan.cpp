@@ -12,6 +12,7 @@
 
 #include "backend/bridge/dml/mapper/mapper.h"
 #include "backend/planner/seq_scan_plan.h"
+#include <numeric> // for iota in OSx
 
 namespace peloton {
 namespace bridge {

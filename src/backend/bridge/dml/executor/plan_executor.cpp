@@ -244,7 +244,7 @@ PlanExecutor::ExecutePlan(const planner::AbstractPlan *plan,
   }
   assert(txn);
 
-  LOG_TRACE("Txn ID = %lu ", txn->GetTransactionId());
+  LOG_TRACE("Txn ID = %" PRIu64 " ", txn->GetTransactionId());
   LOG_TRACE("Building the executor tree");
 
   auto executor_context = BuildExecutorContext(param_list, txn);

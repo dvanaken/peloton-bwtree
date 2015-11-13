@@ -1483,7 +1483,7 @@ SSLerrmessage(void)
 		strlcpy(errbuf, errreason, SSL_ERR_LEN);
 		return errbuf;
 	}
-	snprintf(errbuf, SSL_ERR_LEN, libpq_gettext("SSL error code %lu"), errcode);
+	snprintf(errbuf, SSL_ERR_LEN, libpq_gettext("SSL error code %" PRIu64 ""), errcode);
 	return errbuf;
 }
 

@@ -17,6 +17,7 @@
 #include <climits>
 #include <limits>
 #include <cassert>
+#include <cinttypes>
 
 namespace peloton {
 
@@ -29,13 +30,6 @@ class Value;
 
 // We use these values for NULL to make it compact and fast
 // "-1" is a hack to shut up gcc warning
-
-#ifdef __APPLE__
-#define THREAD_LOCAL __thread
-#else
-#define THREAD_LOCAL thread_local
-#endif
-
 /// NULL
 #define INT8_NULL INT8_MIN
 #define INT16_NULL INT16_MIN
@@ -94,6 +88,12 @@ class Value;
 #ifdef __APPLE__
 #define off64_t off_t
 #define MAP_ANONYMOUS MAP_ANON
+#endif
+
+#ifdef __APPLE__
+#define THREAD_LOCAL thread_local
+#else
+#define THREAD_LOCAL thread_local
 #endif
 
 //===--------------------------------------------------------------------===//

@@ -104,7 +104,6 @@
 /* Must be before gettext() games below */
 #include <locale.h>
 
-#define _(x) gettext(x)
 
 // TODO: Peloton Changes: We enabled NLS
 #ifndef __APPLE__
@@ -118,6 +117,8 @@
 #define ngettext(s,p,n) ((n) == 1 ? (s) : (p))
 #define dngettext(d,s,p,n) ((n) == 1 ? (s) : (p))
 #endif
+
+#define _(x) gettext(x)
 
 /*
  *	Use this to mark string constants as needing translation at some later

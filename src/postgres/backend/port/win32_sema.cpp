@@ -91,7 +91,7 @@ PGSemaphoreCreate(PGSemaphore sema)
 	}
 	else
 		ereport(PANIC,
-				(errmsg("could not create semaphore: error code %lu", GetLastError())));
+				(errmsg("could not create semaphore: error code %" PRIu64 "", GetLastError())));
 }
 
 /*
@@ -163,11 +163,11 @@ PGSemaphoreLock(PGSemaphore sema)
 				break;
 			case WAIT_FAILED:
 				ereport(FATAL,
-						(errmsg("could not lock semaphore: error code %lu",
+						(errmsg("could not lock semaphore: error code %" PRIu64 "",
 								GetLastError())));
 				break;
 			default:
-				elog(FATAL, "unexpected return code from WaitForMultipleObjectsEx(): %lu", rc);
+				elog(FATAL, "unexpected return code from WaitForMultipleObjectsEx(): %" PRIu64 "", rc);
 				break;
 		}
 	}
@@ -183,7 +183,7 @@ PGSemaphoreUnlock(PGSemaphore sema)
 {
 	if (!ReleaseSemaphore(*sema, 1, NULL))
 		ereport(FATAL,
-				(errmsg("could not unlock semaphore: error code %lu", GetLastError())));
+				(errmsg("could not unlock semaphore: error code %" PRIu64 "", GetLastError())));
 }
 
 /*
@@ -212,7 +212,7 @@ PGSemaphoreTryLock(PGSemaphore sema)
 
 	/* Otherwise we are in trouble */
 	ereport(FATAL,
-	(errmsg("could not try-lock semaphore: error code %lu", GetLastError())));
+	(errmsg("could not try-lock semaphore: error code %" PRIu64 "", GetLastError())));
 
 	/* keep compiler quiet */
 	return false;

@@ -24,7 +24,7 @@ set_dl_error(void)
 					  NULL) == 0)
 	{
 		snprintf(last_dyn_error, sizeof(last_dyn_error) - 1,
-				 "unknown error %lu", err);
+				 "unknown error %" PRIu64 "", err);
 	}
 }
 

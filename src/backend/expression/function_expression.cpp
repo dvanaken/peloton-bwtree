@@ -54,6 +54,7 @@ template<> inline Value Value::Call<FUNC_VOLT_SQL_ERROR>(const std::vector<Value
     const Value& codeArg = arguments[0];
     if (codeArg.IsNull()) {
         //sqlstatecode = SQLException::nonspecific_error_code_for_error_forced_by_user;
+    	sqlstatecode = "";
     } else {
         int64_t intValue = codeArg.CastAsBigIntAndGetValue(); // let cast throw if invalid
         if (intValue == 0) {

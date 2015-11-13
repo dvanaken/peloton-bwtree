@@ -606,7 +606,7 @@ ExecHashIncreaseNumBatches(HashJoinTable hashtable)
 	Assert(nbatch > 1);
 
 #ifdef HJDEBUG
-	printf("Increasing nbatch to %d because space = %lu\n",
+	printf("Increasing nbatch to %d because space = %" PRIu64 "\n",
 		   nbatch, (unsigned long) hashtable->spaceUsed);
 #endif
 
@@ -720,7 +720,7 @@ ExecHashIncreaseNumBatches(HashJoinTable hashtable)
 	}
 
 #ifdef HJDEBUG
-	printf("Freed %ld of %ld tuples, space now %lu\n",
+	printf("Freed %ld of %ld tuples, space now %" PRIu64 "\n",
 		   nfreed, ninmemory, (unsigned long) hashtable->spaceUsed);
 #endif
 

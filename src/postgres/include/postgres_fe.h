@@ -23,6 +23,7 @@
 #endif
 
 #include "c.h"
+#include <cinttypes>
 
 #include "common/fe_memutils.h"
 

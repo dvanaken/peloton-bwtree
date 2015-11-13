@@ -50,7 +50,7 @@ template <class T>
 inline T nexthigher(T k) {
   if (k == 0) return 1;
   k--;
-  for (uint i = 1; i < sizeof(T) * CHAR_BIT; i <<= 1) k = k | k >> i;
+  for (uint32_t i = 1; i < sizeof(T) * CHAR_BIT; i <<= 1) k = k | k >> i;
   return k + 1;
 }
 

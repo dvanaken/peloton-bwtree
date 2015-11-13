@@ -120,9 +120,9 @@ expression::AbstractExpression* ExprTransformer::TransformConst(
   } else {
     LOG_ERROR(
         "Unknown Const profile: constlen = %d , constbyval = %d, constvalue = "
-        "%lu \n",
+        "%lu\n",
         const_expr->constlen, const_expr->constbyval,
-        (long unsigned )const_expr->constvalue);
+        (unsigned long)const_expr->constvalue);
   }
 
   // A Const Expr has no children.

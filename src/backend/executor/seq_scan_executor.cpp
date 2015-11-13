@@ -15,6 +15,7 @@
 #include <memory>
 #include <utility>
 #include <vector>
+#include <numeric>
 
 #include "backend/common/types.h"
 #include "backend/executor/logical_tile.h"

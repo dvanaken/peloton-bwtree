@@ -15,6 +15,7 @@
 #include <memory>
 #include <utility>
 #include <vector>
+#include <numeric>
 
 #include "backend/common/types.h"
 #include "backend/executor/logical_tile.h"
@@ -175,7 +176,7 @@ bool IndexScanExecutor::ExecIndexLookup() {
 
   done_ = true;
 
-  LOG_TRACE("Result tiles : %lu", result.size());
+  LOG_TRACE("Result tiles : %" PRIu64 "", result.size());
 
   return true;
 }

@@ -27,6 +27,6 @@ libpq_la_CPPFLAGS = \
 				   -I$(srcdir)/postgres/port
 
 
-libpq_la_CXXFLAGS = -Wno-write-strings
+libpq_la_CXXFLAGS = $(AM_CXXFLAGS) -Wno-write-strings
 
 libpq_la_LDFLAGS = -lssl

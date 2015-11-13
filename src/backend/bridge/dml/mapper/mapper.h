@@ -48,7 +48,7 @@ class PlanTransformer {
   PlanTransformer() : plan_cache_(PLAN_CACHE_SIZE, CleanPlan) {}
 
   /* Plan caching */
-  static PlanTransformer &GetInstance();
+  static PlanTransformer *GetInstance();
 
   std::shared_ptr<const planner::AbstractPlan> GetCachedPlan(const char *prepStmtName);
 
