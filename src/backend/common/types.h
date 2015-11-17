@@ -89,7 +89,6 @@ class Value;
 #define off64_t off_t
 #define MAP_ANONYMOUS MAP_ANON
 #endif
-
 #ifdef __APPLE__
 #define THREAD_LOCAL thread_local
 #else

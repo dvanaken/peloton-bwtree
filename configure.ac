@@ -23,7 +23,7 @@ ACX_PTHREAD([], [AC_MSG_ERROR([Please install pthread library : libpthread-stubs
 : ${CXXFLAGS=""}
 
 AC_LANG([C++])
-AC_PROG_CXX([g++-5])
+AC_PROG_CXX([g++-4.8])
 
 AC_PROG_YACC
 AC_PROG_LEX
@@ -117,7 +117,7 @@ AC_CONFIG_FILES([Makefile
 AC_CONFIG_LINKS([tests/valgrind.supp:third_party/valgrind/valgrind.supp])
 
 ######################################################################
-# Debug Compliation Support
+# Debug Compilation Support
 ######################################################################
 AC_MSG_CHECKING([whether to build with debug information])
 AC_ARG_ENABLE([debug],
