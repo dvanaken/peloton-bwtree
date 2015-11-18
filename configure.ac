@@ -22,8 +22,9 @@ ACX_PTHREAD([], [AC_MSG_ERROR([Please install pthread library : libpthread-stubs
 # Do not allow AC_PROG_CXX set a default CXXFLAGS
 : ${CXXFLAGS=""}
 
+CXX=/usr/local/opt/llvm/bin/clang++
 AC_LANG([C++])
-AC_PROG_CXX([g++-4.8])
+AC_PROG_CXX([g++])
 
 AC_PROG_YACC
 AC_PROG_LEX

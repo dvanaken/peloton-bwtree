@@ -1494,7 +1494,7 @@ set_rest_more:	/* Generic SET syntaxes: */
 					VariableSetStmt *n = makeNode(VariableSetStmt);
 					n->kind = VAR_SET_VALUE;
 					n->name = "xmloption";
-					n->args = list_make1(makeStringConst($3 == XMLOPTION_DOCUMENT ? static_cast<char *>("DOCUMENT") : static_cast<char *>("CONTENT"), @3));
+					n->args = list_make1(makeStringConst($3 == XMLOPTION_DOCUMENT ? (char *)("DOCUMENT") : (char *)("CONTENT"), @3));
 					$$ = n;
 				}
 			/* Special syntaxes invented by PostgreSQL: */
@@ -11166,7 +11166,7 @@ BitWithLength:
 				{
 					char *typname;
 
-					typname = $2 ? static_cast<char *>("varbit") : static_cast<char *>("bit");
+					typname = $2 ? (char *)("varbit") : (char *)("bit");
 					$$ = SystemTypeName(typname);
 					$$->typmods = $4;
 					$$->location = @1;
@@ -11249,17 +11249,17 @@ CharacterWithoutLength:	 character opt_charset
 		;
 
 character:	CHARACTER opt_varying
-										{ $$ = $2 ? static_cast<char *>("varchar"): static_cast<char *>("bpchar"); }
+										{ $$ = $2 ? (char *)("varchar"): (char *)("bpchar"); }
 			| CHAR_P opt_varying
-										{ $$ = $2 ? static_cast<char *>("varchar"): static_cast<char *>("bpchar"); }
+										{ $$ = $2 ? (char *)("varchar"): (char *)("bpchar"); }
 			| VARCHAR
-										{ $$ = static_cast<char *>("varchar"); }
+										{ $$ = (char *)("varchar"); }
 			| NATIONAL CHARACTER opt_varying
-										{ $$ = $3 ? static_cast<char *>("varchar"): static_cast<char *>("bpchar"); }
+										{ $$ = $3 ? (char *)("varchar"): (char *)("bpchar"); }
 			| NATIONAL CHAR_P opt_varying
-										{ $$ = $3 ? static_cast<char *>("varchar"): static_cast<char *>("bpchar"); }
+										{ $$ = $3 ? (char *)("varchar"): (char *)("bpchar"); }
 			| NCHAR opt_varying
-										{ $$ = $2 ? static_cast<char *>("varchar"): static_cast<char *>("bpchar"); }
+										{ $$ = $2 ? (char *)("varchar"): (char *)("bpchar"); }
 		;
 
 opt_varying:
@@ -14205,7 +14205,7 @@ makeBoolAConst(bool state, int location)
 	A_Const *n = makeNode(A_Const);
 
 	n->val.type = T_String;
-	n->val.val.str = (state ? static_cast<char *>("t") : static_cast<char *>("f"));
+	n->val.val.str = (state ? (char *)("t") : (char *)("f"));
 	n->location = location;
 
 	return makeTypeCast((Node *)n, SystemTypeName("bool"), -1);

@@ -2204,7 +2204,7 @@ static char *
 _SPI_strdup(const char *s)
 {
 	size_t		len = strlen(s) + 1;
-	char	   *ret = static_cast<char *>(SPI_palloc(len));
+	char	   *ret = (char *)(SPI_palloc(len));
 
 	memcpy(ret, s, len);
 	return ret;
@@ -3104,7 +3104,7 @@ map_sql_schema_to_xmlschema_types(Oid nspid, List *relid_list, bool nulls,
 		Oid			relid = lfirst_oid(cell);
 		char	   *relname = get_rel_name(relid);
 		char	   *xmltn = map_sql_identifier_to_xml_name(relname, true, false);
-		char	   *tabletypename = map_multipart_sql_identifier_to_xml_name(tableforest ? static_cast<char *>("RowType") : static_cast<char *>("TableType"),
+		char	   *tabletypename = map_multipart_sql_identifier_to_xml_name(tableforest ? (char *)("RowType") : (char *)("TableType"),
 																	  dbname,
 																	 nspname,
 																	relname);
@@ -3285,7 +3285,7 @@ map_sql_type_to_xml_name(Oid typeoid, int typmod)
 				typtuple = (Form_pg_type) GETSTRUCT(tuple);
 
 				appendStringInfoString(&result,
-									   map_multipart_sql_identifier_to_xml_name((typtuple->typtype == TYPTYPE_DOMAIN) ? static_cast<char *>("Domain") : static_cast<char *>("UDT"),
+									   map_multipart_sql_identifier_to_xml_name((typtuple->typtype == TYPTYPE_DOMAIN) ? (char *)("Domain") : (char *)("UDT"),
 											 get_database_name(MyDatabaseId),
 								  get_namespace_name(typtuple->typnamespace),
 												NameStr(typtuple->typname)));

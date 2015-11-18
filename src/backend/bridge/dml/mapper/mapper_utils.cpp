@@ -259,7 +259,7 @@ const planner::ProjectInfo::TargetList PlanTransformer::BuildTargetList(
     target_list.emplace_back(col_id, peloton_expr);
   }
 
-  return std::move(target_list);
+  return target_list;
 
 }
 

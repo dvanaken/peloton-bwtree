@@ -24093,7 +24093,7 @@ yyreduce:
 					VariableSetStmt *n = makeNode(VariableSetStmt);
 					n->kind = VAR_SET_VALUE;
 					n->name = "xmloption";
-					n->args = list_make1(makeStringConst((yyvsp[0].ival) == XMLOPTION_DOCUMENT ? static_cast<char *>("DOCUMENT") : static_cast<char *>("CONTENT"), (yylsp[0])));
+					n->args = list_make1(makeStringConst((yyvsp[0].ival) == XMLOPTION_DOCUMENT ? (char *)("DOCUMENT") : (char *)("CONTENT"), (yylsp[0])));
 					(yyval.vsetstmt) = n;
 				}
 #line 24100 "../../src/postgres/backend/parser/gram.cpp" /* yacc.c:1646  */
@@ -37552,7 +37552,7 @@ yyreduce:
     {
 					char *typname;
 
-					typname = (yyvsp[-3].boolean) ? static_cast<char *>("varbit") : static_cast<char *>("bit");
+					typname = (yyvsp[-3].boolean) ? (char *)("varbit") : (char *)("bit");
 					(yyval.typnam) = SystemTypeName(typname);
 					(yyval.typnam)->typmods = (yyvsp[-1].list);
 					(yyval.typnam)->location = (yylsp[-4]);
@@ -37649,37 +37649,37 @@ yyreduce:
 
   case 1672:
 #line 11252 "../../src/postgres/backend/parser/gram.ypp" /* yacc.c:1646  */
-    { (yyval.str) = (yyvsp[0].boolean) ? static_cast<char *>("varchar"): static_cast<char *>("bpchar"); }
+    { (yyval.str) = (yyvsp[0].boolean) ? (char *)("varchar"): (char *)("bpchar"); }
 #line 37654 "../../src/postgres/backend/parser/gram.cpp" /* yacc.c:1646  */
     break;
 
   case 1673:
 #line 11254 "../../src/postgres/backend/parser/gram.ypp" /* yacc.c:1646  */
-    { (yyval.str) = (yyvsp[0].boolean) ? static_cast<char *>("varchar"): static_cast<char *>("bpchar"); }
+    { (yyval.str) = (yyvsp[0].boolean) ? (char *)("varchar"): (char *)("bpchar"); }
 #line 37660 "../../src/postgres/backend/parser/gram.cpp" /* yacc.c:1646  */
     break;
 
   case 1674:
 #line 11256 "../../src/postgres/backend/parser/gram.ypp" /* yacc.c:1646  */
-    { (yyval.str) = static_cast<char *>("varchar"); }
+    { (yyval.str) = (char *)("varchar"); }
 #line 37666 "../../src/postgres/backend/parser/gram.cpp" /* yacc.c:1646  */
     break;
 
   case 1675:
 #line 11258 "../../src/postgres/backend/parser/gram.ypp" /* yacc.c:1646  */
-    { (yyval.str) = (yyvsp[0].boolean) ? static_cast<char *>("varchar"): static_cast<char *>("bpchar"); }
+    { (yyval.str) = (yyvsp[0].boolean) ? (char *)("varchar"): (char *)("bpchar"); }
 #line 37672 "../../src/postgres/backend/parser/gram.cpp" /* yacc.c:1646  */
     break;
 
   case 1676:
 #line 11260 "../../src/postgres/backend/parser/gram.ypp" /* yacc.c:1646  */
-    { (yyval.str) = (yyvsp[0].boolean) ? static_cast<char *>("varchar"): static_cast<char *>("bpchar"); }
+    { (yyval.str) = (yyvsp[0].boolean) ? (char *)("varchar"): (char *)("bpchar"); }
 #line 37678 "../../src/postgres/backend/parser/gram.cpp" /* yacc.c:1646  */
     break;
 
   case 1677:
 #line 11262 "../../src/postgres/backend/parser/gram.ypp" /* yacc.c:1646  */
-    { (yyval.str) = (yyvsp[0].boolean) ? static_cast<char *>("varchar"): static_cast<char *>("bpchar"); }
+    { (yyval.str) = (yyvsp[0].boolean) ? (char *)("varchar"): (char *)("bpchar"); }
 #line 37684 "../../src/postgres/backend/parser/gram.cpp" /* yacc.c:1646  */
     break;
 
@@ -41593,7 +41593,7 @@ makeBoolAConst(bool state, int location)
 	A_Const *n = makeNode(A_Const);
 
 	n->val.type = T_String;
-	n->val.val.str = (state ? static_cast<char *>("t") : static_cast<char *>("f"));
+	n->val.val.str = (state ? (char *)("t") : (char *)("f"));
 	n->location = location;
 
 	return makeTypeCast((Node *)n, SystemTypeName("bool"), -1);

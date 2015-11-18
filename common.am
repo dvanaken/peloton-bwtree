@@ -10,10 +10,10 @@
 CODE_COVERAGE_IGNORE_PATTERN="/usr/*" "*/third_party/*" "*/test/*" "*/postgres/*" "*/build/*"
 
 ## Global CFLAGS
-AM_CPPFLAGS = $(DEBUG_CPPFLAGS)
+AM_CPPFLAGS = $(DEBUG_CPPFLAGS) -I/usr/local/opt/llvm/include
 
 AM_CXXFLAGS = $(DEBUG_CXXFLAGS) -std=c++11 \
               -fPIC -fpermissive -fno-strict-aliasing \
               $(CODE_COVERAGE_CFLAGS)
 
-AM_LDFLAGS  = $(CODE_COVERAGE_LDFLAGS)
+AM_LDFLAGS  = $(CODE_COVERAGE_LDFLAGS) -L/usr/local/opt/llvm/lib

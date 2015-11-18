@@ -50,7 +50,7 @@ std::string AbstractPlan::GetInfo(std::string spacer) const {
   std::ostringstream buffer;
   buffer << spacer << "* " << this->GetInfo() << "\n";
   std::string info_spacer = spacer + "  |";
-  buffer << this->GetInfo(info_spacer);
+  //buffer << this->GetInfo(info_spacer);
 
   // Traverse the tree
   std::string child_spacer = spacer + "  ";

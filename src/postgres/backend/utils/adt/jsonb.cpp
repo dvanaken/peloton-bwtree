@@ -730,7 +730,7 @@ datum_to_jsonb(Datum val, bool is_null, JsonbInState *result,
 			case JSONBTYPE_BOOL:
 				if (key_scalar)
 				{
-					outputstr = DatumGetBool(val) ? static_cast<char *>("true") : static_cast<char *>("false");
+					outputstr = DatumGetBool(val) ? (char *)("true") : (char *)("false");
 					jb.type = JsonbValue::jbvString;
 					jb.val.string.len = strlen(outputstr);
 					jb.val.string.val = outputstr;
@@ -1651,7 +1651,7 @@ jsonb_agg_transfn(PG_FUNCTION_ARGS)
 				if (v.type ==JsonbValue::jbvString)
 				{
 					/* copy string values in the aggregate context */
-					char	   *buf = static_cast<char *>(palloc(v.val.string.len + 1));
+					char	   *buf = (char *)(palloc(v.val.string.len + 1));
 					snprintf(buf, v.val.string.len + 1, "%s", v.val.string.val);
 					v.val.string.val = buf;
 				}
@@ -1812,7 +1812,7 @@ jsonb_object_agg_transfn(PG_FUNCTION_ARGS)
 				if (v.type ==JsonbValue::jbvString)
 				{
 					/* copy string values in the aggregate context */
-					char	   *buf = static_cast<char *>(palloc(v.val.string.len + 1));
+					char	   *buf = (char *)(palloc(v.val.string.len + 1));
 					snprintf(buf, v.val.string.len + 1, "%s", v.val.string.val);
 					v.val.string.val = buf;
 				}
@@ -1870,7 +1870,7 @@ jsonb_object_agg_transfn(PG_FUNCTION_ARGS)
 				if (v.type ==JsonbValue::jbvString)
 				{
 					/* copy string values in the aggregate context */
-					char	   *buf = static_cast<char *>(palloc(v.val.string.len + 1));
+					char	   *buf = (char *)(palloc(v.val.string.len + 1));
 					snprintf(buf, v.val.string.len + 1, "%s", v.val.string.val);
 					v.val.string.val = buf;
 				}

@@ -499,7 +499,7 @@ AlterRole(AlterRoleStmt *stmt)
 	char	   *validUntil = NULL;		/* time the login is valid until */
 	Datum		validUntil_datum;		/* same, as timestamptz Datum */
 	bool		validUntil_null;
-	bool		bypassrls = -1;
+	char		bypassrls = -1;
 	DefElem    *dpassword = NULL;
 	DefElem    *dissuper = NULL;
 	DefElem    *dinherit = NULL;

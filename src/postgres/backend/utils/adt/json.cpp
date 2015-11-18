@@ -142,7 +142,7 @@ lex_accept(JsonLexContext *lex, JsonTokenType token, char **lexeme)
 			else
 			{
 				int			len = (lex->token_terminator - lex->token_start);
-				char	   *tokstr = static_cast<char *>(palloc(len + 1));
+				char	   *tokstr = (char *)(palloc(len + 1));
 
 				memcpy(tokstr, lex->token_start, len);
 				tokstr[len] = '\0';
@@ -1070,7 +1070,7 @@ report_parse_error(JsonParseContext ctx, JsonLexContext *lex)
 
 	/* Separate out the current token. */
 	toklen = lex->token_terminator - lex->token_start;
-	token = static_cast<char *>(palloc(toklen + 1));
+	token = (char *)(palloc(toklen + 1));
 	memcpy(token, lex->token_start, toklen);
 	token[toklen] = '\0';
 
@@ -1169,7 +1169,7 @@ report_invalid_token(JsonLexContext *lex)
 
 	/* Separate out the offending token. */
 	toklen = lex->token_terminator - lex->token_start;
-	token = static_cast<char *>(palloc(toklen + 1));
+	token = (char *)(palloc(toklen + 1));
 	memcpy(token, lex->token_start, toklen);
 	token[toklen] = '\0';
 
@@ -1237,7 +1237,7 @@ report_json_context(JsonLexContext *lex)
 
 	/* Get a null-terminated copy of the data to present */
 	ctxtlen = context_end - context_start;
-	ctxt = static_cast<char *>(palloc(ctxtlen + 1));
+	ctxt = (char *)(palloc(ctxtlen + 1));
 	memcpy(ctxt, context_start, ctxtlen);
 	ctxt[ctxtlen] = '\0';
 
@@ -1262,7 +1262,7 @@ extract_mb_char(char *s)
 	int			len;
 
 	len = pg_mblen(s);
-	res = static_cast<char *>(palloc(len + 1));
+	res = (char *)(palloc(len + 1));
 	memcpy(res, s, len);
 	res[len] = '\0';
 
@@ -1412,7 +1412,7 @@ datum_to_json(Datum val, bool is_null, StringInfo result,
 			composite_to_json(val, result, false);
 			break;
 		case JSONTYPE_BOOL:
-			outputstr = DatumGetBool(val) ? static_cast<char *>("true") : static_cast<char *>("false");
+			outputstr = DatumGetBool(val) ? (char *)("true") : (char *)("false");
 			if (key_scalar)
 				escape_json(result, outputstr);
 			else

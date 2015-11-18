@@ -1169,10 +1169,10 @@ ProcessCopyOptions(CopyState cstate,
 
 	/* Set defaults for omitted options */
 	if (!cstate->delim)
-		cstate->delim = cstate->csv_mode ? static_cast<char *>(",") : static_cast<char *>("\t");
+		cstate->delim = cstate->csv_mode ? (char *)(",") : (char *)("\t");
 
 	if (!cstate->null_print)
-		cstate->null_print = cstate->csv_mode ? static_cast<char *>("") : static_cast<char *>("\\N");
+		cstate->null_print = cstate->csv_mode ? (char *)("") : (char *)("\\N");
 	cstate->null_print_len = strlen(cstate->null_print);
 
 	if (cstate->csv_mode)

@@ -1539,7 +1539,7 @@ transformIndexConstraint(Constraint *constraint, CreateStmtContext *cxt)
 		index->idxname = NULL;	/* DefineIndex will choose name */
 
 	index->relation = cxt->relation;
-	index->accessMethod = constraint->access_method ? constraint->access_method : static_cast<char *>(DEFAULT_INDEX_TYPE);
+	index->accessMethod = constraint->access_method ? constraint->access_method : (char *)(DEFAULT_INDEX_TYPE);
 	index->options = constraint->options;
 	index->tableSpace = constraint->indexspace;
 	index->whereClause = constraint->where_clause;

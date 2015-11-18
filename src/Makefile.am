@@ -77,8 +77,11 @@ libpeloton_la_CPPFLAGS = $(AM_CPPFLAGS) \
 						 -I. -I$(top_srcdir)/src -I.. \
 						 -I /opt/local/include \
 						 $(third_party_INCLUDES)
-
+if BUILD_OS_IS_DARWIN
 libpeloton_la_CXXFLAGS = $(AM_CXXFLAGS)
+else
+libpeloton_la_CXXFLAGS = $(AM_CXXFLAGS)
+endif
 
 libpeloton_la_LDFLAGS = -lm
 
@@ -100,12 +103,21 @@ libpelotonpg_la_CPPFLAGS = $(AM_CPPFLAGS) \
 						 -I. -I$(top_srcdir)/src -I.. \
 						 $(third_party_INCLUDES)
 
+if BUILD_OS_IS_DARWIN
+libpelotonpg_la_CXXFLAGS = $(AM_CXXFLAGS) \
+			  -Wno-unused-variable -Wno-deprecated-register \
+			  -Wno-unused-parameter -Wno-missing-field-initializers \
+			  -Wno-array-bounds -Wno-strict-overflow \
+			  -Wno-sign-compare -Wno-write-strings \
+			  -msse4.2
+else
 libpelotonpg_la_CXXFLAGS = $(AM_CXXFLAGS) \
 			  -Wno-unused-variable -Wno-unused-but-set-variable \
 			  -Wno-unused-parameter -Wno-missing-field-initializers \
 			  -Wno-array-bounds -Wno-clobbered -Wno-strict-overflow \
 			  -Wno-sign-compare -Wno-write-strings \
 			  -msse4.2
+endif
 
 ######################################################################
 # PELOTON
