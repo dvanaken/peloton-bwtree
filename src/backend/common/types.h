@@ -90,7 +90,7 @@ class Value;
 #define MAP_ANONYMOUS MAP_ANON
 #endif
 #ifdef __APPLE__
-#define THREAD_LOCAL thread_local
+#define THREAD_LOCAL __thread
 #else
 #define THREAD_LOCAL thread_local
 #endif

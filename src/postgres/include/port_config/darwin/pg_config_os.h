@@ -4,7 +4,6 @@
 
 #if HAVE_DECL_F_FULLFSYNC		/* not present before OS X 10.3 */
 #define HAVE_FSYNC_WRITETHROUGH
-
-#define THREAD_LOCAL thread_local
-
 #endif
+
+#define THREAD_LOCAL __thread
