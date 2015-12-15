@@ -190,7 +190,7 @@ peloton_dml(PlanState *planstate,
     mapped_plan_ptr = peloton::bridge::PlanTransformer::GetInstance().GetCachedPlan(prepStmtName);
   }
 
-  /* A cache miss or an unnamed plan */
+  // A cache miss or an unnamed plan
   if (mapped_plan_ptr.get() == nullptr) {
     auto plan_state = peloton::bridge::DMLUtils::peloton_prepare_data(planstate);
     mapped_plan_ptr = peloton::bridge::PlanTransformer::GetInstance().TransformPlan(plan_state, prepStmtName);
@@ -200,6 +200,12 @@ peloton_dml(PlanState *planstate,
   if(mapped_plan_ptr.get() == nullptr) {
     elog(WARNING, "Empty or unrecognized plan sent to Peloton");
     return;
+  }
+
+  // Query compilation
+  if(peloton_enable_query_compilation == true) {
+    printf("Query compilation on \n");
+    // Do some stuff !
   }
 
   std::vector<peloton::oid_t> target_list;

@@ -45,9 +45,14 @@ typedef enum CachingType
   CACHING_ON   /* On */
 } CachingType;
 
+// Caching mode
 extern CachingType peloton_caching_mode;
 
+// Cache size for tile cache
 extern int peloton_tile_cache_size;
+
+// Enable query compilation module ?
+extern bool peloton_enable_query_compilation;
 
 //===--------------------------------------------------------------------===//
 // Peloton_Status     Sent by the peloton to share the status with backend.

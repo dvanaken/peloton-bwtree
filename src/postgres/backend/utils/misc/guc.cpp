@@ -521,6 +521,9 @@ int     peloton_tile_cache_size;
 // Directory for peloton logs
 char    *peloton_log_directory;
 
+// Enable query compilation module ?
+bool    peloton_enable_query_compilation;
+
 /*
  * This really belongs in pg_shmem.c, but is defined here so that it doesn't
  * need to be duplicated in all the different implementations of pg_shmem.c.
@@ -1683,6 +1686,17 @@ struct config_bool ConfigureNamesBool[] =
 		&data_checksums,
 		false,
 		NULL, NULL, NULL
+	},
+
+	// TODO: Peloton Changes
+	{
+    {"peloton_enable_query_compilation", PGC_USERSET, QUERY_TUNING_METHOD,
+      gettext_noop("Enables the query compilation module in Peloton."),
+      NULL
+    },
+    &peloton_enable_query_compilation,
+    false,
+    NULL, NULL, NULL
 	},
 
 	/* End-of-list marker */
