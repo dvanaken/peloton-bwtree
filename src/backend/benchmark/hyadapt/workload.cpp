@@ -1159,7 +1159,7 @@ void RunSubsetExperiment() {
   out.close();
 }
 
-static std::map<oid_t, oid_t> GetColumnMapStats(
+static std::map<oid_t, oid_t> GetColumnMapInfo(
     const peloton::storage::column_map_type& column_map) {
   std::map<oid_t, oid_t> column_map_stats;
 
@@ -1190,7 +1190,7 @@ static void CollectColumnMapStats() {
     auto col_map = tile_group->GetColumnMap();
 
     // Get stats
-    auto col_map_stats = GetColumnMapStats(col_map);
+    auto col_map_stats = GetColumnMapInfo(col_map);
 
     // Compare stats
     bool found = false;
@@ -1272,7 +1272,7 @@ static void Transform(double theta) {
     // Update partitioning periodically
     update_itr++;
     if(update_itr == update_period) {
-      hyadapt_table->UpdateDefaultPartition();
+      hyadapt_table->UpdateDefaultColumnMap();
       update_itr = 0;
     }
 
@@ -1468,7 +1468,7 @@ void RunWeightExperiment() {
 
         auto default_partition = clusterer.GetPartitioning(2);
 
-        auto col_map = GetColumnMapStats(default_partition);
+        auto col_map = GetColumnMapInfo(default_partition);
         auto split_point = col_map.at(0);
         state.split_point = split_point;
 
@@ -1517,7 +1517,7 @@ static void Reorg() {
   auto tile_group_count = hyadapt_table->GetTileGroupCount();
   double theta = 0.0;
 
-  hyadapt_table->UpdateDefaultPartition();
+  hyadapt_table->UpdateDefaultColumnMap();
 
   for(size_t tile_group_itr = 0; tile_group_itr < tile_group_count; tile_group_itr++){
     hyadapt_table->TransformTileGroup(tile_group_itr, theta);

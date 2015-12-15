@@ -56,7 +56,7 @@ DataTable::DataTable(catalog::Schema *schema,
   // Init default partition
   auto col_count = schema->GetColumnCount();
   for (oid_t col_itr = 0; col_itr < col_count; col_itr++) {
-    default_partition[col_itr] = std::make_pair(0, col_itr);
+    default_column_map_[col_itr] = std::make_pair(0, col_itr);
   }
 
   // Create a tile group.
@@ -479,7 +479,7 @@ column_map_type DataTable::GetTileGroupLayout(LayoutType layout_type) {
       }
     }
     else {
-      column_map = GetStaticColumnMap(table_name, col_count);
+      column_map = GenerateColumnMap(table_name, col_count);
     }
   }
   else{
@@ -810,7 +810,7 @@ storage::TileGroup *DataTable::TransformTileGroup(
   // Get orig tile group from catalog
   auto &catalog_manager = catalog::Manager::GetInstance();
   auto tile_group = catalog_manager.GetTileGroup(tile_group_id);
-  auto diff = tile_group->GetSchemaDifference(default_partition);
+  auto diff = tile_group->GetSchemaDifference(default_column_map_);
 
   // Check threshold for transformation
   if(diff < theta) {
@@ -818,13 +818,13 @@ storage::TileGroup *DataTable::TransformTileGroup(
   }
 
   // Get the schema for the new transformed tile group
-  auto new_schema = TransformTileGroupSchema(tile_group.get(), default_partition);
+  auto new_schema = TransformTileGroupSchema(tile_group.get(), default_column_map_);
 
   // Allocate space for the transformed tile group
   std::shared_ptr<storage::TileGroup> new_tile_group(TileGroupFactory::GetTileGroup(
       tile_group->GetDatabaseId(), tile_group->GetTableId(),
       tile_group->GetTileGroupId(), tile_group->GetAbstractTable(),
-      new_schema, default_partition,
+      new_schema, default_column_map_,
       tile_group->GetAllocatedTupleCount()));
 
   // Set the transformed tile group column-at-a-time
@@ -847,27 +847,11 @@ void DataTable::RecordSample(const brain::Sample& sample) {
 
 }
 
-const column_map_type& DataTable::GetDefaultPartition() {
-  return default_partition;
+const column_map_type& DataTable::GetDefaultColumnMap() {
+  return default_column_map_;
 }
 
-std::map<oid_t, oid_t> DataTable::GetColumnMapStats(){
-  std::map<oid_t, oid_t> column_map_stats;
-
-  // Cluster per-tile column count
-  for(auto entry : default_partition){
-    auto tile_id = entry.second.first;
-    auto column_map_itr = column_map_stats.find(tile_id);
-    if(column_map_itr == column_map_stats.end())
-      column_map_stats[tile_id] = 1;
-    else
-      column_map_stats[tile_id]++;
-  }
-
-  return std::move(column_map_stats);
-}
-
-void DataTable::UpdateDefaultPartition() {
+void DataTable::UpdateDefaultColumnMap() {
 
   oid_t column_count = GetSchema()->GetColumnCount();
 
@@ -893,14 +877,103 @@ void DataTable::UpdateDefaultPartition() {
   }
 
   // TODO: Max number of tiles
-  default_partition = clusterer.GetPartitioning(2);
+  default_column_map_ = clusterer.GetPartitioning(2);
+}
+
+// Get per tile group column map info
+static std::map<oid_t, oid_t> GetColumnMapInfo(
+    const peloton::storage::column_map_type& column_map) {
+  std::map<oid_t, oid_t> column_map_stats;
+
+  // Cluster per-tile column count
+  for(auto entry : column_map){
+    auto tile_id = entry.second.first;
+    auto column_map_itr = column_map_stats.find(tile_id);
+    if(column_map_itr == column_map_stats.end())
+      column_map_stats[tile_id] = 1;
+    else
+      column_map_stats[tile_id]++;
+  }
+
+  return std::move(column_map_stats);
+}
+
+void DataTable::UpdateColumnMapStats() {
+
+  // First, reset existing stats so that we can recompute it
+  column_map_stats.clear();
+
+  // Go over all the tile groups in the table
+  auto tile_group_count = tile_groups.size();
+  for(size_t tile_group_itr = 0; tile_group_itr < tile_group_count; tile_group_itr++) {
+
+    // Get column map
+    auto tile_group = GetTileGroup(tile_group_itr);
+    auto col_map = tile_group->GetColumnMap();
+
+    // Get column map info
+    auto col_map_info = GetColumnMapInfo(col_map);
+
+    // Compare stats
+    bool found = false;
+    for(auto col_map_stats_itr : column_map_stats) {
+
+      // Compare types
+      auto col_map_info_size = col_map_info.size();
+      auto entry = col_map_stats_itr.first;
+      auto entry_size = entry.size();
+
+      // Compare sizes
+      if(col_map_info_size != entry_size)
+        continue;
+
+      // Compare entries -- the column to tile mapping in different column map infos
+      bool match = true;
+      for(size_t entry_itr = 0; entry_itr < entry_size; entry_itr++) {
+        if(entry[entry_itr] != col_map_info[entry_itr]) {
+          match = false;
+          break;
+        }
+      }
+      if(match == false)
+        continue;
+
+      // Match found -- increase counter by one
+      column_map_stats[col_map_info]++;
+      found = true;
+      break;
+    }
+
+    // Add new column map info if not found
+    if(found == false)
+      column_map_stats[col_map_info] = 1;
+  }
+
+}
+
+void DataTable::PrintColumnMapStats() {
+
+  oid_t column_map_info_type_itr = 0;
+
+  for(auto column_map_stats_entry : column_map_stats) {
+    // First, print col map stats
+    std::cout << "Type " << column_map_info_type_itr << " -- ";
+
+    for(auto col_stats_itr : column_map_stats_entry.first)
+      std::cout << col_stats_itr.first << " " << col_stats_itr.second << " :: ";
+
+    // Next, print the count of tile groups with that layout
+    std::cout << column_map_stats_entry.second << "\n";
+    column_map_info_type_itr++;
+  }
+
 }
 
 //===--------------------------------------------------------------------===//
 // UTILS
 //===--------------------------------------------------------------------===//
 
-column_map_type DataTable::GetStaticColumnMap(std::string table_name, oid_t column_count){
+column_map_type DataTable::GenerateColumnMap(std::string table_name, oid_t column_count){
   column_map_type column_map;
 
   // HYADAPT

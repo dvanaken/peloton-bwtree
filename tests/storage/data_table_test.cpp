@@ -24,13 +24,15 @@ namespace test {
 //===--------------------------------------------------------------------===//
 
 TEST(DataTableTests, TransformTileGroupTest) {
-  const int tuple_count = TESTS_TUPLES_PER_TILEGROUP;
+  const int tuples_per_tile_group = TESTS_TUPLES_PER_TILEGROUP;
+  const int tile_group_count = 5;
+  const int tuple_count = tuples_per_tile_group * tile_group_count;
 
   // Create a table and wrap it in logical tiles
   std::unique_ptr<storage::DataTable> data_table(
-      ExecutorTestsUtil::CreateTable(tuple_count, false));
-  ExecutorTestsUtil::PopulateTable(data_table.get(), tuple_count, false, false,
-                                   true);
+      ExecutorTestsUtil::CreateTable(tuples_per_tile_group, false));
+  ExecutorTestsUtil::PopulateTable(data_table.get(), tuple_count,
+                                   false, false, true);
 
   // Create the new column map
   storage::column_map_type column_map;
@@ -61,6 +63,12 @@ TEST(DataTableTests, TransformTileGroupTest) {
 
   // Transform the tile group
   data_table->TransformTileGroup(0, theta);
+
+  // Update column map stats
+  data_table->UpdateColumnMapStats();
+
+  // Print column map stats
+  data_table->PrintColumnMapStats();
 
 }
 

@@ -179,7 +179,7 @@ class DataTable : public AbstractTable {
 
   void ResetDirty();
 
-  const column_map_type& GetDefaultPartition();
+  const column_map_type& GetDefaultColumnMap();
 
   //===--------------------------------------------------------------------===//
   // Clustering
@@ -187,7 +187,7 @@ class DataTable : public AbstractTable {
 
   void RecordSample(const brain::Sample& sample);
 
-  void UpdateDefaultPartition();
+  void UpdateDefaultColumnMap();
 
   //===--------------------------------------------------------------------===//
   // UTILITIES
@@ -199,12 +199,16 @@ class DataTable : public AbstractTable {
 
   bool HasForeignKeys() { return (GetForeignKeyCount() > 0); }
 
-  column_map_type GetStaticColumnMap(std::string table_name, oid_t column_count);
+  column_map_type GenerateColumnMap(std::string table_name, oid_t column_count);
 
   // Get a string representation of this table
   friend std::ostream &operator<<(std::ostream &os, const DataTable &table);
 
-  std::map<oid_t, oid_t> GetColumnMapStats();
+  // Update the column map stats for all the tile groups in the table
+  void UpdateColumnMapStats();
+
+  // Utility to print stats
+  void PrintColumnMapStats();
 
  protected:
   //===--------------------------------------------------------------------===//
@@ -277,10 +281,13 @@ class DataTable : public AbstractTable {
   bool adapt_table = true;
 
   // default partition map for table
-  column_map_type default_partition;
+  column_map_type default_column_map_;
 
   // samples for clustering
   std::vector<brain::Sample> samples;
+
+  // column maps stats
+  std::map<std::map<oid_t, oid_t>, oid_t> column_map_stats;
 };
 
 }  // End storage namespace
