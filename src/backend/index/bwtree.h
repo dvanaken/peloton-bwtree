@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "backend/common/types.h"
+#include "delta_types.h"
 
 namespace peloton {
 namespace index {
@@ -45,6 +46,9 @@ class BWTree {
 
     // Temporary node link used during structure modifications
     uint64_t smo_link_;
+
+    // Max key in this node
+    KeyType min_fence_;
 
     // Max key in this node
     KeyType max_fence_;
