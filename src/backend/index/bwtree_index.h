@@ -69,7 +69,7 @@ class BWTreeIndex : public Index {
 
  protected:
   // container
-  MapType container;
+  MapType container{true};
 
   // equality checker and comparator
   KeyEqualityChecker equals;

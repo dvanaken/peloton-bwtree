@@ -20,12 +20,24 @@ template <typename KeyType, typename ValueType, class KeyComparator>
 BWTree<KeyType, ValueType, KeyComparator>::BWTree() {
   root_ = 0;
   PID_counter_ = 1;
+  allow_duplicate_ = true;
 
   InnerNode* root_base_page = new InnerNode();
   map_table_[root_] = root_base_page;
 
   // Can't do this here because we're using atomic inside vector
   // map_table_.resize(1000000);
+}
+
+template <typename KeyType, typename ValueType, class KeyComparator>
+BWTree<KeyType, ValueType, KeyComparator>::BWTree(bool allow_duplicate) {
+  root_ = 0;
+  PID_counter_ = 1;
+  allow_duplicate_ = allow_duplicate;
+
+  InnerNode* root_base_page = new InnerNode();
+  map_table_[root_] = root_base_page;
+
 }
 
 template <typename KeyType, typename ValueType, class KeyComparator>
@@ -39,7 +51,9 @@ bool BWTree<KeyType, ValueType, KeyComparator>::Insert(const KeyType& key,
 
       // Construct our first leaf node
       LeafNode* leaf_base_page = new LeafNode();
-      leaf_base_page->data_items_.push_back(std::make_pair(key, data));
+      std::vector<ItemPointer> locations;
+      locations.push_back(data);
+      leaf_base_page->data_items_.push_back(std::make_pair(key, locations));
       leaf_base_page->low_key_ = key;
       leaf_base_page->high_key_ = key;
 

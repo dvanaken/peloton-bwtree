@@ -32,6 +32,7 @@ class BWTree {
  public:
 
   BWTree();
+  BWTree(bool allow_duplicate);
 
   // TODO: insert function
   bool Insert(const KeyType& key, const ValueType& data);
@@ -49,12 +50,10 @@ class BWTree {
   enum PageType {
     // For leaf nodes.
     LEAF_NODE,
-    // Because we only have pointers of data items, we actually don't need the
-    // modify operation.
-    // There's no update operation in bwtree_index.h, either.
-    INSERT_DELTA,
-    // MODIFY_DELTA,
-    DELETE_DELTA,
+    // Combine the following three to one for convenience.
+    //INSERT_DELTA,
+     MODIFY_DELTA,
+    //DELETE_DELTA,
 
     // For inner nodes.
     INNER_NODE,
@@ -108,7 +107,7 @@ class BWTree {
     PID prev_leaf_;
 
     // Keys and pointers to all data stored in this leaf
-    std::vector<std::pair<KeyType, ItemPointer>> data_items_;
+    std::vector<std::pair<KeyType, std::vector<ItemPointer>>> data_items_;
 
     // Temporary node link used during structure modifications
     PID side_link_;
@@ -177,24 +176,14 @@ class BWTree {
           physical_link_(new_sibling) {}
   };
 
-  class InsertDelta : public Page {
+  class ModifyDelta : public Page {
    public:
     KeyType key_;
 
-    ItemPointer location_;
+    std::vector<ItemPointer> locations_;
 
-    InsertDelta(KeyType key, ItemPointer location)
-        : Page(INSERT_DELTA), key_(key), location_(location) {}
-  };
-
-  class DeleteDelta : public Page {
-   public:
-    KeyType key_;
-
-    ItemPointer location_;
-
-    DeleteDelta(KeyType key, ItemPointer location)
-        : Page(DELETE_DELTA), key_(key), location_(location) {}
+    ModifyDelta(KeyType key, const std::vector<ItemPointer> &location)
+        : Page(MODIFY_DELTA), key_(key), locations_(location) {}
   };
 
 
@@ -225,6 +214,8 @@ class BWTree {
   // TODO: Because std::atomic is not CopyInsertable, we have to use a fix size
   // here. Need some sort of garbage collection later
   std::vector<std::atomic<Page*>> map_table_{1000000};
+
+  bool allow_duplicate_;
 };
 
 }  // End index namespace

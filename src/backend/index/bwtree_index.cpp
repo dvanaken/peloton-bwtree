@@ -39,9 +39,7 @@ bool BWTreeIndex<KeyType, ValueType, KeyComparator, KeyEqualityChecker>::InsertE
   index_key.SetFromKey(key);
 
   // Insert the key, val pair
-  container.Insert(index_key, location);
-
-  return true;
+  return container.Insert(index_key, location);
 }
 
 template <typename KeyType, typename ValueType, class KeyComparator, class KeyEqualityChecker>
