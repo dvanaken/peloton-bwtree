@@ -25,7 +25,7 @@ namespace index {
 template <typename KeyType, typename ValueType, class KeyComparator>
 class BWTree {
   using PID = std::uint64_t;
-  constexpr PID NullPID = std::numeric_limits<PID>::max();
+  static constexpr PID NullPID = std::numeric_limits<PID>::max();
 
  public:
   enum PageType {
@@ -51,6 +51,7 @@ class BWTree {
   };
 
   // TODO: insert function
+  bool insert(const KeyType& key, const ValueType& data);
 
   // TODO: delete function
 
@@ -84,7 +85,7 @@ class BWTree {
     // Max key in this node
     KeyType high_key_;
 
-    InnerNode(): Page(INNER_NODE), side_link_(NullPID) {}
+    InnerNode() : Page(INNER_NODE), side_link_(NullPID) {}
   };
 
   class LeafNode : public Page {
@@ -107,7 +108,11 @@ class BWTree {
     // Max key in this node
     KeyType high_key_;
 
-    LeafNode(): Page(LEAF_NODE), side_link_(NullPID), next_leaf_(NullPID), prev_leaf_(NullPID) {}
+    LeafNode()
+        : Page(LEAF_NODE),
+          next_leaf_(NullPID),
+          prev_leaf_(NullPID),
+          side_link_(NullPID) {}
   };
 
   class SplitDelta : public Page {
@@ -181,6 +186,9 @@ class BWTree {
 
   // PID of the root node
   PID root_;
+
+  // Counter for the current PID
+  PID PID_counter_;
 
   // Maps node PIDs to memory locations
   std::unordered_map<PID, void*> map_table_;
