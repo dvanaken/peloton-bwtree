@@ -21,6 +21,9 @@ BWTree<KeyType, ValueType, KeyComparator>::BWTree() {
   root_ = 0;
   PID_counter_ = 1;
 
+  InnerNode* root_base_page = new InnerNode();
+  map_table_[root_] = root_base_page;
+
   // Can't do this here because we're using atomic inside vector
   // map_table_.resize(1000000);
 }
