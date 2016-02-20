@@ -14,8 +14,10 @@
 
 #include <unordered_map>
 #include <vector>
+#include <atomic>
 
 #include "backend/common/types.h"
+#include "backend/common/logger.h"
 
 namespace peloton {
 namespace index {
@@ -28,6 +30,22 @@ class BWTree {
   static constexpr PID NullPID = std::numeric_limits<PID>::max();
 
  public:
+
+  BWTree();
+
+  // TODO: insert function
+  bool Insert(const KeyType& key, const ValueType& data);
+
+  // TODO: delete function
+
+  // TODO: update function
+
+  // TODO: search function
+
+ private:
+
+  // ***** Different types of page records
+
   enum PageType {
     // For leaf nodes.
     LEAF_NODE,
@@ -50,31 +68,24 @@ class BWTree {
     // INDEX_TERM_DELETE_DELTA
   };
 
-  // TODO: insert function
-  bool insert(const KeyType& key, const ValueType& data);
-
-  // TODO: delete function
-
-  // TODO: update function
-
-  // TODO: search function
-
- private:
   class Page {
    protected:
     PageType type_;
+    Page* delta_next_;
 
    public:
-    Page(PageType type) : type_(type) {}
+    Page(PageType type) : type_(type) { delta_next_ = nullptr; }
 
     const inline PageType& GetType() const { return type_; }
+
+    inline void SetDeltaNext(Page* next) { delta_next_ = next; }
   };
 
   class InnerNode : public Page {
    public:
     // Separator keys and links for the children
     // The key in the pair is the high_key_ of the child.
-    std::vector<std::pair<KeyType, PID> > children_;
+    std::vector<std::pair<KeyType, PID>> children_;
 
     // Node link used during structure modifications
     PID side_link_;
@@ -97,7 +108,7 @@ class BWTree {
     PID prev_leaf_;
 
     // Keys and pointers to all data stored in this leaf
-    std::vector<std::pair<KeyType, ItemPointer> > data_items_;
+    std::vector<std::pair<KeyType, ItemPointer>> data_items_;
 
     // Temporary node link used during structure modifications
     PID side_link_;
@@ -129,7 +140,9 @@ class BWTree {
   };
 
   // Direct to records greater than low_separator_ and less than or equal to
-  // high_separator_
+  // high_separator_.
+  // Special case: when low_separator_ equals to high_separator, IndexTermDelta
+  // will direct to that key.
   class IndexTermDelta : public Page {
    public:
     KeyType low_separator_;
@@ -156,9 +169,9 @@ class BWTree {
     // Direct all records greater than separator_ to physical_link_
     KeyType separator_;
 
-    void* physical_link_;
+    Page* physical_link_;
 
-    NodeMergeDelta(KeyType separator_key, void* new_sibling)
+    NodeMergeDelta(KeyType separator_key, Page* new_sibling)
         : Page(NODE_MERGE_DELTA),
           separator_(separator_key),
           physical_link_(new_sibling) {}
@@ -184,14 +197,34 @@ class BWTree {
         : Page(DELETE_DELTA), key_(key), location_(location) {}
   };
 
+
+  // ***** Functions for internal usage
+
+  inline PID InstallNewMapping(Page* new_page) {
+    PID new_slot = PID_counter_++;
+
+    if (PID_counter_ >= map_table_.size()) {
+      LOG_ERROR("FATAL: Not enough space in mapping table!");
+      return NullPID;
+    }
+
+    map_table_[new_slot] = new_page;
+    return new_slot;
+  }
+
+
+  // ***** Member variables
+
   // PID of the root node
   PID root_;
 
   // Counter for the current PID
-  PID PID_counter_;
+  std::atomic<PID> PID_counter_;
 
   // Maps node PIDs to memory locations
-  std::unordered_map<PID, void*> map_table_;
+  // TODO: Because std::atomic is not CopyInsertable, we have to use a fix size
+  // here. Need some sort of garbage collection later
+  std::vector<std::atomic<Page*>> map_table_{1000000};
 };
 
 }  // End index namespace

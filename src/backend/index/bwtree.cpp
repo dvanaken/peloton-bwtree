@@ -17,9 +17,49 @@ namespace peloton {
 namespace index {
 
 template <typename KeyType, typename ValueType, class KeyComparator>
-bool BWTree<KeyType, ValueType, KeyComparator>::insert(const KeyType& key,
+BWTree<KeyType, ValueType, KeyComparator>::BWTree() {
+  root_ = 0;
+  PID_counter_ = 1;
+
+  // Can't do this here because we're using atomic inside vector
+  // map_table_.resize(1000000);
+}
+
+template <typename KeyType, typename ValueType, class KeyComparator>
+bool BWTree<KeyType, ValueType, KeyComparator>::Insert(const KeyType& key,
                                                        const ValueType& data) {
-  insert(key, data);
+  while (true) {
+    Page* root_page = map_table_[root_];
+    if (root_page->GetType() == INNER_NODE &&
+        reinterpret_cast<InnerNode*>(root_page)->children_.size() == 0) {
+      // InnerNode* root_base_page = reinterpret_cast<InnerNode*>(root_page);
+
+      // Construct our first leaf node
+      LeafNode* leaf_base_page = new LeafNode();
+      leaf_base_page->data_items_.push_back(std::make_pair(key, data));
+      leaf_base_page->low_key_ = key;
+      leaf_base_page->high_key_ = key;
+
+      // Install the leaf node to mapping table
+      PID leaf_PID = InstallNewMapping(leaf_base_page);
+
+      // Construct the index term delta record
+      IndexTermDelta* index_term_page = new IndexTermDelta(key, key, leaf_PID);
+      index_term_page->SetDeltaNext(root_page);
+
+      // If prepending the IndexTermDelta fails, we need to free the resource
+      // and start over the insert again.
+      if (map_table_[root_].compare_exchange_strong(root_page,
+                                                    index_term_page)) {
+        return true;
+      } else {
+        // TODO: Garbage collect leaf_base_page, index_term_page and leaf_PID.
+
+        continue;
+      }
+    }
+  }
+
   return false;
 }
 
