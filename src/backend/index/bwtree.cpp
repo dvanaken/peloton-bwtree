@@ -18,11 +18,12 @@
 namespace peloton {
 namespace index {
 
-template <typename KeyType, typename ValueType, class KeyComparator, class KeyEqualityChecker>
-BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker>::BWTree(
-    const KeyComparator& comparator,
-    const KeyEqualityChecker& equals) 
-      : comparator_(comparator), equals_(equals) {
+template <typename KeyType, typename ValueType, class KeyComparator,
+          class KeyEqualityChecker, class ValueEqualityChecker>
+BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
+       ValueEqualityChecker>::BWTree(const KeyComparator& comparator,
+                                     const KeyEqualityChecker& equals)
+    : comparator_(comparator), equals_(equals) {
   root_ = 0;
   PID_counter_ = 1;
   allow_duplicate_ = true;
@@ -35,24 +36,28 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker>::BWTree(
 }
 
 // TODO (dana): can't get this to compile after I add the allow_duplicate param
-// template <typename KeyType, typename ValueType, class KeyComparator, class KeyEqualityChecker>
+// template <typename KeyType, typename ValueType, class KeyComparator, class
+// KeyEqualityChecker>
 // BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker>::BWTree(
 //     const KeyComparator& comparator,
 //     const KeyEqualityChecker& equals,
-//     bool allow_duplicate) 
-//       : comparator_(comparator), equals_(equals), allow_duplicate_(allow_duplicate) {
+//     bool allow_duplicate)
+//       : comparator_(comparator), equals_(equals),
+//       allow_duplicate_(allow_duplicate) {
 //   root_ = 0;
 //   PID_counter_ = 1;
 //   allow_duplicate_ = allow_duplicate;
-// 
+//
 //   InnerNode* root_base_page = new InnerNode();
 //   map_table_[root_] = root_base_page;
-// 
+//
 // }
 
-template <typename KeyType, typename ValueType, class KeyComparator, class KeyEqualityChecker>
-bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker>::Insert(const KeyType& key,
-                                                                           const ValueType& data) {
+template <typename KeyType, typename ValueType, class KeyComparator,
+          class KeyEqualityChecker, class ValueEqualityChecker>
+bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
+            ValueEqualityChecker>::Insert(const KeyType& key,
+                                          const ValueType& data) {
   while (true) {
     Page* root_page = map_table_[root_];
     if (root_page->GetType() == INNER_NODE &&
@@ -61,7 +66,7 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker>::Insert(const
 
       // Construct our first leaf node
       LeafNode* leaf_base_page = new LeafNode();
-      std::vector<ItemPointer> locations;
+      std::vector<ValueType> locations;
       locations.push_back(data);
       leaf_base_page->data_items_.push_back(std::make_pair(key, locations));
       leaf_base_page->low_key_ = key;
@@ -89,9 +94,10 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker>::Insert(const
         continue;
       }
     } else {
+      std::stack<PID> pages_visited;  // To remember parent nodes traversed on
+                                      // our search path
       Page* current_page = root_page;
       PID current_PID = root_;
-      //std::stack<PID> pages_visited; // To remember parent nodes traversed on our search path
       bool attempt_insert = true;
       while (attempt_insert) {
         switch (current_page->GetType()) {
@@ -108,9 +114,10 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker>::Insert(const
               current_PID = idx_delta->side_link_;
               current_page = map_table_[current_PID];
             } else {
-              // This key does not fall within the boundary represented by this index term
+              // This key does not fall within the boundary represented by this
+              // index term
               // delta record. Keep traversing the delta chain.
-              current_page = current_page->GetDeltaNext(); 
+              current_page = current_page->GetDeltaNext();
             }
             continue;
           }
@@ -127,9 +134,11 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker>::Insert(const
             break;
           }
           case LEAF_NODE: {
-            __attribute__((unused)) LeafNode* leaf = reinterpret_cast<LeafNode*>(current_page);
+            __attribute__((unused)) LeafNode* leaf =
+                reinterpret_cast<LeafNode*>(current_page);
             // Do binary search on data_items_ to see if key is in list
-            // It's ok if it's in the tree already if we allow duplicates, otherwise return false
+            // It's ok if it's in the tree already if we allow duplicates,
+            // otherwise return false
             break;
           }
           case MODIFY_DELTA: {
@@ -147,12 +156,14 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker>::Insert(const
                 // Key already exists in tree and duplicates are not allowed
                 inserted = false;
               } else {
-                auto found = std::find_if(mod_delta->locations_.begin(),
-                    mod_delta->locations_.end(), [] (__attribute__((unused)) const ValueType& value) { 
-                  // TODO: use ItemComparator here
-                  return false;
-                });
-                if (found != mod_delta->locations_.end()) {
+                bool found = false;
+                for (auto value : mod_delta->locations_) {
+                  if (value_equals_(value, data)) {
+                    found = true;
+                    break;
+                  }
+                }
+                if (found) {
                   // TODO: if we find the exact same <key, value> pair when duplicates are enabled,
                   // does the insert fail? Or does it "succeed" but we don't have to do anything?
                   inserted = true;
@@ -186,6 +197,7 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker>::Insert(const
                 // TODO: Garbage collect new_modify_delta.
 
                 attempt_insert = false; // Start over
+                continue;
               }
             }
             return inserted;
@@ -203,41 +215,41 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker>::Insert(const
 
 // Explicit template instantiation
 template class BWTree<IntsKey<1>, ItemPointer, IntsComparator<1>,
-IntsEqualityChecker<1> >;
+                      IntsEqualityChecker<1> >;
 template class BWTree<IntsKey<2>, ItemPointer, IntsComparator<2>,
-IntsEqualityChecker<2> >;
+                      IntsEqualityChecker<2> >;
 template class BWTree<IntsKey<3>, ItemPointer, IntsComparator<3>,
-IntsEqualityChecker<3> >;
+                      IntsEqualityChecker<3> >;
 template class BWTree<IntsKey<4>, ItemPointer, IntsComparator<4>,
-IntsEqualityChecker<4> >;
+                      IntsEqualityChecker<4> >;
 
 template class BWTree<GenericKey<4>, ItemPointer, GenericComparator<4>,
-GenericEqualityChecker<4> >;
+                      GenericEqualityChecker<4> >;
 template class BWTree<GenericKey<8>, ItemPointer, GenericComparator<8>,
-GenericEqualityChecker<8> >;
+                      GenericEqualityChecker<8> >;
 template class BWTree<GenericKey<12>, ItemPointer, GenericComparator<12>,
-GenericEqualityChecker<12> >;
+                      GenericEqualityChecker<12> >;
 template class BWTree<GenericKey<16>, ItemPointer, GenericComparator<16>,
-GenericEqualityChecker<16> >;
+                      GenericEqualityChecker<16> >;
 template class BWTree<GenericKey<24>, ItemPointer, GenericComparator<24>,
-GenericEqualityChecker<24> >;
+                      GenericEqualityChecker<24> >;
 template class BWTree<GenericKey<32>, ItemPointer, GenericComparator<32>,
-GenericEqualityChecker<32> >;
+                      GenericEqualityChecker<32> >;
 template class BWTree<GenericKey<48>, ItemPointer, GenericComparator<48>,
-GenericEqualityChecker<48> >;
+                      GenericEqualityChecker<48> >;
 template class BWTree<GenericKey<64>, ItemPointer, GenericComparator<64>,
-GenericEqualityChecker<64> >;
+                      GenericEqualityChecker<64> >;
 template class BWTree<GenericKey<96>, ItemPointer, GenericComparator<96>,
-GenericEqualityChecker<96> >;
+                      GenericEqualityChecker<96> >;
 template class BWTree<GenericKey<128>, ItemPointer, GenericComparator<128>,
-GenericEqualityChecker<128> >;
+                      GenericEqualityChecker<128> >;
 template class BWTree<GenericKey<256>, ItemPointer, GenericComparator<256>,
-GenericEqualityChecker<256> >;
+                      GenericEqualityChecker<256> >;
 template class BWTree<GenericKey<512>, ItemPointer, GenericComparator<512>,
-GenericEqualityChecker<512> >;
+                      GenericEqualityChecker<512> >;
 
 template class BWTree<TupleKey, ItemPointer, TupleKeyComparator,
-TupleKeyEqualityChecker>;
+                      TupleKeyEqualityChecker>;
 
 }  // End index namespace
 }  // End peloton namespace
