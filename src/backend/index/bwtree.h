@@ -24,21 +24,22 @@ namespace index {
 
 // Look up the stx btree interface for background.
 // peloton/third_party/stx/btree.h
-template <typename KeyType, typename ValueType, class KeyComparator, class KeyEqualityChecker>
+template <typename KeyType, typename ValueType, class KeyComparator,
+          class KeyEqualityChecker>
 class BWTree {
   using PID = std::uint64_t;
   static constexpr PID NullPID = std::numeric_limits<PID>::max();
 
  public:
+  BWTree(const KeyComparator& comparator, const KeyEqualityChecker& equals);
 
-  BWTree(const KeyComparator& comparator, const KeyEqualityChecker& equals); 
+  // TODO (dana): I can't get this to compile after I add allow_duplicate as a
+  // param
+  // BWTree(const KeyComparator& comparator, const KeyEqualityChecker& equals,
+  //  bool allow_duplicate);
 
-  // TODO (dana): I can't get this to compile after I add allow_duplicate as a param
-  //BWTree(const KeyComparator& comparator, const KeyEqualityChecker& equals,
-  //  bool allow_duplicate); 
-
-  //BWTree();
-  //BWTree(bool allow_duplicate);
+  // BWTree();
+  // BWTree(bool allow_duplicate);
 
   // TODO: insert function
   bool Insert(const KeyType& key, const ValueType& data);
@@ -50,16 +51,15 @@ class BWTree {
   // TODO: search function
 
  private:
-
   // ***** Different types of page records
 
   enum PageType {
     // For leaf nodes.
     LEAF_NODE,
     // Combine the following three to one for convenience.
-    //INSERT_DELTA,
-     MODIFY_DELTA,
-    //DELETE_DELTA,
+    // INSERT_DELTA,
+    MODIFY_DELTA,
+    // DELETE_DELTA,
 
     // For inner nodes.
     INNER_NODE,
@@ -88,6 +88,11 @@ class BWTree {
     inline Page* GetDeltaNext() { return delta_next_; }
   };
 
+  // A key belongs to an InnerNode if at least one of the following exists:
+  // (1) absolute_min_ == true && absolute_max_ == true
+  // (2) absolute_min_ == true && key <= children_.rbegin()->first
+  // (3) absolute_max == true && key > children_.begin()->first
+  // (4) children_.begin()->first < key <= children_.begin()->first
   class InnerNode : public Page {
    public:
     // Separator keys and links for the children
@@ -103,9 +108,24 @@ class BWTree {
     // Max key in this node
     KeyType high_key_;
 
-    InnerNode() : Page(INNER_NODE), side_link_(NullPID) {}
+    // Indicate whether the rage contains min KeyType
+    bool absolute_min_;
+
+    // Indicate whether the rage contains max KeyType
+    bool absolute_max_;
+
+    InnerNode()
+        : Page(INNER_NODE),
+          side_link_(NullPID),
+          absolute_min_(false),
+          absolute_max_(false) {}
   };
 
+  // A key belongs to an LeafNode if at least one of the following exists:
+  // (1) absolute_min_ == true && absolute_max_ == true
+  // (2) absolute_min_ == true && key <= data_items.rbegin()->first
+  // (3) absolute_max == true && key > data_items_.begin()->first
+  // (4) data_items_.begin()->first < key <= data_items_.rbegin()->first
   class LeafNode : public Page {
    public:
     // PID of next child
@@ -126,11 +146,19 @@ class BWTree {
     // Max key in this node
     KeyType high_key_;
 
+    // Indicate whether the rage contains min KeyType
+    bool absolute_min_;
+
+    // Indicate whether the rage contains max KeyType
+    bool absolute_max_;
+
     LeafNode()
         : Page(LEAF_NODE),
           next_leaf_(NullPID),
           prev_leaf_(NullPID),
-          side_link_(NullPID) {}
+          side_link_(NullPID),
+          absolute_min_(false),
+          absolute_max_(false) {}
   };
 
   class SplitDelta : public Page {
@@ -148,12 +176,20 @@ class BWTree {
 
   // Direct to records greater than low_separator_ and less than or equal to
   // high_separator_.
-  // Special case: when low_separator_ equals to high_separator, IndexTermDelta
-  // will direct to that key.
+  // A key belongs to an IndexTermDelta if at least one of the following exists:
+  // (1) absolute_min_ == true && absolute_max_ == true
+  // (2) absolute_min_ == true && key <= high_separator_
+  // (3) absolute_max == true && key > low_separator_
+  // (4) low_separator < key <= high_separator_
   class IndexTermDelta : public Page {
    public:
     KeyType low_separator_;
     KeyType high_separator_;
+
+    // Indicate whether the rage contains min KeyType
+    bool absolute_min_;
+    // Indicate whether the rage contains max KeyType
+    bool absolute_max_;
 
     PID side_link_;
 
@@ -162,7 +198,10 @@ class BWTree {
         : Page(INDEX_TERM_DELTA),
           low_separator_(low_separator_key),
           high_separator_(high_separator_key),
-          side_link_(new_sibling) {}
+          side_link_(new_sibling) {
+      absolute_min_ = false;
+      absolute_max_ = false;
+    }
   };
 
   // Stops all further use of node
@@ -190,10 +229,9 @@ class BWTree {
 
     std::vector<ItemPointer> locations_;
 
-    ModifyDelta(KeyType key, const std::vector<ItemPointer> &location)
+    ModifyDelta(KeyType key, const std::vector<ItemPointer>& location)
         : Page(MODIFY_DELTA), key_(key), locations_(location) {}
   };
-
 
   // ***** Functions for internal usage
 
@@ -208,7 +246,6 @@ class BWTree {
     map_table_[new_slot] = new_page;
     return new_slot;
   }
-
 
   // ***** Member variables
 
@@ -231,7 +268,6 @@ class BWTree {
 
   // Key equality function object
   KeyEqualityChecker equals_;
-
 };
 
 }  // End index namespace

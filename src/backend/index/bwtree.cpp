@@ -66,12 +66,16 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker>::Insert(const
       leaf_base_page->data_items_.push_back(std::make_pair(key, locations));
       leaf_base_page->low_key_ = key; // Need some way to represent -inf for this KeyType
       leaf_base_page->high_key_ = key; // Need some way to represent +inf for this KeyType
+      leaf_base_page->absolute_min_ = true;
+      leaf_base_page->absolute_max_ = true;
 
       // Install the leaf node to mapping table
       PID leaf_PID = InstallNewMapping(leaf_base_page);
 
       // Construct the index term delta record
       IndexTermDelta* index_term_page = new IndexTermDelta(key, key, leaf_PID);
+      index_term_page->absolute_max_ = true;
+      index_term_page->absolute_min_ = true;
       index_term_page->SetDeltaNext(root_page);
 
       // If prepending the IndexTermDelta fails, we need to free the resource
