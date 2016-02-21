@@ -30,6 +30,8 @@ void RunAggregateTest();
 
 void RunArithmeticTest();
 
+void RunJoinTest();
+
 void RunSubsetTest(SubsetType subset_test_type, double fraction);
 
 void RunProjectivityExperiment();
@@ -49,6 +51,12 @@ void RunWeightExperiment();
 void RunReorgExperiment();
 
 void RunDistributionExperiment();
+
+void RunJoinExperiment();
+
+void RunInsertExperiment();
+
+void RunVersionExperiment();
 
 }  // namespace hyadapt
 }  // namespace benchmark
