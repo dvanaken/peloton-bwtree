@@ -48,7 +48,7 @@ namespace peloton {
 // Enable debugging mode if needed
 #ifdef DEBUG
 // Defaults to LOG_LEVEL_INFO
-#define LOG_LEVEL LOG_LEVEL_INFO
+#define LOG_LEVEL LOG_LEVEL_DEBUG
 #endif
 #endif
 
