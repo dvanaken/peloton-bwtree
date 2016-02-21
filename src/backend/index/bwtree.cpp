@@ -85,54 +85,66 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker>::Insert(const
         continue;
       }
     } else {
-      //Page* current_page = root_page;
-      //std::stack<PID> pages_visited; // To remember parent nodes traversed on our search path
-      //while (true) {
-      //  switch (current_page->GetType()) {
-      //    case INNER_NODE: {
-      //      break;
-      //    }
-      //    case INDEX_TERM_DELTA: {
-      //      IndexTermDelta* idx_delta = reinterpret_cast<IndexTermDelta*>(current_page);
-      //      // If this key is > low_separator_ and <= high_separator_ OR
-      //      // if special case: low_separator_ == high_separator_ then
-      //      // we have found the child we need to visit next.
-      //      if (comparator_.Compare(idx_delta->low_separator_, idx_delta->high_separator_) == 0 ||
-      //           (comparator_.Compare(key, idx_delta->low_separator_) > 0 &&
-      //            comparator_.Compare(key, idx_delta->high_separator_) <= 0)) {
-      //        // Visit this child node now
-      //        current_page = map_table_[idx_delta->side_link_];
-      //      } else {
-      //        // This key does not fall within the boundary represented by this index term
-      //        // delta record. Keep traversing the delta chain.
-      //        current_page = current_page->delta_next_; 
-      //      }
-      //      continue;
-      //    }
-      //    case SPLIT_DELTA: {
-      //      break;
-      //    }
-      //    case REMOVE_NODE_DELTA: {
-      //      break;
-      //    }
-      //    case NODE_MERGE_DELTA: {
-      //      break;
-      //    }
-      //    case LEAF_NODE: {
-      //      // Look for actual key-value
-      //      // consider when duplicates are allowed or not
-      //      __attribute__((unused)) LeafNode* leaf = reinterpret_cast<LeafNode*>(current_page);
-      //      break;
-      //    }
-      //    case MODIFY_DELTA: {
-      //      __attribute__((unused)) ModifyDelta* mod_delta = reinterpret_cast<ModifyDelta*>(current_page);
-      //      break;
-      //    }
-      //    default:
-      //      throw IndexException("Unrecognized page type\n");
-      //      break;
-      //  }
-      //}
+      Page* current_page = root_page;
+      std::stack<PID> pages_visited; // To remember parent nodes traversed on our search path
+      while (true) {
+        switch (current_page->GetType()) {
+          case INNER_NODE: {
+            break;
+          }
+          case INDEX_TERM_DELTA: {
+            IndexTermDelta* idx_delta = reinterpret_cast<IndexTermDelta*>(current_page);
+            // If this key is > low_separator_ and <= high_separator_ OR
+            // if special case: low_separator_ == high_separator_ then
+            // we have found the child we need to visit next.
+            if (equals_(idx_delta->low_separator_, idx_delta->high_separator_) ||
+                 (comparator_(key, idx_delta->low_separator_) > 0 &&
+                  comparator_(key, idx_delta->high_separator_) <= 0)) {
+              // Visit this child node now
+              current_page = map_table_[idx_delta->side_link_];
+            } else {
+              // This key does not fall within the boundary represented by this index term
+              // delta record. Keep traversing the delta chain.
+              current_page = current_page->GetDeltaNext(); 
+            }
+            continue;
+          }
+          case SPLIT_DELTA: {
+            // TODO (dana)
+            break;
+          }
+          case REMOVE_NODE_DELTA: {
+            // TODO (dana)
+            break;
+          }
+          case NODE_MERGE_DELTA: {
+            // TODO (dana)
+            break;
+          }
+          case LEAF_NODE: {
+            __attribute__((unused)) LeafNode* leaf = reinterpret_cast<LeafNode*>(current_page);
+            // Do binary search on data_items_ to see if key is in list
+            // It's ok if it's in the tree already if we allow duplicates, otherwise return false
+            break;
+          }
+          case MODIFY_DELTA: {
+            __attribute__((unused)) ModifyDelta* mod_delta = reinterpret_cast<ModifyDelta*>(current_page);
+            if (equals_(key, mod_delta->key_)) {
+              // TODO: need ItemComparator
+              // Compare this item with all items in list
+              // Insert if not in the tree, otherwise success depends on the duplicate keys policy
+            } else {
+              // This is not our key so keep traversing the delta chain
+              current_page = current_page->GetDeltaNext(); 
+              continue;
+            }
+            break;
+          }
+          default:
+            throw IndexException("Unrecognized page type\n");
+            break;
+        }
+      }
     }
   }
 

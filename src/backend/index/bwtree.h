@@ -84,6 +84,8 @@ class BWTree {
     const inline PageType& GetType() const { return type_; }
 
     inline void SetDeltaNext(Page* next) { delta_next_ = next; }
+
+    inline Page* GetDeltaNext() { return delta_next_; }
   };
 
   class InnerNode : public Page {
