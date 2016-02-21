@@ -24,15 +24,21 @@ namespace index {
 
 // Look up the stx btree interface for background.
 // peloton/third_party/stx/btree.h
-template <typename KeyType, typename ValueType, typename KeyComparator, typename KeyEqualityChecker>
+template <typename KeyType, typename ValueType, class KeyComparator, class KeyEqualityChecker>
 class BWTree {
   using PID = std::uint64_t;
   static constexpr PID NullPID = std::numeric_limits<PID>::max();
 
  public:
 
-  BWTree();
-  BWTree(bool allow_duplicate);
+  BWTree(const KeyComparator& comparator, const KeyEqualityChecker& equals); 
+
+  // TODO (dana): I can't get this to compile after I add allow_duplicate as a param
+  //BWTree(const KeyComparator& comparator, const KeyEqualityChecker& equals,
+  //  bool allow_duplicate); 
+
+  //BWTree();
+  //BWTree(bool allow_duplicate);
 
   // TODO: insert function
   bool Insert(const KeyType& key, const ValueType& data);
@@ -215,7 +221,15 @@ class BWTree {
   // here. Need some sort of garbage collection later
   std::vector<std::atomic<Page*>> map_table_{1000000};
 
+  // True if duplicate keys are permitted
   bool allow_duplicate_;
+
+  // Key comparison function object
+  KeyComparator comparator_;
+
+  // Key equality function object
+  KeyEqualityChecker equals_;
+
 };
 
 }  // End index namespace

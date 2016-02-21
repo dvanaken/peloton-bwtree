@@ -10,14 +10,19 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include <stack>
+
 #include "backend/index/bwtree.h"
 #include "backend/index/index_key.h"
 
 namespace peloton {
 namespace index {
 
-template <typename KeyType, typename ValueType, typename KeyComparator, typename KeyEqualityChecker>
-BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker>::BWTree() {
+template <typename KeyType, typename ValueType, class KeyComparator, class KeyEqualityChecker>
+BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker>::BWTree(
+    const KeyComparator& comparator,
+    const KeyEqualityChecker& equals) 
+      : comparator_(comparator), equals_(equals) {
   root_ = 0;
   PID_counter_ = 1;
   allow_duplicate_ = true;
@@ -29,18 +34,23 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker>::BWTree() {
   // map_table_.resize(1000000);
 }
 
-template <typename KeyType, typename ValueType, typename KeyComparator, typename KeyEqualityChecker>
-BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker>::BWTree(bool allow_duplicate) {
-  root_ = 0;
-  PID_counter_ = 1;
-  allow_duplicate_ = allow_duplicate;
+// TODO (dana): can't get this to compile after I add the allow_duplicate param
+// template <typename KeyType, typename ValueType, class KeyComparator, class KeyEqualityChecker>
+// BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker>::BWTree(
+//     const KeyComparator& comparator,
+//     const KeyEqualityChecker& equals,
+//     bool allow_duplicate) 
+//       : comparator_(comparator), equals_(equals), allow_duplicate_(allow_duplicate) {
+//   root_ = 0;
+//   PID_counter_ = 1;
+//   allow_duplicate_ = allow_duplicate;
+// 
+//   InnerNode* root_base_page = new InnerNode();
+//   map_table_[root_] = root_base_page;
+// 
+// }
 
-  InnerNode* root_base_page = new InnerNode();
-  map_table_[root_] = root_base_page;
-
-}
-
-template <typename KeyType, typename ValueType, typename KeyComparator, typename KeyEqualityChecker>
+template <typename KeyType, typename ValueType, class KeyComparator, class KeyEqualityChecker>
 bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker>::Insert(const KeyType& key,
                                                                            const ValueType& data) {
   while (true) {
@@ -54,8 +64,8 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker>::Insert(const
       std::vector<ItemPointer> locations;
       locations.push_back(data);
       leaf_base_page->data_items_.push_back(std::make_pair(key, locations));
-      leaf_base_page->low_key_ = key;
-      leaf_base_page->high_key_ = key;
+      leaf_base_page->low_key_ = key; // Need some way to represent -inf for this KeyType
+      leaf_base_page->high_key_ = key; // Need some way to represent +inf for this KeyType
 
       // Install the leaf node to mapping table
       PID leaf_PID = InstallNewMapping(leaf_base_page);
@@ -74,6 +84,55 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker>::Insert(const
 
         continue;
       }
+    } else {
+      //Page* current_page = root_page;
+      //std::stack<PID> pages_visited; // To remember parent nodes traversed on our search path
+      //while (true) {
+      //  switch (current_page->GetType()) {
+      //    case INNER_NODE: {
+      //      break;
+      //    }
+      //    case INDEX_TERM_DELTA: {
+      //      IndexTermDelta* idx_delta = reinterpret_cast<IndexTermDelta*>(current_page);
+      //      // If this key is > low_separator_ and <= high_separator_ OR
+      //      // if special case: low_separator_ == high_separator_ then
+      //      // we have found the child we need to visit next.
+      //      if (comparator_.Compare(idx_delta->low_separator_, idx_delta->high_separator_) == 0 ||
+      //           (comparator_.Compare(key, idx_delta->low_separator_) > 0 &&
+      //            comparator_.Compare(key, idx_delta->high_separator_) <= 0)) {
+      //        // Visit this child node now
+      //        current_page = map_table_[idx_delta->side_link_];
+      //      } else {
+      //        // This key does not fall within the boundary represented by this index term
+      //        // delta record. Keep traversing the delta chain.
+      //        current_page = current_page->delta_next_; 
+      //      }
+      //      continue;
+      //    }
+      //    case SPLIT_DELTA: {
+      //      break;
+      //    }
+      //    case REMOVE_NODE_DELTA: {
+      //      break;
+      //    }
+      //    case NODE_MERGE_DELTA: {
+      //      break;
+      //    }
+      //    case LEAF_NODE: {
+      //      // Look for actual key-value
+      //      // consider when duplicates are allowed or not
+      //      __attribute__((unused)) LeafNode* leaf = reinterpret_cast<LeafNode*>(current_page);
+      //      break;
+      //    }
+      //    case MODIFY_DELTA: {
+      //      __attribute__((unused)) ModifyDelta* mod_delta = reinterpret_cast<ModifyDelta*>(current_page);
+      //      break;
+      //    }
+      //    default:
+      //      throw IndexException("Unrecognized page type\n");
+      //      break;
+      //  }
+      //}
     }
   }
 
