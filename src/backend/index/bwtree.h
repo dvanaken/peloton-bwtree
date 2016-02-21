@@ -23,17 +23,17 @@ namespace peloton {
 namespace index {
 
 struct ItemPointerEqualityChecker {
-    bool operator() (const ItemPointer& l, const ItemPointer& r) const{
-      if (l.block == r.block && l.offset == r.offset)
-        return true;
-      return false;
-    }
+  bool operator()(const ItemPointer& l, const ItemPointer& r) const {
+    if (l.block == r.block && l.offset == r.offset) return true;
+    return false;
+  }
 };
 
 // Look up the stx btree interface for background.
 // peloton/third_party/stx/btree.h
 template <typename KeyType, typename ValueType, class KeyComparator,
-          class KeyEqualityChecker, class ValueEqualityChecker = ItemPointerEqualityChecker>
+          class KeyEqualityChecker,
+          class ValueEqualityChecker = ItemPointerEqualityChecker>
 class BWTree {
   using PID = std::uint64_t;
   static constexpr PID NullPID = std::numeric_limits<PID>::max();
