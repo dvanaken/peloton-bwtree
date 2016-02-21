@@ -143,7 +143,7 @@ class BWTree {
     PID prev_leaf_;
 
     // Keys and pointers to all data stored in this leaf
-    std::vector<std::pair<KeyType, std::vector<ItemPointer>>> data_items_;
+    std::vector<std::pair<KeyType, std::vector<ValueType>>> data_items_;
 
     // Temporary node link used during structure modifications
     PID side_link_;
@@ -235,9 +235,9 @@ class BWTree {
    public:
     KeyType key_;
 
-    std::vector<ItemPointer> locations_;
+    std::vector<ValueType> locations_;
 
-    ModifyDelta(KeyType key, const std::vector<ItemPointer>& location)
+    ModifyDelta(KeyType key, const std::vector<ValueType>& location)
         : Page(MODIFY_DELTA), key_(key), locations_(location) {}
   };
 
