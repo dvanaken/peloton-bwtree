@@ -64,8 +64,8 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker>::Insert(const
       std::vector<ItemPointer> locations;
       locations.push_back(data);
       leaf_base_page->data_items_.push_back(std::make_pair(key, locations));
-      leaf_base_page->low_key_ = key; // Need some way to represent -inf for this KeyType
-      leaf_base_page->high_key_ = key; // Need some way to represent +inf for this KeyType
+      leaf_base_page->low_key_ = key;
+      leaf_base_page->high_key_ = key;
       leaf_base_page->absolute_min_ = true;
       leaf_base_page->absolute_max_ = true;
 
@@ -90,22 +90,23 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker>::Insert(const
       }
     } else {
       Page* current_page = root_page;
-      std::stack<PID> pages_visited; // To remember parent nodes traversed on our search path
-      while (true) {
+      PID current_PID = root_;
+      //std::stack<PID> pages_visited; // To remember parent nodes traversed on our search path
+      bool attempt_insert = true;
+      while (attempt_insert) {
         switch (current_page->GetType()) {
           case INNER_NODE: {
             break;
           }
           case INDEX_TERM_DELTA: {
             IndexTermDelta* idx_delta = reinterpret_cast<IndexTermDelta*>(current_page);
-            // If this key is > low_separator_ and <= high_separator_ OR
-            // if special case: low_separator_ == high_separator_ then
-            // we have found the child we need to visit next.
-            if (equals_(idx_delta->low_separator_, idx_delta->high_separator_) ||
-                 (comparator_(key, idx_delta->low_separator_) > 0 &&
-                  comparator_(key, idx_delta->high_separator_) <= 0)) {
-              // Visit this child node now
-              current_page = map_table_[idx_delta->side_link_];
+            // If this key is > low_separator_ and <= high_separator_ then this is the child we
+            // must visit next
+            if ((idx_delta->absolute_min_ || comparator_(key, idx_delta->low_separator_) > 0) &&
+                (idx_delta->absolute_max_ || comparator_(key, idx_delta->high_separator_) <= 0)) {
+              // Follow the side link to this child
+              current_PID = idx_delta->side_link_;
+              current_page = map_table_[current_PID];
             } else {
               // This key does not fall within the boundary represented by this index term
               // delta record. Keep traversing the delta chain.
@@ -132,17 +133,62 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker>::Insert(const
             break;
           }
           case MODIFY_DELTA: {
-            __attribute__((unused)) ModifyDelta* mod_delta = reinterpret_cast<ModifyDelta*>(current_page);
+            __attribute__((unused)) ModifyDelta* mod_delta =
+                reinterpret_cast<ModifyDelta*>(current_page);
+            bool inserted;        // Whether this <key, value> pair is inserted 
+            bool install_new;     // Whether we need to install a new MODIFY_DELTA
             if (equals_(key, mod_delta->key_)) {
-              // TODO: need ItemComparator
-              // Compare this item with all items in list
-              // Insert if not in the tree, otherwise success depends on the duplicate keys policy
+              if (mod_delta->locations_.size() == 0) {
+                // If the locations_ list is empty then we can insert regardless of the duplicate
+                // keys policy (this was a delete operation)
+                inserted = true;
+                install_new = true;
+              } else if (!allow_duplicate_) {
+                // Key already exists in tree and duplicates are not allowed
+                inserted = false;
+              } else {
+                auto found = std::find_if(mod_delta->locations_.begin(),
+                    mod_delta->locations_.end(), [] (__attribute__((unused)) const ValueType& value) { 
+                  // TODO: use ItemComparator here
+                  return false;
+                });
+                if (found != mod_delta->locations_.end()) {
+                  // TODO: if we find the exact same <key, value> pair when duplicates are enabled,
+                  // does the insert fail? Or does it "succeed" but we don't have to do anything?
+                  inserted = true;
+                  install_new = false;
+                } else {
+                  // We can insert this <key, value> pair because duplicates are enabled and this
+                  // value does not exist in locations_
+                  inserted = true;
+                  install_new = true;
+                }
+              }
             } else {
-              // This is not our key so keep traversing the delta chain
+              // This is not our key so we keep traversing the delta chain
               current_page = current_page->GetDeltaNext(); 
               continue;
             }
-            break;
+            if (inserted && install_new) {
+              // Install new ModifyDelta page
+              // Copy old locations_ and add our new value
+              std::vector<ValueType> locations(mod_delta->locations_);
+              locations.push_back(data);
+              ModifyDelta* new_modify_delta = new ModifyDelta(key, locations);
+              new_modify_delta->SetDeltaNext(current_page);
+
+              // If prepending the IndexTermDelta fails, we need to free the resource
+              // and start over the insert again.
+              if (map_table_[current_PID].compare_exchange_strong(current_page,
+                                                                  new_modify_delta)) {
+                return true;
+              } else {
+                // TODO: Garbage collect new_modify_delta.
+
+                attempt_insert = false; // Start over
+              }
+            }
+            return inserted;
           }
           default:
             throw IndexException("Unrecognized page type\n");
