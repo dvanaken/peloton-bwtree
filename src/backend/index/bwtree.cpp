@@ -18,8 +18,8 @@
 namespace peloton {
 namespace index {
 
-template <typename KeyType, typename ValueType, class KeyComparator, class KeyEqualityChecker>
-BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker>::BWTree(
+template <typename KeyType, typename ValueType, class KeyComparator, class KeyEqualityChecker, class ValueEqualityChecker>
+BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker, ValueEqualityChecker>::BWTree(
     const KeyComparator& comparator,
     const KeyEqualityChecker& equals) 
       : comparator_(comparator), equals_(equals) {
@@ -50,8 +50,8 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker>::BWTree(
 // 
 // }
 
-template <typename KeyType, typename ValueType, class KeyComparator, class KeyEqualityChecker>
-bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker>::Insert(const KeyType& key,
+template <typename KeyType, typename ValueType, class KeyComparator, class KeyEqualityChecker, class ValueEqualityChecker>
+bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker, ValueEqualityChecker>::Insert(const KeyType& key,
                                                                            const ValueType& data) {
   while (true) {
     Page* root_page = map_table_[root_];
@@ -61,7 +61,7 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker>::Insert(const
 
       // Construct our first leaf node
       LeafNode* leaf_base_page = new LeafNode();
-      std::vector<ItemPointer> locations;
+      std::vector<ValueType> locations;
       locations.push_back(data);
       leaf_base_page->data_items_.push_back(std::make_pair(key, locations));
       leaf_base_page->low_key_ = key; // Need some way to represent -inf for this KeyType
