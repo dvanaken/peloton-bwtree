@@ -116,10 +116,10 @@ class BWTree {
     // Max key in this node
     KeyType high_key_;
 
-    // Indicate whether the rage contains min KeyType
+    // Indicate whether the range contains min KeyType
     bool absolute_min_;
 
-    // Indicate whether the rage contains max KeyType
+    // Indicate whether the range contains max KeyType
     bool absolute_max_;
 
     InnerNode()
@@ -280,6 +280,7 @@ class BWTree {
   // Value equality function object
   ValueEqualityChecker value_equals_;
 };
+
 
 }  // End index namespace
 }  // End peloton namespace

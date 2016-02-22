@@ -102,7 +102,24 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
       while (attempt_insert) {
         switch (current_page->GetType()) {
           case INNER_NODE: {
-            break;
+            InnerNode* inner_node = reinterpret_cast<InnerNode*>(current_page);
+            assert(inner_node->absolute_min_ || comparator_(key, inner_node->low_key_) > 0);
+            assert(inner_node->absolute_max_ || comparator_(key, inner_node->high_key_) <= 0);
+
+            // TODO: use binary search here instead
+            bool found_child = false;  // For debug only, should remove later
+            for (const auto& child : inner_node->children_) {
+              if (comparator_(key, child.first) <= 0) {
+                // We need to go to this child next
+                current_PID = child.second;
+                current_page = map_table_[current_PID];
+                found_child = true;
+                break;
+              }
+            }
+            // We should always find a child to visit next
+            assert (found_child);
+            continue;
           }
           case INDEX_TERM_DELTA: {
             IndexTermDelta* idx_delta = reinterpret_cast<IndexTermDelta*>(current_page);
@@ -136,14 +153,72 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
           case LEAF_NODE: {
             __attribute__((unused)) LeafNode* leaf =
                 reinterpret_cast<LeafNode*>(current_page);
-            // Do binary search on data_items_ to see if key is in list
-            // It's ok if it's in the tree already if we allow duplicates,
-            // otherwise return false
-            break;
+            bool inserted;        // Whether this <key, value> pair is inserted 
+            bool install_new;     // Whether we need to install a new MODIFY_DELTA
+
+            // TODO: this lookup should be binary search
+            // Check if the given key is already located in this leaf
+            bool found_key = false;
+            std::vector<ValueType> data_items;
+            for (const auto& key_values : leaf->data_items_) {
+              if (equals_(key, key_values.first)) {
+                found_key = true;
+                // TODO: refactor common code in LEAF_NODE and MODIFY_DELTA
+                // The key exists
+                if (!allow_duplicate_) {
+                  // No duplicates allowed so insert fails
+                  inserted = false;
+                  install_new = false;
+                } else {
+                  bool found_value = false;
+                  for (const auto& value : key_values.second) {
+                    if (value_equals_(value, data)) {
+                      found_value = true;
+                      break;
+                    }
+                  }
+                  if (found_value) {
+                    // TODO: if we find the exact same <key, value> pair when duplicates are enabled,
+                    // does the insert fail? Or does it "succeed" but we don't have to do anything?
+                    inserted = true;
+                    install_new = false;
+                  } else {
+                    // We can insert this <key, value> pair because duplicates are enabled and this
+                    // value does not exist in locations_
+                    inserted = true;
+                    install_new = true;
+                    // Copy the existing data items into our new items list
+                    data_items = key_values.second;
+                  }
+                }
+                break;
+              }
+            }
+            if (!found_key) {
+              // Insert this new key-value pair into the tree
+              inserted = true;
+              install_new = true;
+            }
+            if (inserted && install_new) {
+              // Install new ModifyDelta page
+              // Copy old locations_ and add our new value
+              data_items.push_back(data);
+              ModifyDelta* new_modify_delta = new ModifyDelta(key, data_items);
+              new_modify_delta->SetDeltaNext(current_page);
+
+              // If prepending the IndexTermDelta fails, we need to free the resource
+              // and start over the insert again.
+              if (!map_table_[current_PID].compare_exchange_strong(current_page,
+                                                                  new_modify_delta)) {
+                // TODO: Garbage collect new_modify_delta.
+                attempt_insert = false; // Start over
+                continue;
+              }
+            }
+            return inserted;
           }
           case MODIFY_DELTA: {
-            __attribute__((unused)) ModifyDelta* mod_delta =
-                reinterpret_cast<ModifyDelta*>(current_page);
+            ModifyDelta* mod_delta = reinterpret_cast<ModifyDelta*>(current_page);
             bool inserted;        // Whether this <key, value> pair is inserted 
             bool install_new;     // Whether we need to install a new MODIFY_DELTA
             if (equals_(key, mod_delta->key_)) {
@@ -155,9 +230,10 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
               } else if (!allow_duplicate_) {
                 // Key already exists in tree and duplicates are not allowed
                 inserted = false;
+                install_new = false;
               } else {
                 bool found = false;
-                for (auto value : mod_delta->locations_) {
+                for (const auto& value : mod_delta->locations_) {
                   if (value_equals_(value, data)) {
                     found = true;
                     break;
@@ -190,12 +266,9 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 
               // If prepending the IndexTermDelta fails, we need to free the resource
               // and start over the insert again.
-              if (map_table_[current_PID].compare_exchange_strong(current_page,
+              if (!map_table_[current_PID].compare_exchange_strong(current_page,
                                                                   new_modify_delta)) {
-                return true;
-              } else {
                 // TODO: Garbage collect new_modify_delta.
-
                 attempt_insert = false; // Start over
                 continue;
               }
