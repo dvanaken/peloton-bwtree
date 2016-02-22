@@ -198,7 +198,8 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
                     // does the insert fail? Or does it "succeed" but we don't
                     // have to do anything?
                     inserted = true;
-                    install_new = false;
+                    install_new = true;
+                    data_items = key_values.second;
                   } else {
                     // We can insert this <key, value> pair because duplicates
                     // are enabled and this
@@ -269,7 +270,7 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
                   // does the insert fail? Or does it "succeed" but we don't
                   // have to do anything?
                   inserted = true;
-                  install_new = false;
+                  install_new = true;
                 } else {
                   // We can insert this <key, value> pair because duplicates are
                   // enabled and this
