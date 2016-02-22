@@ -169,7 +169,6 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             __attribute__((unused)) LeafNode* leaf =
                 reinterpret_cast<LeafNode*>(current_page);
             bool inserted;     // Whether this <key, value> pair is inserted
-            bool install_new;  // Whether we need to install a new MODIFY_DELTA
 
             // TODO: this lookup should be binary search
             // Check if the given key is already located in this leaf
@@ -178,47 +177,23 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             for (const auto& key_values : leaf->data_items_) {
               if (equals_(key, key_values.first)) {
                 found_key = true;
-                // TODO: refactor common code in LEAF_NODE and MODIFY_DELTA
-                // The key exists
-                if (!allow_duplicate_) {
-                  // No duplicates allowed so insert fails
-                  inserted = false;
-                  install_new = false;
-                } else {
-                  bool found_value = false;
-                  for (const auto& value : key_values.second) {
-                    if (value_equals_(value, data)) {
-                      found_value = true;
-                      break;
-                    }
-                  }
-                  if (found_value) {
-                    // TODO: if we find the exact same <key, value> pair when
-                    // duplicates are enabled,
-                    // does the insert fail? Or does it "succeed" but we don't
-                    // have to do anything?
-                    inserted = true;
-                    install_new = true;
-                    data_items = key_values.second;
-                  } else {
-                    // We can insert this <key, value> pair because duplicates
-                    // are enabled and this
-                    // value does not exist in locations_
-                    inserted = true;
-                    install_new = true;
-                    // Copy the existing data items into our new items list
-                    data_items = key_values.second;
-                  }
-                }
+                // Make copy of existing values if duplicates are allowed
+                if (allow_duplicate_) data_items = key_values.second;
                 break;
               }
             }
-            if (!found_key) {
+            if (!found_key || (found_key && allow_duplicate_)) {
               // Insert this new key-value pair into the tree
+              // We can insert this key-value pair because either:
+              // 1. It does not yet exist in the tree
+              // 2. It does but duplicates are allowed
               inserted = true;
-              install_new = true;
+            } else {
+              // We cannot insert this key because it's in the tree and duplicates
+              // are not allowed
+              inserted = false;
             }
-            if (inserted && install_new) {
+            if (inserted) {
               // Install new ModifyDelta page
               // Copy old locations_ and add our new value
               data_items.push_back(data);
@@ -244,47 +219,24 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             ModifyDelta* mod_delta =
                 reinterpret_cast<ModifyDelta*>(current_page);
             bool inserted;     // Whether this <key, value> pair is inserted
-            bool install_new;  // Whether we need to install a new MODIFY_DELTA
             if (equals_(key, mod_delta->key_)) {
-              if (mod_delta->locations_.size() == 0) {
-                // If the locations_ list is empty then we can insert regardless
-                // of the duplicate
-                // keys policy (this was a delete operation)
-                inserted = true;
-                install_new = true;
-              } else if (!allow_duplicate_) {
+              if (!allow_duplicate_ && mod_delta->locations_.size() > 0) {
                 // Key already exists in tree and duplicates are not allowed
+                // A locations_ with size > 0 means this is not a delete delta
                 inserted = false;
-                install_new = false;
               } else {
-                bool found = false;
-                for (const auto& value : mod_delta->locations_) {
-                  if (value_equals_(value, data)) {
-                    found = true;
-                    break;
-                  }
-                }
-                if (found) {
-                  // TODO: if we find the exact same <key, value> pair when
-                  // duplicates are enabled,
-                  // does the insert fail? Or does it "succeed" but we don't
-                  // have to do anything?
-                  inserted = true;
-                  install_new = true;
-                } else {
-                  // We can insert this <key, value> pair because duplicates are
-                  // enabled and this
-                  // value does not exist in locations_
-                  inserted = true;
-                  install_new = true;
-                }
+                // We can insert the key because either:
+                // 1. Duplicates are NOT allowed but this is a delete modify delta
+                //    so this key DNE in the tree anymore
+                // 2. Duplicates are allowed so anything goes
+                inserted = true;
               }
             } else {
               // This is not our key so we keep traversing the delta chain
               current_page = current_page->GetDeltaNext();
               continue;
             }
-            if (inserted && install_new) {
+            if (inserted) {
               // Install new ModifyDelta page
               // Copy old locations_ and add our new value
               std::vector<ValueType> locations(mod_delta->locations_);
@@ -293,8 +245,7 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
               new_modify_delta->SetDeltaNext(head_of_delta);
 
               // If prepending the IndexTermDelta fails, we need to free the
-              // resource
-              // and start over the insert again.
+              // resource and start over the insert again.
               if (!map_table_[current_PID].compare_exchange_strong(
                       head_of_delta, new_modify_delta)) {
                 // TODO: Garbage collect new_modify_delta.
