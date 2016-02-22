@@ -53,6 +53,7 @@ class BWTree {
   bool Insert(const KeyType& key, const ValueType& data);
 
   // TODO: delete function
+  bool Delete(const KeyType& key, const ValueType& data);
 
   // TODO: update function
 

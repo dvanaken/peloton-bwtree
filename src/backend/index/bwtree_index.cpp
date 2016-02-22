@@ -46,6 +46,12 @@ bool BWTreeIndex<KeyType, ValueType, KeyComparator, KeyEqualityChecker>::InsertE
 template <typename KeyType, typename ValueType, class KeyComparator, class KeyEqualityChecker>
 bool BWTreeIndex<KeyType, ValueType, KeyComparator, KeyEqualityChecker>::DeleteEntry(
     __attribute__((unused)) const storage::Tuple *key, __attribute__((unused)) const ItemPointer location) {
+  KeyType index_key;
+  index_key.SetFromKey(key);
+
+  // Delete the key, val pair
+  return container.Delete(index_key, location);
+
   // Add your implementation here
   return false;
 }
