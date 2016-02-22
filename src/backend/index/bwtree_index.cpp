@@ -82,10 +82,13 @@ BWTreeIndex<KeyType, ValueType, KeyComparator, KeyEqualityChecker>::ScanAllKeys(
 template <typename KeyType, typename ValueType, class KeyComparator, class KeyEqualityChecker>
 std::vector<ItemPointer>
 BWTreeIndex<KeyType, ValueType, KeyComparator, KeyEqualityChecker>::ScanKey(
-    __attribute__((unused)) const storage::Tuple *key) {
+    const storage::Tuple *key) {
   std::vector<ItemPointer> result;
-  // Add your implementation here
-  return result;
+  KeyType index_key;
+  index_key.SetFromKey(key);
+
+  // find the <key, location> pair
+  return container.SearchKey(index_key);
 }
 
 template <typename KeyType, typename ValueType, class KeyComparator, class KeyEqualityChecker>

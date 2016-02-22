@@ -57,7 +57,7 @@ class BWTree {
 
   // TODO: update function
 
-  // TODO: search function
+  std::vector<ValueType> SearchKey(const KeyType& key);
 
  private:
   // ***** Different types of page records
