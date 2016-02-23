@@ -168,7 +168,7 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
           case LEAF_NODE: {
             __attribute__((unused)) LeafNode* leaf =
                 reinterpret_cast<LeafNode*>(current_page);
-            bool inserted;     // Whether this <key, value> pair is inserted
+            bool inserted;  // Whether this <key, value> pair is inserted
 
             // TODO: this lookup should be binary search
             // Check if the given key is already located in this leaf
@@ -189,7 +189,8 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
               // 2. It does but duplicates are allowed
               inserted = true;
             } else {
-              // We cannot insert this key because it's in the tree and duplicates
+              // We cannot insert this key because it's in the tree and
+              // duplicates
               // are not allowed
               inserted = false;
             }
@@ -218,7 +219,7 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
           case MODIFY_DELTA: {
             ModifyDelta* mod_delta =
                 reinterpret_cast<ModifyDelta*>(current_page);
-            bool inserted;     // Whether this <key, value> pair is inserted
+            bool inserted;  // Whether this <key, value> pair is inserted
             if (equals_(key, mod_delta->key_)) {
               if (!allow_duplicate_ && mod_delta->locations_.size() > 0) {
                 // Key already exists in tree and duplicates are not allowed
@@ -226,7 +227,8 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
                 inserted = false;
               } else {
                 // We can insert the key because either:
-                // 1. Duplicates are NOT allowed but this is a delete modify delta
+                // 1. Duplicates are NOT allowed but this is a delete modify
+                // delta
                 //    so this key DNE in the tree anymore
                 // 2. Duplicates are allowed so anything goes
                 inserted = true;
@@ -548,7 +550,111 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
         break;
     }
 
-    //return std::vector<ValueType>();
+    // return std::vector<ValueType>();
+  }
+}
+
+template <typename KeyType, typename KeyEqualityChecker>
+class VisitedChecker {
+ public:
+  std::vector<KeyType> data_;
+
+  void insert(const KeyType& item) { data_.push_back(item); }
+
+  bool find(const KeyType& item, KeyEqualityChecker& equals) {
+    for (auto& i : data_) {
+      if (equals(i, item)) return true;
+    }
+    return false;
+  }
+};
+
+template <typename KeyType, typename ValueType, class KeyComparator,
+          class KeyEqualityChecker, class ValueEqualityChecker>
+std::vector<ValueType>
+BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
+       ValueEqualityChecker>::SearchAllKeys() {
+  std::vector<ValueType> result;
+  VisitedChecker<KeyType, KeyEqualityChecker> visited_keys;
+
+  Page* current_page = map_table_[root_];
+  PID current_PID = root_;
+  __attribute__((unused)) Page* head_of_delta = current_page;
+  while (true) {
+    switch (current_page->GetType()) {
+      case INNER_NODE: {
+        InnerNode* inner_node = reinterpret_cast<InnerNode*>(current_page);
+        if (inner_node->children_.size() == 0) {
+          return result;
+        } else {
+          current_PID = inner_node->children_[0].second;
+          current_page = map_table_[current_PID];
+          head_of_delta = current_page;
+        }
+        continue;
+      }
+      case INDEX_TERM_DELTA: {
+        IndexTermDelta* idx_delta =
+            reinterpret_cast<IndexTermDelta*>(current_page);
+
+        // We always want to go to the left most first
+        if (idx_delta->absolute_min_) {
+          // Follow the side link to this child
+          current_PID = idx_delta->side_link_;
+          current_page = map_table_[current_PID];
+          head_of_delta = current_page;
+          LOG_DEBUG("Found INDEX_TERM_DELTA to search the left most key into");
+        } else {
+          // Keep traversing the delta chain.
+          current_page = current_page->GetDeltaNext();
+        }
+        continue;
+      }
+      case SPLIT_DELTA: {
+        break;
+      }
+      case REMOVE_NODE_DELTA: {
+        break;
+      }
+      case NODE_MERGE_DELTA: {
+        break;
+      }
+      case LEAF_NODE: {
+        LeafNode* leaf = reinterpret_cast<LeafNode*>(current_page);
+
+        // Traverse all data item in the leaf. If we already visited before,
+        // then skip.
+        std::vector<ValueType> data_items;
+        for (const auto& key_values : leaf->data_items_) {
+          if (!visited_keys.find(key_values.first, equals_)) {
+            // if (visited_keys.find(key_values.first) == visited_keys.end()) {
+            visited_keys.insert(key_values.first);
+            result.insert(result.end(), key_values.second.begin(),
+                          key_values.second.end());
+          }
+        }
+
+        // TODO: Need to traverse next leaf in reality
+        return result;
+      }
+      case MODIFY_DELTA: {
+        ModifyDelta* mod_delta = reinterpret_cast<ModifyDelta*>(current_page);
+        if (!visited_keys.find(mod_delta->key_, equals_)) {
+          // if (visited_keys.find(mod_delta->key_) == visited_keys.end()) {
+          visited_keys.insert(mod_delta->key_);
+          result.insert(result.end(), mod_delta->locations_.begin(),
+                        mod_delta->locations_.end());
+        }
+
+        current_page = current_page->GetDeltaNext();
+        continue;
+      }
+      default:
+        throw IndexException("Unrecognized page type\n");
+        break;
+    }
+
+    // return std::vector<ValueType>();
   }
 }
 

@@ -13,6 +13,7 @@
 #pragma once
 
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include <atomic>
 
@@ -49,15 +50,15 @@ class BWTree {
   // BWTree();
   // BWTree(bool allow_duplicate);
 
-  // TODO: insert function
+  // Insert function
   bool Insert(const KeyType& key, const ValueType& data);
 
-  // TODO: delete function
+  // Delete function
   bool Delete(const KeyType& key, const ValueType& data);
 
-  // TODO: update function
-
+  // Search functions
   std::vector<ValueType> SearchKey(const KeyType& key);
+  std::vector<ValueType> SearchAllKeys();
 
  private:
   // ***** Different types of page records
@@ -281,7 +282,6 @@ class BWTree {
   // Value equality function object
   ValueEqualityChecker value_equals_;
 };
-
 
 }  // End index namespace
 }  // End peloton namespace
