@@ -122,9 +122,18 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
               }
             }
             // We should always find a child to visit next
-            if (!found_child)
-              // compiler complaining
-              assert(found_child);
+            if (!found_child) {
+              // If the key is between high_key_ and max value, then we go to
+              // the last child.
+              if (inner_node->absolute_max_) {
+                current_PID = inner_node->children_.rbegin()->second;
+                current_page = map_table_[current_PID];
+                head_of_delta = current_page;
+
+              } else {
+                assert(found_child);
+              }
+            }
             continue;
           }
           case INDEX_TERM_DELTA: {
