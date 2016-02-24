@@ -15,10 +15,16 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include <stack>
+#include <map>
+#include <set>
 #include <atomic>
 
 #include "backend/common/types.h"
 #include "backend/common/logger.h"
+#include "backend/index/index_key.h"
+
+#define CONSOLIDATE_THRESHOLD 10
 
 namespace peloton {
 namespace index {
@@ -257,6 +263,112 @@ class BWTree {
     return new_slot;
   }
 
+  inline bool CheckConsolidate(PID page_PID) {
+    Page* current_page = map_table_[page_PID];
+    int page_length = 0;
+
+    // Traverse the delta chain to get length. We count NODE_MERGE_DELTA as 2
+    // length because we don't know the length of it. But if the merged node
+    // consolidated successfully before merging, then it should have only one
+    // extra length.
+    while (current_page != nullptr) {
+      if (current_page->GetType() == NODE_MERGE_DELTA) page_length++;
+      page_length++;
+      current_page = current_page->GetDeltaNext();
+    }
+
+    if (page_length > CONSOLIDATE_THRESHOLD)
+      return true;
+    else
+      return false;
+  }
+
+  inline Page* Consolidate(PID page_PID) {
+    std::vector<ValueType> result;
+    Page* current_page = map_table_[page_PID];
+
+    // while (current_page != nullptr)
+    //  current_page = current_page->GetDeltaNext();
+
+    std::map<KeyType, PID, KeyComparator> key_pointers(comparator_);
+    std::map<KeyType, std::vector<ValueType>, KeyComparator> key_locations(
+        comparator_);
+    // if (current_page->GetType() == INNER_NODE)
+    // else
+
+    // Finally I found out a way to use set here... so we dont't need this
+    // VisitedChecker<KeyType, KeyEqualityChecker> visited_keys;
+
+    // std::stack<PID> physical_links;
+    // std::stack<bool> split_indicators;
+    // std::stack<KeyType> split_separators;
+    // bool split_indicator;
+    // KeyType split_separator;
+
+    current_page = map_table_[page_PID];
+    __attribute__((unused)) Page* head_of_delta = current_page;
+    bool stop = false;
+    while (!stop) {
+      switch (current_page->GetType()) {
+        case INNER_NODE: {
+          InnerNode* inner_node = reinterpret_cast<InnerNode*>(current_page);
+
+          // Because the nice property of map::insert, we don't need to check
+          // stale value of duplicated key
+          for (const auto& child : inner_node->children_)
+            key_pointers.insert(child);
+
+          continue;
+        }
+        case INDEX_TERM_DELTA: {
+          IndexTermDelta* idx_delta =
+              reinterpret_cast<IndexTermDelta*>(current_page);
+
+          key_pointers.insert(std::make_pair(idx_delta->high_separator_,
+                                             idx_delta->side_link_));
+          // Keep traversing the delta chain.
+          current_page = current_page->GetDeltaNext();
+          continue;
+        }
+        case SPLIT_DELTA: {
+          break;
+        }
+        case REMOVE_NODE_DELTA: {
+          break;
+        }
+        case NODE_MERGE_DELTA: {
+          break;
+        }
+        case LEAF_NODE: {
+          LeafNode* leaf = reinterpret_cast<LeafNode*>(current_page);
+
+          // Traverse all data item in the leaf. If we already visited before,
+          // then skip.
+          std::vector<ValueType> data_items;
+          for (const auto& key_values : leaf->data_items_) {
+            key_locations.insert(key_values);
+          }
+
+          // TODO: Need to traverse next leaf in reality
+          // return result;
+          continue;
+        }
+        case MODIFY_DELTA: {
+          ModifyDelta* mod_delta = reinterpret_cast<ModifyDelta*>(current_page);
+          key_locations.insert(
+              std::make_pair(mod_delta->key_, mod_delta->locations_));
+
+          current_page = current_page->GetDeltaNext();
+          continue;
+        }
+        default:
+          // throw IndexException("Unrecognized page type\n");
+          break;
+      }
+    }
+    return nullptr;
+  }
+
   // ***** Member variables
 
   // PID of the root node
@@ -266,7 +378,8 @@ class BWTree {
   std::atomic<PID> PID_counter_;
 
   // Maps node PIDs to memory locations
-  // TODO: Because std::atomic is not CopyInsertable, we have to use a fix size
+  // TODO: Because std::atomic is not CopyInsertable, we have to use a fix
+  // size
   // here. Need some sort of garbage collection later
   std::vector<std::atomic<Page*>> map_table_{1000000};
 

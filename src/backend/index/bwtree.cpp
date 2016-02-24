@@ -10,10 +10,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include <stack>
-
 #include "backend/index/bwtree.h"
-#include "backend/index/index_key.h"
 
 namespace peloton {
 namespace index {
@@ -554,6 +551,7 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
   }
 }
 
+/*
 template <typename KeyType, typename KeyEqualityChecker>
 class VisitedChecker {
  public:
@@ -568,6 +566,7 @@ class VisitedChecker {
     return false;
   }
 };
+*/
 
 template <typename KeyType, typename ValueType, class KeyComparator,
           class KeyEqualityChecker, class ValueEqualityChecker>
@@ -575,7 +574,11 @@ std::vector<ValueType>
 BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
        ValueEqualityChecker>::SearchAllKeys() {
   std::vector<ValueType> result;
-  VisitedChecker<KeyType, KeyEqualityChecker> visited_keys;
+
+  // Finally I found out a way to use set here... so we dont't need this
+  // VisitedChecker<KeyType, KeyEqualityChecker> visited_keys;
+
+  std::set<KeyType, KeyComparator> visited_keys(comparator_);
 
   Page* current_page = map_table_[root_];
   PID current_PID = root_;
@@ -626,7 +629,7 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
         // then skip.
         std::vector<ValueType> data_items;
         for (const auto& key_values : leaf->data_items_) {
-          if (!visited_keys.find(key_values.first, equals_)) {
+          if (visited_keys.find(key_values.first) == visited_keys.end()) {
             // if (visited_keys.find(key_values.first) == visited_keys.end()) {
             visited_keys.insert(key_values.first);
             result.insert(result.end(), key_values.second.begin(),
@@ -639,7 +642,7 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
       }
       case MODIFY_DELTA: {
         ModifyDelta* mod_delta = reinterpret_cast<ModifyDelta*>(current_page);
-        if (!visited_keys.find(mod_delta->key_, equals_)) {
+        if (visited_keys.find(mod_delta->key_) == visited_keys.end()) {
           // if (visited_keys.find(mod_delta->key_) == visited_keys.end()) {
           visited_keys.insert(mod_delta->key_);
           result.insert(result.end(), mod_delta->locations_.begin(),
