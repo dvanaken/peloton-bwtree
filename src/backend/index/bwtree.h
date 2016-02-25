@@ -25,6 +25,7 @@
 #include "backend/index/index_key.h"
 
 #define CONSOLIDATE_THRESHOLD 10
+#define SPLIT_SIZE 5
 
 namespace peloton {
 namespace index {
@@ -45,7 +46,7 @@ class BWTree {
   using PID = std::uint64_t;
   static constexpr PID NullPID = std::numeric_limits<PID>::max();
 
- public:
+public:
   BWTree(const KeyComparator& comparator, const KeyEqualityChecker& equals);
 
   // TODO (dana): I can't get this to compile after I add allow_duplicate as a
@@ -90,11 +91,11 @@ class BWTree {
   };
 
   class Page {
-   protected:
+  protected:
     PageType type_;
     Page* delta_next_;
 
-   public:
+  public:
     Page(PageType type) : type_(type) { delta_next_ = nullptr; }
 
     const inline PageType& GetType() const { return type_; }
@@ -118,7 +119,7 @@ class BWTree {
     // Node link used during structure modifications
     PID side_link_;
 
-    // Min key in this node
+    // Min key in this node - it's actually not in this node right ? (aaron)
     KeyType low_key_;
 
     // Max key in this node
@@ -250,6 +251,9 @@ class BWTree {
   };
 
   // ***** Functions for internal usage
+
+  void Split_Operation(Page * consolidated_page, std::stack<PID>  & pages_visited, PID orig_pid);
+  bool complete_the_split(PID side_link, std::stack<PID>  & pages_visited);
 
   inline PID InstallNewMapping(Page* new_page) {
     PID new_slot = PID_counter_++;

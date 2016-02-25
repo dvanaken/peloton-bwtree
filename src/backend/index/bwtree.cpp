@@ -113,6 +113,7 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             bool found_child = false;  // For debug only, should remove later
             for (const auto& child : inner_node->children_) {
               if (comparator_(key, child.first) <= 0) {
+                pages_visited.push(current_PID);
                 // We need to go to this child next
                 current_PID = child.second;
                 current_page = map_table_[current_PID];
@@ -126,12 +127,29 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
               // If the key is between high_key_ and max value, then we go to
               // the last child.
               if (inner_node->absolute_max_) {
+                pages_visited.push(current_PID);
                 current_PID = inner_node->children_.rbegin()->second;
                 current_page = map_table_[current_PID];
                 head_of_delta = current_page;
-
               } else {
-                assert(found_child);
+                /* Means we need to repair a split  */
+                LOG_DEBUG("Need to complete split SMO");
+
+                bool split_completed = complete_the_split(inner_node->side_link_, pages_visited);
+
+                /* If it fails restart the insert */
+                if (!split_completed) {
+                  attempt_insert = false;
+                  LOG_DEBUG("Split SMO completion failed");
+                  continue;
+                } else {
+                  LOG_DEBUG("Split SMO completion succeeded");
+                }
+
+                /* Don't need to add current page to stack b/c it's not the parent */
+                current_PID = inner_node->side_link_;
+                current_page = map_table_[current_PID];
+                head_of_delta = current_page;
               }
             }
             continue;
@@ -147,6 +165,7 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
                 (idx_delta->absolute_max_ ||
                  comparator_(key, idx_delta->high_separator_) <= 0)) {
               // Follow the side link to this child
+              pages_visited.push(current_PID);
               current_PID = idx_delta->side_link_;
               current_page = map_table_[current_PID];
               head_of_delta = current_page;
@@ -160,7 +179,33 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             continue;
           }
           case SPLIT_DELTA: {
-            // TODO (dana)
+            SplitDelta* split_delta =
+                reinterpret_cast<SplitDelta*>(current_page);
+
+            /* Check if your Key is affected by the split */
+            if (comparator_(key, split_delta->separator_) > 0) {
+              LOG_DEBUG("Need to complete split SMO");
+
+              /* Need to fix this before continuing */
+              bool split_completed = complete_the_split(split_delta->side_link_, pages_visited);
+
+              /* If it fails restart the insert */
+              if (!split_completed) {
+                attempt_insert = false;
+                LOG_DEBUG("Split SMO completion failed");
+                continue;
+              } else {
+                LOG_DEBUG("Split SMO completion succeeded");
+              }
+
+              // Don't need to add current page to stack b/c it's not the parent
+              current_PID = split_delta->side_link_;
+              current_page = map_table_[current_PID];
+              head_of_delta = current_page;
+            } else {
+              current_page = current_page->GetDeltaNext();
+            }
+
             break;
           }
           case REMOVE_NODE_DELTA: {
@@ -219,6 +264,27 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
                 attempt_insert = false;  // Start over
                 continue;
               }
+
+              assert(attempt_insert);
+
+              /* Check if consolidation required and perform it if it's */
+              if (CheckConsolidate(current_PID)) {
+                LOG_DEBUG("Performing consolidation");
+                Page* consolidated_page = Consolidate(current_PID);
+                Page* new_modify_delta_page = reinterpret_cast<Page*>(new_modify_delta);
+
+                /* Attempt to insert updated consolidated page */
+                if (!map_table_[current_PID].compare_exchange_strong(
+                    new_modify_delta_page, consolidated_page)) {
+                  LOG_DEBUG("CAS of consolidation failed");
+                } else {
+                  LOG_DEBUG("CAS of consolidation success");
+
+                  /* Check if split is required and perform the operation */
+                  Split_Operation(consolidated_page, pages_visited, current_PID);
+                }
+
+              }
             }
             return inserted;
           }
@@ -260,6 +326,27 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
                 LOG_DEBUG("CAS failed");
                 attempt_insert = false;  // Start over
                 continue;
+              }
+
+              assert(attempt_insert);
+
+              /* Check if consolidation required and perform it if it's */
+              if (CheckConsolidate(current_PID)) {
+                LOG_DEBUG("Performing consolidation");
+                Page* consolidated_page = Consolidate(current_PID);
+                Page* new_modify_delta_page = reinterpret_cast<Page*>(new_modify_delta);
+
+                /* Attempt to insert updated consolidated page */
+                if (!map_table_[current_PID].compare_exchange_strong(
+                    new_modify_delta_page, consolidated_page)) {
+                  LOG_DEBUG("CAS of consolidation failed");
+                } else {
+                  LOG_DEBUG("CAS of consolidation success");
+
+                  /* Check if split is required and perform the operation */
+                  Split_Operation(consolidated_page, pages_visited, current_PID);
+                }
+
               }
             }
             return inserted;
@@ -307,14 +394,48 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
           assert(inner_node->absolute_max_ ||
                  comparator_(key, inner_node->high_key_) <= 0);
 
+          bool found_child = false;
           // We shouldn't be using this yet since we have no consolidation
           for (const auto& child : inner_node->children_) {
             if (comparator_(key, child.first) <= 0) {
+              pages_visited.push(current_PID);
               // Found the correct child
               current_PID = child.second;
               current_page = map_table_[current_PID];
               head_of_delta = current_page;
+              found_child = true;
               break;
+            }
+          }
+
+          // We should always find a child to visit next
+          if (!found_child) {
+            // If the key is between high_key_ and max value, then we go to
+            // the last child.
+            if (inner_node->absolute_max_) {
+              pages_visited.push(current_PID);
+              current_PID = inner_node->children_.rbegin()->second;
+              current_page = map_table_[current_PID];
+              head_of_delta = current_page;
+            } else {
+              /* Means we need to repair a split  */
+              LOG_DEBUG("Need to complete split SMO");
+
+              bool split_completed = complete_the_split(inner_node->side_link_, pages_visited);
+
+              /* If it fails restart the insert */
+              if (!split_completed) {
+                attempt_delete = false;
+                LOG_DEBUG("Split SMO completion failed");
+                continue;
+              } else {
+                LOG_DEBUG("Split SMO completion succeeded");
+              }
+
+              /* Don't need to add current page to stack b/c it's not the parent */
+              current_PID = inner_node->side_link_;
+              current_page = map_table_[current_PID];
+              head_of_delta = current_page;
             }
           }
           continue;
@@ -330,6 +451,7 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
               (idx_delta->absolute_max_ ||
                comparator_(key, idx_delta->high_separator_) <= 0)) {
             // Follow the side link to this child
+            pages_visited.push(current_PID);
             current_PID = idx_delta->side_link_;
             current_page = map_table_[current_PID];
             head_of_delta = current_page;
@@ -343,6 +465,33 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
           continue;
         }
         case SPLIT_DELTA: {
+          SplitDelta* split_delta =
+              reinterpret_cast<SplitDelta*>(current_page);
+
+          /* Check if your Key is affected by the split */
+          if (comparator_(key, split_delta->separator_) > 0) {
+            LOG_DEBUG("Need to complete split SMO");
+
+            /* Need to fix this before continuing */
+            bool split_completed = complete_the_split(split_delta->side_link_, pages_visited);
+
+            /* If it fails restart the insert */
+            if (!split_completed) {
+              attempt_delete = false;
+              LOG_DEBUG("Split SMO completion failed");
+              continue;
+            } else {
+              LOG_DEBUG("Split SMO completion succeeded");
+            }
+
+            // Don't need to add current page to stack b/c it's not the parent
+            current_PID = split_delta->side_link_;
+            current_page = map_table_[current_PID];
+            head_of_delta = current_page;
+          } else {
+            current_page = current_page->GetDeltaNext();
+          }
+
           break;
         }
         case REMOVE_NODE_DELTA: {
@@ -398,6 +547,27 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             continue;
           }
 
+          assert(attempt_delete);
+
+          /* Check if consolidation required and perform it if it's */
+          if (CheckConsolidate(current_PID)) {
+            LOG_DEBUG("Performing consolidation");
+            Page* consolidated_page = Consolidate(current_PID);
+            Page* new_modify_delta_page = reinterpret_cast<Page*>(new_modify_delta);
+
+            /* Attempt to insert updated consolidated page */
+            if (!map_table_[current_PID].compare_exchange_strong(
+                new_modify_delta_page, consolidated_page)) {
+              LOG_DEBUG("CAS of consolidation failed");
+            } else {
+              LOG_DEBUG("CAS of consolidation success");
+
+              /* Check if split is required and perform the operation */
+              Split_Operation(consolidated_page, pages_visited, current_PID);
+            }
+
+          }
+
           return found_location;
         }
         case MODIFY_DELTA: {
@@ -442,6 +612,27 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
               LOG_DEBUG("CAS failed");
               attempt_delete = false;  // Start over
               continue;
+            }
+
+            assert(attempt_delete);
+
+            /* Check if consolidation required and perform it if it's */
+            if (CheckConsolidate(current_PID)) {
+              LOG_DEBUG("Performing consolidation");
+              Page* consolidated_page = Consolidate(current_PID);
+              Page* new_modify_delta_page = reinterpret_cast<Page*>(new_modify_delta);
+
+              /* Attempt to insert updated consolidated page */
+              if (!map_table_[current_PID].compare_exchange_strong(
+                  new_modify_delta_page, consolidated_page)) {
+                LOG_DEBUG("CAS of consolidation failed");
+              } else {
+                LOG_DEBUG("CAS of consolidation success");
+
+                /* Check if split is required and perform the operation */
+                Split_Operation(consolidated_page, pages_visited, current_PID);
+              }
+
             }
           } else {
             current_page = current_page->GetDeltaNext();
@@ -490,10 +681,20 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             break;
           }
         }
+
         // We should always find a child to visit next
-        if (!found_child)
-          // compiler complaining
-          assert(found_child);
+        if (!found_child) {
+          // If the key is between high_key_ and max value, then we go to
+          // the last child.
+          if (inner_node->absolute_max_) {
+            current_PID = inner_node->children_.rbegin()->second;
+          }
+          else {
+            current_PID = inner_node->side_link_;
+          }
+          current_page = map_table_[current_PID];
+          head_of_delta = current_page;
+        }
         continue;
       }
       case INDEX_TERM_DELTA: {
@@ -520,6 +721,17 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
         continue;
       }
       case SPLIT_DELTA: {
+        SplitDelta* split_delta =
+            reinterpret_cast<SplitDelta*>(current_page);
+
+        /* Check if your Key is affected by the split */
+        if (comparator_(key, split_delta->separator_) > 0) {
+          current_PID = split_delta->side_link_;
+          current_page = map_table_[current_PID];
+          head_of_delta = current_page;
+        } else {
+          current_page = current_page->GetDeltaNext();
+        }
         break;
       }
       case REMOVE_NODE_DELTA: {
@@ -530,6 +742,8 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
       }
       case LEAF_NODE: {
         LeafNode* leaf = reinterpret_cast<LeafNode*>(current_page);
+
+        //TODO: We need to account for side link here
 
         // TODO: this lookup should be binary search
         // Check if the given key is already located in this leaf
@@ -668,6 +882,181 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 
     // return std::vector<ValueType>();
   }
+}
+
+template <typename KeyType, typename ValueType, class KeyComparator,
+          class KeyEqualityChecker, class ValueEqualityChecker>
+void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
+       ValueEqualityChecker>::Split_Operation(Page * consolidated_page,
+           std::stack<PID>  & pages_visited, PID orig_pid) {
+  bool split_required = false;
+  SplitDelta * split_delta;
+  IndexTermDelta * index_term_delta_for_split;
+
+  /* Check if split required */
+  if (consolidated_page->GetType() == INNER_NODE) {
+    InnerNode* node_to_split = reinterpret_cast<InnerNode*>(consolidated_page);
+    if (node_to_split->children_.size() > SPLIT_SIZE) {
+      split_required = true;
+
+      /* Create new node */
+      InnerNode* new_inner_node = new InnerNode();
+      new_inner_node->absolute_min_ = false;
+      new_inner_node->absolute_max_ = node_to_split->absolute_max_;
+      new_inner_node->side_link_ = node_to_split->side_link_;
+
+      /* Choose a key to split on */
+      int key_split_index = (node_to_split->children_.size() / 2) - 1;
+      KeyType new_separator_key = node_to_split->children_[key_split_index].first;
+      new_inner_node->low_key_ = new_separator_key;
+      new_inner_node->high_key_ = node_to_split->high_key_;
+
+      /* Populate new node */
+      for (int i = (key_split_index + 1); i < node_to_split->children_.size(); i++) {
+        // can optimize this in the future
+        new_inner_node->children_.push_back(node_to_split->children_[i]);
+        assert(comparator_(node_to_split->children_[i].first, new_separator_key) > 0);
+      }
+
+      /* Install the new page in the mapping table */
+      PID new_node_PID = InstallNewMapping(new_inner_node);
+
+      /* Create the Delta Split to Install */
+      split_delta = new SplitDelta(new_separator_key, new_node_PID);
+
+      /* Create the index term delta for the parent */
+      index_term_delta_for_split = new IndexTermDelta(new_inner_node->low_key_,
+          new_inner_node->high_key_, new_node_PID);
+      index_term_delta_for_split->absolute_max_ = new_inner_node->absolute_max_;
+
+    }
+  } else if (consolidated_page->GetType() == LEAF_NODE) {
+    __attribute__((unused)) LeafNode* node_to_split =
+        reinterpret_cast<LeafNode*>(consolidated_page);
+    if (node_to_split->data_items_.size() > SPLIT_SIZE) {
+      split_required = true;
+
+      /* Create new node */
+      LeafNode* new_leaf_node = new LeafNode();
+      new_leaf_node->absolute_min_ = false;
+      new_leaf_node->absolute_max_ = node_to_split->absolute_max_;
+      new_leaf_node->side_link_ = node_to_split->side_link_;
+      new_leaf_node->prev_leaf_ = node_to_split->prev_leaf_;
+      new_leaf_node->next_leaf_ = node_to_split->next_leaf_;
+
+      /* Choose a key to split on */
+      int key_split_index = (node_to_split->data_items_.size() / 2) - 1;
+      KeyType new_separator_key = node_to_split->data_items_[key_split_index].first;
+      new_leaf_node->low_key_ = new_separator_key;
+      new_leaf_node->high_key_ = node_to_split->high_key_;
+
+      /* Populate new node */
+      for (int i = (key_split_index + 1); i < node_to_split->data_items_.size(); i++) {
+        // can optimize this in the future
+        new_leaf_node->data_items_.push_back(node_to_split->data_items_[i]);
+        assert(comparator_(node_to_split->data_items_[i].first, new_separator_key) > 0);
+      }
+
+      /* Install the new page in the mapping table */
+      PID new_node_PID = InstallNewMapping(new_leaf_node);
+
+      /* Create the Delta Split to Install */
+      split_delta = new SplitDelta(new_separator_key, new_node_PID);
+
+      /* Create the index term delta for the parent */
+      index_term_delta_for_split = new IndexTermDelta(new_leaf_node->low_key_,
+          new_leaf_node->high_key_, new_node_PID);
+      index_term_delta_for_split->absolute_max_ = new_leaf_node->absolute_max_;
+    }
+
+  } else {
+    assert(0);
+  }
+
+  /* If split performed try to install split delta */
+  if (split_required) {
+    LOG_DEBUG("Performing Split");
+    split_delta->SetDeltaNext(consolidated_page);
+    if (!map_table_[orig_pid].compare_exchange_strong(
+        consolidated_page, split_delta)) {
+      LOG_DEBUG("CAS of installing delta split failed");
+      return;
+    } else {
+      LOG_DEBUG("CAS of installing delta split success");
+
+      /* Get PID of parent node */
+      PID pid_of_parent = pages_visited.top();
+
+      /* Attempt to install index term delta on the parent */
+      while (true) {
+        // Safe to keep retrying - thoughts? (aaron)
+        Page* parent_node = map_table_[pid_of_parent];
+        if (parent_node->GetType() != REMOVE_NODE_DELTA) {
+          index_term_delta_for_split->SetDeltaNext(parent_node);
+          if (map_table_[pid_of_parent].compare_exchange_strong(
+              parent_node, index_term_delta_for_split)) {
+            LOG_DEBUG("CAS of installing index term delta in parent succeeded");
+            break;
+          }
+        } else {
+          LOG_DEBUG("CAS of installing index term delta in parent failed");
+          return;
+        }
+      }
+    }
+  }
+}
+
+template <typename KeyType, typename ValueType, class KeyComparator,
+          class KeyEqualityChecker, class ValueEqualityChecker>
+bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
+       ValueEqualityChecker>::complete_the_split(PID side_link,
+           std::stack<PID>  & pages_visited) {
+  Page* new_split_node = map_table_[side_link];
+  IndexTermDelta * index_term_delta_for_split;
+
+  if (new_split_node->GetType() == INNER_NODE) {
+    InnerNode* new_inner_node = reinterpret_cast<InnerNode*>(new_split_node);
+
+    /* Create the index term delta for the parent */
+    index_term_delta_for_split = new IndexTermDelta(new_inner_node->low_key_,
+        new_inner_node->high_key_, side_link);
+    index_term_delta_for_split->absolute_max_ = new_inner_node->absolute_max_;
+
+  } else if (new_split_node->GetType() == LEAF_NODE) {
+    __attribute__((unused)) LeafNode* new_leaf_node =
+            reinterpret_cast<LeafNode*>(new_split_node);
+
+    /* Create the index term delta for the parent */
+    index_term_delta_for_split = new IndexTermDelta(new_leaf_node->low_key_,
+        new_leaf_node->high_key_, side_link);
+    index_term_delta_for_split->absolute_max_ = new_leaf_node->absolute_max_;
+  } else {
+    // I believe this should never happen - thoughts? (aaron)
+    assert(0);
+  }
+
+  /* Get PID of parent node */
+  PID pid_of_parent = pages_visited.top();
+
+  /* Attempt to install index term delta on the parent */
+  while (true) {
+    // Safe to keep retrying - thoughts? (aaron)
+    Page* parent_node = map_table_[pid_of_parent];
+    if (parent_node->GetType() != REMOVE_NODE_DELTA) {
+      index_term_delta_for_split->SetDeltaNext(parent_node);
+      if (map_table_[pid_of_parent].compare_exchange_strong(
+          parent_node, index_term_delta_for_split)) {
+        LOG_DEBUG("CAS of installing index term delta in parent succeeded");
+        return true;
+      }
+    } else {
+      LOG_DEBUG("CAS of installing index term delta in parent failed");
+      return false;
+    }
+  }
+
+  return true;
 }
 
 // Explicit template instantiation
