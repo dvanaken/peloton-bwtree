@@ -26,6 +26,7 @@
 
 #define CONSOLIDATE_THRESHOLD 10
 #define SPLIT_SIZE 5
+#define MERGE_SIZE 2
 
 namespace peloton {
 namespace index {
@@ -224,19 +225,22 @@ class BWTree {
   // Stops all further use of node
   class RemoveNodeDelta : public Page {
    public:
-    RemoveNodeDelta() : Page(REMOVE_NODE_DELTA) {}
+    PID merged_into_;
+    RemoveNodeDelta(PID merged_into) : Page(REMOVE_NODE_DELTA),
+        merged_into_(merged_into) {}
   };
 
   class NodeMergeDelta : public Page {
    public:
     // Direct all records greater than separator_ to physical_link_
     KeyType separator_;
-
+    bool absolute_max_;
     Page* physical_link_;
 
-    NodeMergeDelta(KeyType separator_key, Page* new_sibling)
+    NodeMergeDelta(KeyType separator_key, bool absolute_max, Page* new_sibling)
         : Page(NODE_MERGE_DELTA),
           separator_(separator_key),
+          absolute_max_(absolute_max),
           physical_link_(new_sibling) {}
   };
 
@@ -255,6 +259,11 @@ class BWTree {
   void Split_Operation(Page* consolidated_page, std::stack<PID>& pages_visited,
                        PID orig_pid);
   bool complete_the_split(PID side_link, std::stack<PID>& pages_visited);
+
+  void Merge_Operation(Page * consolidated_page, std::stack<PID>  & pages_visited, PID orig_pid);
+  PID find_left_sibling(std::stack<PID>  & pages_visited, KeyType merge_key);
+  bool complete_the_merge(RemoveNodeDelta * remove_node, std::stack<PID>  & pages_visited);
+  bool is_merge_installed(Page * page_merging_into, Page * compare_to, KeyType high_key);
 
   inline PID InstallNewMapping(Page* new_page) {
     PID new_slot = PID_counter_++;
@@ -419,9 +428,7 @@ class BWTree {
           break;
         }
         case REMOVE_NODE_DELTA: {
-          // If we see a remove node, that means we reach a path we should not
-          // get into. So we return nothing.
-          return nullptr;
+          break;
         }
         case NODE_MERGE_DELTA: {
           PageType next_page_type = current_page->GetDeltaNext()->GetType();
@@ -445,11 +452,7 @@ class BWTree {
           // then skip.
           std::vector<ValueType> data_items;
           for (const auto& key_values : leaf->data_items_) {
-            if (!split_indicator ||
-                comparator_(key_values.first, split_separator) <= 0)
-              key_locations.emplace(key_values.first, key_values.second);
-            else
-              break;
+            key_locations.insert(key_values);
           }
 
           is_leaf = true;
@@ -475,18 +478,18 @@ class BWTree {
         }
         case MODIFY_DELTA: {
           ModifyDelta* mod_delta = reinterpret_cast<ModifyDelta*>(current_page);
-          if (!split_indicator ||
-              comparator_(mod_delta->key_, split_separator) <= 0)
-            key_locations.emplace(mod_delta->key_, mod_delta->locations_);
+          key_locations.insert(
+              std::make_pair(mod_delta->key_, mod_delta->locations_));
 
           current_page = current_page->GetDeltaNext();
           continue;
         }
         default:
-          throw IndexException("Unrecognized page type\n");
+          // throw IndexException("Unrecognized page type\n");
           break;
       }
     }
+
     if (is_leaf) {
       LeafNode* new_leaf = new LeafNode();
       new_leaf->low_key_ = leaf_low_key;
