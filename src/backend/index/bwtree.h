@@ -306,17 +306,18 @@ public:
     std::map<KeyType, PID, KeyComparator> key_pointers(comparator_);
     std::map<KeyType, std::vector<ValueType>, KeyComparator> key_locations(
         comparator_);
+    bool is_leaf;
     // if (current_page->GetType() == INNER_NODE)
     // else
 
     // Finally I found out a way to use set here... so we dont't need this
     // VisitedChecker<KeyType, KeyEqualityChecker> visited_keys;
 
-    // std::stack<PID> physical_links;
-    // std::stack<bool> split_indicators;
-    // std::stack<KeyType> split_separators;
-    // bool split_indicator;
-    // KeyType split_separator;
+    std::stack<Page*> physical_links;
+    std::stack<bool> split_indicators;
+    std::stack<KeyType> split_separators;
+    bool split_indicator = false;
+    KeyType split_separator = KeyType();
 
     current_page = map_table_[page_PID];
     __attribute__((unused)) Page* head_of_delta = current_page;
@@ -329,7 +330,24 @@ public:
           // Because the nice property of map::insert, we don't need to check
           // stale value of duplicated key
           for (const auto& child : inner_node->children_)
-            key_pointers.insert(child);
+            if (!split_indicator ||
+                comparator_(child.first, split_separator) <= 0)
+              key_pointers.emplace(child.first, child.second);
+            else
+              break;
+
+          is_leaf = false;
+
+          if (physical_links.empty()) {
+            stop = true;
+          } else {
+            current_page = physical_links.top();
+            split_indicator = split_indicators.top();
+            split_separator = split_separators.top();
+            physical_links.pop();
+            split_indicators.pop();
+            split_separators.pop();
+          }
 
           continue;
         }
@@ -337,19 +355,37 @@ public:
           IndexTermDelta* idx_delta =
               reinterpret_cast<IndexTermDelta*>(current_page);
 
-          key_pointers.insert(std::make_pair(idx_delta->high_separator_,
-                                             idx_delta->side_link_));
+          if (!split_indicator ||
+              comparator_(idx_delta->high_separator_, split_separator) <= 0)
+            key_pointers.emplace(idx_delta->high_separator_,
+                                 idx_delta->side_link_);
           // Keep traversing the delta chain.
           current_page = current_page->GetDeltaNext();
           continue;
         }
         case SPLIT_DELTA: {
+          SplitDelta* split_delta = reinterpret_cast<SplitDelta*>(current_page);
+          if (!split_indicator) {
+            split_indicator = true;
+            split_separator = split_delta->separator_;
+          }
+
+          current_page = current_page->GetDeltaNext();
           break;
         }
         case REMOVE_NODE_DELTA: {
-          break;
+          // If we see a remove node, that means we reach a path we should not
+          // get into. So we return nothing.
+          return nullptr;
         }
         case NODE_MERGE_DELTA: {
+          NodeMergeDelta* merge_delta =
+              reinterpret_cast<NodeMergeDelta*>(current_page);
+          physical_links.emplace(merge_delta->physical_link_);
+          split_indicators.emplace(split_indicator);
+          split_separators.pop(split_separator);
+
+          current_page = current_page->GetDeltaNext();
           break;
         }
         case LEAF_NODE: {
@@ -359,27 +395,44 @@ public:
           // then skip.
           std::vector<ValueType> data_items;
           for (const auto& key_values : leaf->data_items_) {
-            key_locations.insert(key_values);
+            if (!split_indicator ||
+                comparator_(key_values.first, split_separator) <= 0)
+              key_locations.emplace(key_values.first, key_values.second);
+            else
+              break;
           }
 
-          // TODO: Need to traverse next leaf in reality
-          // return result;
+          is_leaf = true;
+
+          if (physical_links.empty()) {
+            stop = true;
+          } else {
+            current_page = physical_links.top();
+            split_indicator = split_indicators.top();
+            split_separator = split_separators.top();
+            physical_links.pop();
+            split_indicators.pop();
+            split_separators.pop();
+          }
           continue;
         }
         case MODIFY_DELTA: {
           ModifyDelta* mod_delta = reinterpret_cast<ModifyDelta*>(current_page);
-          key_locations.insert(
-              std::make_pair(mod_delta->key_, mod_delta->locations_));
+          if (!split_indicator ||
+              comparator_(mod_delta->key_, split_separator) <= 0)
+            key_locations.emplace(mod_delta->key_, mod_delta->locations_);
 
           current_page = current_page->GetDeltaNext();
           continue;
         }
         default:
-          // throw IndexException("Unrecognized page type\n");
+          throw IndexException("Unrecognized page type\n");
           break;
       }
     }
-    return nullptr;
+    if (is_leaf) {
+      LeafNode* new_leaf = new LeafNode();
+    }
   }
 
   // ***** Member variables
