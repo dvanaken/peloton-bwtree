@@ -113,3 +113,199 @@ public:
     delta_type(INDEX_DELETE), child_deleting(child_deleting), merged_into(merged_into),
     low_key(low_key), high_key(high_key) {}
 };
+
+
+// Storing unused code ...
+/*
+template <typename KeyType, typename ValueType, class KeyComparator,
+class KeyEqualityChecker, class ValueEqualityChecker>
+bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
+ValueEqualityChecker>::is_left_sibling(
+    PID this_pid, PID orig_pid) {
+  Page * current_page = map_table_[this_pid];
+
+  // Go over delta chain and check if this is the left sibling
+  while (true) {
+    switch(current_page->GetType()) {
+    case INNER_NODE: {
+      InnerNode* inner_node = reinterpret_cast<InnerNode*>(current_page);
+
+      if (inner_node->absolute_max_) {
+        return false;
+      }
+
+      if (inner_node->side_link_ == orig_pid) {
+        return true;
+      } else {
+        return false;
+      }
+      break;
+    }
+    case INDEX_TERM_DELTA: {
+      current_page = current_page->GetDeltaNext();
+      break;
+    }
+    case SPLIT_DELTA: {
+      SplitDelta* split_delta =
+          reinterpret_cast<SplitDelta*>(current_page);
+
+      //TODO: Need to consider this, might cause incorrect behavior (aaron)
+      if (split_delta->side_link_ == orig_pid) {
+        return true;
+      } else {
+        return false;
+      }
+      break;
+    }
+    case REMOVE_NODE_DELTA:
+      return false;
+      break;
+    }
+    case NODE_MERGE_DELTA: {
+      // Go down  the path of the node that was deleted
+      NodeMergeDelta * merge_delta =
+          reinterpret_cast<NodeMergeDelta*>(current_page);
+
+      current_page = merge_delta->physical_link_;
+
+      if (current_page->GetType() == InnerNode) {
+        InnerNode* inner_node = reinterpret_cast<InnerNode*>(consolidated_page);
+        if (inner_node->side_link_ == orig_pid) {
+          return true;
+        } else {
+          return false;
+        }
+      } else if (consolidated_page->GetType() == LEAF_NODE) {
+        __attribute__((unused)) LeafNode* leaf_node =
+            reinterpret_cast<LeafNode*>(consolidated_page);
+        if (leaf_node->side_link_ == orig_pid) {
+          return true;
+        } else {
+          return false;
+        }
+      } else {
+        assert(0);
+      }
+      break;
+    }
+    case LEAF_NODE: {
+      __attribute__((unused)) LeafNode* leaf_node =
+          reinterpret_cast<LeafNode*>(consolidated_page);
+      if (leaf_node->side_link_ == orig_pid) {
+        return true;
+      } else {
+        return false;
+      }
+      break;
+    }
+    case MODIFY_DELTA: {
+      current_page = current_page->GetDeltaNext();
+      break;
+    }
+    default:
+      throw IndexException("Unrecognized page type\n");
+      break;
+  }
+
+  assert(0);
+  return false;
+
+
+
+  template <typename KeyType, typename ValueType, class KeyComparator,
+          class KeyEqualityChecker, class ValueEqualityChecker>
+KeyType BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
+ValueEqualityChecker>::find_low_range(Page * head_of_chain,
+    bool & is_absolute_min, KeyType high_key) {
+  Page * current_page = head_of_chain;
+  bool set_low_range = false;
+  KeyType new_low_key = high_key;
+
+  while (true) {
+    switch(current_page->GetType()) {
+    case INNER_NODE: {
+      InnerNode* inner_node = reinterpret_cast<InnerNode*>(current_page);
+
+      if (!set_low_range) {
+        is_absolute_min = inner_node->absolute_min_;
+        assert(comparator_(inner_node->low_key_, new_low_key) < 0);
+        return inner_node->low_key_;
+      } else {
+        if (inner_node->absolute_min_) {
+          is_absolute_min = true;
+        }
+        if (comparator_(inner_node->low_key_, new_low_key) < 0) {
+          *new_low_key = inner_node->low_key_;
+        }
+        return *new_low_key;
+      }
+
+      break;
+    }
+    case INDEX_TERM_DELTA: {
+      IndexTermDelta* idx_delta =
+          reinterpret_cast<IndexTermDelta*>(current_page);
+
+      if (!set_low_range) {
+        assert(comparator_(idx_delta->low_separator_, new_low_key) < 0);
+        new_low_key = idx_delta->low_separator_;
+        is_absolute_min = idx_delta->absolute_min_;
+      } else {
+        if (inner_node->absolute_min_) {
+          is_absolute_min = true;
+        }
+        if (comparator_(idx_delta->low_separator_, new_low_key) < 0) {
+          new_low_key = idx_delta->low_separator_;
+        }
+        set_low_range = true;
+      }
+      current_page = current_page->GetDeltaNext();
+
+      continue;
+    }
+    case SPLIT_DELTA: {
+      return high_key;
+      break;
+    }
+    case REMOVE_NODE_DELTA: {
+      // If we encounter deleted abandon merge
+      return high_key;
+      break;
+    }
+    case NODE_MERGE_DELTA: {
+      current_page = current_page->GetDeltaNext();
+      break;
+    }
+    case LEAF_NODE: {
+      __attribute__((unused)) LeafNode* leaf =
+          reinterpret_cast<LeafNode*>(current_page);
+
+      if (!set_low_range) {
+        is_absolute_min = leaf->absolute_min_;
+        assert(comparator_(leaf->low_key_, new_low_key) < 0);
+        return leaf->low_key_;
+      } else {
+        if (leaf->absolute_min_) {
+          is_absolute_min = true;
+        }
+        if (comparator_(leaf->low_key_, new_low_key) < 0) {
+          *new_low_key = leaf->low_key_;
+        }
+        return *new_low_key;
+      }
+      break;
+    }
+    case MODIFY_DELTA: {
+      ModifyDelta* mod_delta = reinterpret_cast<ModifyDelta*>(current_page);
+
+      current_page = current_page->GetDeltaNext();
+      break;
+    }
+    default:
+      throw IndexException("Unrecognized page type\n");
+      break;
+    }
+  }
+}
+
+} */

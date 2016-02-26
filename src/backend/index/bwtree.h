@@ -26,6 +26,7 @@
 
 #define CONSOLIDATE_THRESHOLD 10
 #define SPLIT_SIZE 5
+#define MERGE_SIZE 2
 
 namespace peloton {
 namespace index {
@@ -224,19 +225,22 @@ public:
   // Stops all further use of node
   class RemoveNodeDelta : public Page {
    public:
-    RemoveNodeDelta() : Page(REMOVE_NODE_DELTA) {}
+    PID merged_into_;
+    RemoveNodeDelta(PID merged_into) : Page(REMOVE_NODE_DELTA),
+        merged_into_(merged_into) {}
   };
 
   class NodeMergeDelta : public Page {
    public:
     // Direct all records greater than separator_ to physical_link_
     KeyType separator_;
-
+    bool absolute_max_;
     Page* physical_link_;
 
-    NodeMergeDelta(KeyType separator_key, Page* new_sibling)
+    NodeMergeDelta(KeyType separator_key, bool absolute_max, Page* new_sibling)
         : Page(NODE_MERGE_DELTA),
           separator_(separator_key),
+          absolute_max_(absolute_max),
           physical_link_(new_sibling) {}
   };
 
@@ -254,6 +258,11 @@ public:
 
   void Split_Operation(Page * consolidated_page, std::stack<PID>  & pages_visited, PID orig_pid);
   bool complete_the_split(PID side_link, std::stack<PID>  & pages_visited);
+
+  void Merge_Operation(Page * consolidated_page, std::stack<PID>  & pages_visited, PID orig_pid);
+  PID find_left_sibling(std::stack<PID>  & pages_visited, KeyType merge_key);
+  bool complete_the_merge(RemoveNodeDelta * remove_node, std::stack<PID>  & pages_visited);
+  bool is_merge_installed(Page * page_merging_into, Page * compare_to, KeyType high_key);
 
   inline PID InstallNewMapping(Page* new_page) {
     PID new_slot = PID_counter_++;
