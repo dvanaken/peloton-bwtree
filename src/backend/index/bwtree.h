@@ -46,7 +46,7 @@ class BWTree {
   using PID = std::uint64_t;
   static constexpr PID NullPID = std::numeric_limits<PID>::max();
 
-public:
+ public:
   BWTree(const KeyComparator& comparator, const KeyEqualityChecker& equals);
 
   // TODO (dana): I can't get this to compile after I add allow_duplicate as a
@@ -91,11 +91,11 @@ public:
   };
 
   class Page {
-  protected:
+   protected:
     PageType type_;
     Page* delta_next_;
 
-  public:
+   public:
     Page(PageType type) : type_(type) { delta_next_ = nullptr; }
 
     const inline PageType& GetType() const { return type_; }
@@ -252,8 +252,9 @@ public:
 
   // ***** Functions for internal usage
 
-  void Split_Operation(Page * consolidated_page, std::stack<PID>  & pages_visited, PID orig_pid);
-  bool complete_the_split(PID side_link, std::stack<PID>  & pages_visited);
+  void Split_Operation(Page* consolidated_page, std::stack<PID>& pages_visited,
+                       PID orig_pid);
+  bool complete_the_split(PID side_link, std::stack<PID>& pages_visited);
 
   inline PID InstallNewMapping(Page* new_page) {
     PID new_slot = PID_counter_++;
@@ -297,6 +298,12 @@ public:
     std::map<KeyType, PID, KeyComparator> key_pointers(comparator_);
     std::map<KeyType, std::vector<ValueType>, KeyComparator> key_locations(
         comparator_);
+    std::map<KeyType, std::pair<KeyType, PID>, KeyComparator> index_term_ranges(
+        comparator_);
+
+    // Indicate whether we have met absolute min/max along consolidation
+    bool absolute_min = false;
+    bool absolute_max = false;
     bool is_leaf;
     // if (current_page->GetType() == INNER_NODE)
     // else
@@ -304,40 +311,67 @@ public:
     // Finally I found out a way to use set here... so we dont't need this
     // VisitedChecker<KeyType, KeyEqualityChecker> visited_keys;
 
-    std::stack<Page*> physical_links;
-    std::stack<bool> split_indicators;
-    std::stack<KeyType> split_separators;
+    // std::stack<Page*> physical_links;
+    // std::stack<bool> split_indicators;
+    // std::stack<KeyType> split_separators;
     bool split_indicator = false;
     KeyType split_separator = KeyType();
+    bool merge_indicator = false;
+    PID side_link;
+
+    KeyType leaf_low_key;
+    PID next_leaf;
+    PID prev_leaf;
+
+    Page* merge_link = nullptr;
 
     current_page = map_table_[page_PID];
-    __attribute__((unused)) Page* head_of_delta = current_page;
     bool stop = false;
     while (!stop) {
       switch (current_page->GetType()) {
         case INNER_NODE: {
           InnerNode* inner_node = reinterpret_cast<InnerNode*>(current_page);
 
-          // Because the nice property of map::insert, we don't need to check
-          // stale value of duplicated key
-          for (const auto& child : inner_node->children_)
-            if (!split_indicator ||
-                comparator_(child.first, split_separator) <= 0)
-              key_pointers.emplace(child.first, child.second);
-            else
-              break;
+          KeyType last_key = inner_node->low_key_;
+          bool first_child = true;
+          for (const auto& child : inner_node->children_) {
+            // Check whether a child is already contained in an index_term_delta
+            bool insert = true;
+            bool first_element = true;
+            for (auto& key_value : index_term_ranges) {
+              if (((first_element && absolute_min) ||
+                   (!(first_child && inner_node->absolute_min_) &&
+                    comparator_(key_value.first, last_key) <= 0)) &&
+                  comparator_(key_value.second.first, last_key) > 0) {
+                insert = false;
+                break;
+              }
+              first_element = false;
+            }
+
+            // Check whether the child has been split out
+            if (split_indicator &&
+                comparator_(split_separator, child.first) < 0)
+              insert = false;
+
+            if (insert) {
+              index_term_ranges.emplace(last_key, child);
+            }
+
+            last_key = child.first;
+            first_child = false;
+          }
 
           is_leaf = false;
+          if (inner_node->absolute_min_) absolute_min = true;
+          if (inner_node->absolute_max_) absolute_max = true;
 
-          if (physical_links.empty()) {
-            stop = true;
+          if (merge_link != nullptr) {
+            current_page = merge_link;
+            merge_link = nullptr;
           } else {
-            current_page = physical_links.top();
-            split_indicator = split_indicators.top();
-            split_separator = split_separators.top();
-            physical_links.pop();
-            split_indicators.pop();
-            split_separators.pop();
+            if (!split_indicator) side_link = inner_node->side_link_;
+            stop = true;
           }
 
           continue;
@@ -346,20 +380,40 @@ public:
           IndexTermDelta* idx_delta =
               reinterpret_cast<IndexTermDelta*>(current_page);
 
-          if (!split_indicator ||
-              comparator_(idx_delta->high_separator_, split_separator) <= 0)
-            key_pointers.emplace(idx_delta->high_separator_,
-                                 idx_delta->side_link_);
+          bool first_element = true;
+          for (auto& key_value : index_term_ranges) {
+            if ((((first_element && absolute_min) ||
+                  (!idx_delta->absolute_min_ &&
+                   comparator_(key_value.first, idx_delta->low_separator_) <=
+                       0))) &&
+                comparator_(key_value.second.first, idx_delta->low_separator_) >
+                    0) {
+              current_page = current_page->GetDeltaNext();
+              continue;
+            }
+
+            first_element = false;
+          }
+
+          if (idx_delta->absolute_min_) absolute_min = true;
+          if (idx_delta->absolute_max_) absolute_max = true;
+
+          index_term_ranges.emplace(idx_delta->low_separator_,
+                                    std::make_pair(idx_delta->high_separator_,
+                                                   idx_delta->side_link_));
           // Keep traversing the delta chain.
           current_page = current_page->GetDeltaNext();
           continue;
         }
         case SPLIT_DELTA: {
+          // make sure we consolidate before split
+          PageType next_page_type = current_page->GetDeltaNext()->GetType();
+          assert(next_page_type == INNER_NODE || next_page_type == LEAF_NODE);
+
           SplitDelta* split_delta = reinterpret_cast<SplitDelta*>(current_page);
-          if (!split_indicator) {
-            split_indicator = true;
-            split_separator = split_delta->separator_;
-          }
+          split_indicator = true;
+          split_separator = split_delta->separator_;
+          side_link = split_delta->side_link_;
 
           current_page = current_page->GetDeltaNext();
           break;
@@ -370,11 +424,16 @@ public:
           return nullptr;
         }
         case NODE_MERGE_DELTA: {
+          PageType next_page_type = current_page->GetDeltaNext()->GetType();
+          assert(next_page_type == INNER_NODE || next_page_type == LEAF_NODE);
           NodeMergeDelta* merge_delta =
               reinterpret_cast<NodeMergeDelta*>(current_page);
-          physical_links.emplace(merge_delta->physical_link_);
-          split_indicators.emplace(split_indicator);
-          split_separators.pop(split_separator);
+
+          next_page_type = merge_delta->physical_link_->GetType();
+          assert(next_page_type == INNER_NODE || next_page_type == LEAF_NODE);
+
+          merge_link = merge_delta->physical_link_;
+          merge_indicator = true;
 
           current_page = current_page->GetDeltaNext();
           break;
@@ -394,16 +453,23 @@ public:
           }
 
           is_leaf = true;
+          if (leaf->absolute_min_) absolute_min = true;
+          if (leaf->absolute_max_) absolute_max = true;
 
-          if (physical_links.empty()) {
-            stop = true;
+          if (merge_link != nullptr) {
+            current_page = merge_link;
+            merge_link = nullptr;
+            leaf_low_key = leaf->low_key_;
+            prev_leaf = leaf->prev_leaf_;
           } else {
-            current_page = physical_links.top();
-            split_indicator = split_indicators.top();
-            split_separator = split_separators.top();
-            physical_links.pop();
-            split_indicators.pop();
-            split_separators.pop();
+            if (!merge_indicator) {
+              leaf_low_key = leaf->low_key_;
+              prev_leaf = leaf->prev_leaf_;
+            }
+            next_leaf = leaf->next_leaf_;
+
+            if (!split_indicator) side_link = leaf->side_link_;
+            stop = true;
           }
           continue;
         }
@@ -423,6 +489,58 @@ public:
     }
     if (is_leaf) {
       LeafNode* new_leaf = new LeafNode();
+      new_leaf->low_key_ = leaf_low_key;
+      if (!key_locations.empty())
+        new_leaf->high_key_ = key_locations.rbegin()->first;
+      else {
+        LOG_DEBUG("We meet an empty leaf node!");
+      }
+      new_leaf->absolute_min_ = absolute_min;
+      if (!split_indicator) new_leaf->absolute_max_ = absolute_max;
+
+      new_leaf->next_leaf_ = prev_leaf;
+      new_leaf->prev_leaf_ = next_leaf;
+
+      new_leaf->side_link_ = side_link;
+
+      LOG_DEBUG("Consolidate leaf item:");
+      for (auto& key_location : key_locations) {
+        new_leaf->data_items_.push_back(key_location);
+        LOG_DEBUG("one entry");
+      }
+      LOG_DEBUG("Consolidate leaf item end.");
+      return new_leaf;
+    } else {
+      InnerNode* new_inner = new InnerNode();
+      if (!key_locations.empty()) {
+        new_inner->low_key_ = index_term_ranges.begin()->first;
+        new_inner->high_key_ = index_term_ranges.rbegin()->second.first;
+      } else {
+        LOG_DEBUG("We meet an empty inner node!");
+      }
+      new_inner->absolute_min_ = absolute_min;
+      if (!split_indicator) new_inner->absolute_max_ = absolute_max;
+
+      new_inner->side_link_ = side_link;
+
+      if (!key_locations.empty()) {
+        LOG_DEBUG("Consolidate inner item:");
+        bool first_child = true;
+        PID last_PID = index_term_ranges.begin()->second.second;
+        for (auto& kv : index_term_ranges) {
+          LOG_DEBUG("one entry");
+          if (first_child) {
+            first_child = false;
+            continue;
+          }
+          new_inner->children_.push_back(std::make_pair(kv.first, last_PID));
+          last_PID = kv.second.second;
+        }
+        new_inner->children_.push_back(
+            std::make_pair(index_term_ranges.rbegin()->second.first, last_PID));
+        LOG_DEBUG("Consolidate inner item end.");
+      }
+      return new_inner;
     }
   }
 
