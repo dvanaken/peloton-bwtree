@@ -20,7 +20,9 @@ template <typename KeyType, typename ValueType, class KeyComparator,
 BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
        ValueEqualityChecker>::BWTree(const KeyComparator& comparator,
                                      const KeyEqualityChecker& equals)
-    : comparator_(comparator), equals_(equals), reverse_comparator_(comparator) {
+    : comparator_(comparator),
+      equals_(equals),
+      reverse_comparator_(comparator) {
   root_ = 0;
   PID_counter_ = 1;
   allow_duplicate_ = true;
@@ -37,17 +39,15 @@ template <typename KeyType, typename ValueType, class KeyComparator,
 BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
        ValueEqualityChecker>::~BWTree() {
   for (PID i = 0; i < PID_counter_; ++i) {
-    Page *page = map_table_[i];
-    Page *free_page;
+    Page* page = map_table_[i];
+    Page* free_page;
     while (page != nullptr) {
       free_page = page;
       page = page->GetDeltaNext();
       delete free_page;
     }
   }
-
 }
-
 
 // TODO (dana): can't get this to compile after I add the allow_duplicate param
 // template <typename KeyType, typename ValueType, class KeyComparator, class
@@ -123,9 +123,9 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
           case INNER_NODE: {
             InnerNode* inner_node = reinterpret_cast<InnerNode*>(current_page);
             assert(inner_node->absolute_min_ ||
-                reverse_comparator_(key, inner_node->low_key_) > 0);
+                   reverse_comparator_(key, inner_node->low_key_) > 0);
             assert(inner_node->absolute_max_ ||
-                reverse_comparator_(key, inner_node->high_key_) <= 0);
+                   reverse_comparator_(key, inner_node->high_key_) <= 0);
 
             // TODO: use binary search here instead
             bool found_child = false;  // For debug only, should remove later
@@ -153,7 +153,8 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
                 /* Means we need to repair a split  */
                 LOG_DEBUG("Need to complete split SMO");
 
-                bool split_completed = complete_the_split(inner_node->side_link_, pages_visited);
+                bool split_completed =
+                    complete_the_split(inner_node->side_link_, pages_visited);
 
                 /* If it fails restart the insert */
                 if (!split_completed) {
@@ -164,7 +165,8 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
                   LOG_DEBUG("Split SMO completion succeeded");
                 }
 
-                /* Don't need to add current page to stack b/c it's not the parent */
+                /* Don't need to add current page to stack b/c it's not the
+                 * parent */
                 current_PID = inner_node->side_link_;
                 current_page = map_table_[current_PID];
                 head_of_delta = current_page;
@@ -179,9 +181,9 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             // is the child we
             // must visit next
             if ((idx_delta->absolute_min_ ||
-                reverse_comparator_(key, idx_delta->low_separator_) > 0) &&
+                 reverse_comparator_(key, idx_delta->low_separator_) > 0) &&
                 (idx_delta->absolute_max_ ||
-                    reverse_comparator_(key, idx_delta->high_separator_) <= 0)) {
+                 reverse_comparator_(key, idx_delta->high_separator_) <= 0)) {
               // Follow the side link to this child
               pages_visited.push(current_PID);
               current_PID = idx_delta->side_link_;
@@ -205,7 +207,8 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
               LOG_DEBUG("Need to complete split SMO");
 
               /* Need to fix this before continuing */
-              bool split_completed = complete_the_split(split_delta->side_link_, pages_visited);
+              bool split_completed =
+                  complete_the_split(split_delta->side_link_, pages_visited);
 
               /* If it fails restart the insert */
               if (!split_completed) {
@@ -315,23 +318,27 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
                 LOG_DEBUG("Performing consolidation");
                 Page* consolidated_page = Consolidate(current_PID);
                 if (consolidated_page) {
-                  Page* new_modify_delta_page = reinterpret_cast<Page*>(new_modify_delta);
+                  Page* new_modify_delta_page =
+                      reinterpret_cast<Page*>(new_modify_delta);
 
                   /* Attempt to insert updated consolidated page */
                   if (!map_table_[current_PID].compare_exchange_strong(
-                      new_modify_delta_page, consolidated_page)) {
+                          new_modify_delta_page, consolidated_page)) {
                     delete consolidated_page;
                     LOG_DEBUG("CAS of consolidation failed");
                   } else {
-                    // TODO: Eventually we'll have epoch garbage collection. But now we free in this way.
+                    // TODO: Eventually we'll have epoch garbage collection. But
+                    // now we free in this way.
                     FreeDeltaChain(new_modify_delta_page);
                     LOG_DEBUG("CAS of consolidation success");
 
                     /* Check if split is required and perform the operation */
-                    Split_Operation(consolidated_page, pages_visited, current_PID);
+                    Split_Operation(consolidated_page, pages_visited,
+                                    current_PID);
 
                     /* Check if merge is requires and perform the operation */
-                    Merge_Operation(consolidated_page, pages_visited, current_PID);
+                    Merge_Operation(consolidated_page, pages_visited,
+                                    current_PID);
                   }
                 }
               }
@@ -387,23 +394,27 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
                 LOG_DEBUG("Performing consolidation");
                 Page* consolidated_page = Consolidate(current_PID);
                 if (consolidated_page) {
-                  Page* new_modify_delta_page = reinterpret_cast<Page*>(new_modify_delta);
+                  Page* new_modify_delta_page =
+                      reinterpret_cast<Page*>(new_modify_delta);
 
                   /* Attempt to insert updated consolidated page */
                   if (!map_table_[current_PID].compare_exchange_strong(
-                      new_modify_delta_page, consolidated_page)) {
+                          new_modify_delta_page, consolidated_page)) {
                     delete consolidated_page;
                     LOG_DEBUG("CAS of consolidation failed");
                   } else {
-                    // TODO: Eventually we'll have epoch garbage collection. But now we free in this way.
+                    // TODO: Eventually we'll have epoch garbage collection. But
+                    // now we free in this way.
                     FreeDeltaChain(new_modify_delta_page);
                     LOG_DEBUG("CAS of consolidation success");
 
                     /* Check if split is required and perform the operation */
-                    Split_Operation(consolidated_page, pages_visited, current_PID);
+                    Split_Operation(consolidated_page, pages_visited,
+                                    current_PID);
 
                     /* Check if merge is requires and perform the operation */
-                    Merge_Operation(consolidated_page, pages_visited, current_PID);
+                    Merge_Operation(consolidated_page, pages_visited,
+                                    current_PID);
                   }
                 }
               }
@@ -449,9 +460,9 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
         case INNER_NODE: {
           InnerNode* inner_node = reinterpret_cast<InnerNode*>(current_page);
           assert(inner_node->absolute_min_ ||
-              reverse_comparator_(key, inner_node->low_key_) > 0);
+                 reverse_comparator_(key, inner_node->low_key_) > 0);
           assert(inner_node->absolute_max_ ||
-              reverse_comparator_(key, inner_node->high_key_) <= 0);
+                 reverse_comparator_(key, inner_node->high_key_) <= 0);
 
           bool found_child = false;
           // We shouldn't be using this yet since we have no consolidation
@@ -480,7 +491,8 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
               /* Means we need to repair a split  */
               LOG_DEBUG("Need to complete split SMO");
 
-              bool split_completed = complete_the_split(inner_node->side_link_, pages_visited);
+              bool split_completed =
+                  complete_the_split(inner_node->side_link_, pages_visited);
 
               /* If it fails restart the insert */
               if (!split_completed) {
@@ -491,7 +503,8 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
                 LOG_DEBUG("Split SMO completion succeeded");
               }
 
-              /* Don't need to add current page to stack b/c it's not the parent */
+              /* Don't need to add current page to stack b/c it's not the parent
+               */
               current_PID = inner_node->side_link_;
               current_page = map_table_[current_PID];
               head_of_delta = current_page;
@@ -506,9 +519,9 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
           // the child we
           // must visit next
           if ((idx_delta->absolute_min_ ||
-              reverse_comparator_(key, idx_delta->low_separator_) > 0) &&
+               reverse_comparator_(key, idx_delta->low_separator_) > 0) &&
               (idx_delta->absolute_max_ ||
-                  reverse_comparator_(key, idx_delta->high_separator_) <= 0)) {
+               reverse_comparator_(key, idx_delta->high_separator_) <= 0)) {
             // Follow the side link to this child
             pages_visited.push(current_PID);
             current_PID = idx_delta->side_link_;
@@ -524,15 +537,15 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
           continue;
         }
         case SPLIT_DELTA: {
-          SplitDelta* split_delta =
-              reinterpret_cast<SplitDelta*>(current_page);
+          SplitDelta* split_delta = reinterpret_cast<SplitDelta*>(current_page);
 
           /* Check if your Key is affected by the split */
           if (reverse_comparator_(key, split_delta->separator_) > 0) {
             LOG_DEBUG("Need to complete split SMO");
 
             /* Need to fix this before continuing */
-            bool split_completed = complete_the_split(split_delta->side_link_, pages_visited);
+            bool split_completed =
+                complete_the_split(split_delta->side_link_, pages_visited);
 
             /* If it fails restart the insert */
             if (!split_completed) {
@@ -640,15 +653,17 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             LOG_DEBUG("Performing consolidation");
             Page* consolidated_page = Consolidate(current_PID);
             if (consolidated_page) {
-              Page* new_modify_delta_page = reinterpret_cast<Page*>(new_modify_delta);
+              Page* new_modify_delta_page =
+                  reinterpret_cast<Page*>(new_modify_delta);
 
               /* Attempt to insert updated consolidated page */
               if (!map_table_[current_PID].compare_exchange_strong(
-                  new_modify_delta_page, consolidated_page)) {
+                      new_modify_delta_page, consolidated_page)) {
                 delete consolidated_page;
                 LOG_DEBUG("CAS of consolidation failed");
               } else {
-                // TODO: Eventually we'll have epoch garbage collection. But now we free in this way.
+                // TODO: Eventually we'll have epoch garbage collection. But now
+                // we free in this way.
                 FreeDeltaChain(new_modify_delta_page);
                 LOG_DEBUG("CAS of consolidation success");
 
@@ -715,24 +730,28 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
               LOG_DEBUG("Performing consolidation");
               Page* consolidated_page = Consolidate(current_PID);
               if (consolidated_page) {
-                Page* new_modify_delta_page = reinterpret_cast<Page*>(new_modify_delta);
+                Page* new_modify_delta_page =
+                    reinterpret_cast<Page*>(new_modify_delta);
 
                 /* Attempt to insert updated consolidated page */
                 if (!map_table_[current_PID].compare_exchange_strong(
-                    new_modify_delta_page, consolidated_page)) {
+                        new_modify_delta_page, consolidated_page)) {
                   delete consolidated_page;
                   LOG_DEBUG("CAS of consolidation failed");
                 } else {
-                  // TODO: Eventually we'll have epoch garbage collection. But now we free in this way.
+                  // TODO: Eventually we'll have epoch garbage collection. But
+                  // now we free in this way.
                   FreeDeltaChain(new_modify_delta_page);
 
                   LOG_DEBUG("CAS of consolidation success");
 
                   /* Check if split is required and perform the operation */
-                  Split_Operation(consolidated_page, pages_visited, current_PID);
+                  Split_Operation(consolidated_page, pages_visited,
+                                  current_PID);
 
                   /* Check if merge is requires and perform the operation */
-                  Merge_Operation(consolidated_page, pages_visited, current_PID);
+                  Merge_Operation(consolidated_page, pages_visited,
+                                  current_PID);
                 }
               }
             }
@@ -768,9 +787,9 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
       case INNER_NODE: {
         InnerNode* inner_node = reinterpret_cast<InnerNode*>(current_page);
         assert(inner_node->absolute_min_ ||
-            reverse_comparator_(key, inner_node->low_key_) > 0);
+               reverse_comparator_(key, inner_node->low_key_) > 0);
         assert(inner_node->absolute_max_ ||
-            reverse_comparator_(key, inner_node->high_key_) <= 0);
+               reverse_comparator_(key, inner_node->high_key_) <= 0);
         // TODO: use binary search here instead
         bool found_child = false;  // For debug only, should remove later
         for (const auto& child : inner_node->children_) {
@@ -790,8 +809,7 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
           // the last child.
           if (inner_node->absolute_max_) {
             current_PID = inner_node->children_.rbegin()->second;
-          }
-          else {
+          } else {
             current_PID = inner_node->side_link_;
           }
           current_page = map_table_[current_PID];
@@ -806,9 +824,9 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
         // the child we
         // must visit next
         if ((idx_delta->absolute_min_ ||
-            reverse_comparator_(key, idx_delta->low_separator_) > 0) &&
+             reverse_comparator_(key, idx_delta->low_separator_) > 0) &&
             (idx_delta->absolute_max_ ||
-                reverse_comparator_(key, idx_delta->high_separator_) <= 0)) {
+             reverse_comparator_(key, idx_delta->high_separator_) <= 0)) {
           // Follow the side link to this child
           current_PID = idx_delta->side_link_;
           current_page = map_table_[current_PID];
@@ -823,8 +841,7 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
         continue;
       }
       case SPLIT_DELTA: {
-        SplitDelta* split_delta =
-            reinterpret_cast<SplitDelta*>(current_page);
+        SplitDelta* split_delta = reinterpret_cast<SplitDelta*>(current_page);
 
         /* Check if your Key is affected by the split */
         if (reverse_comparator_(key, split_delta->separator_) > 0) {
@@ -845,7 +862,7 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
       case LEAF_NODE: {
         LeafNode* leaf = reinterpret_cast<LeafNode*>(current_page);
 
-        //TODO: We need to account for side link here
+        // TODO: We need to account for side link here
 
         // TODO: this lookup should be binary search
         // Check if the given key is already located in this leaf
@@ -986,15 +1003,17 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
   }
 }
 
-//TODO: Need to handle case where we are splitting the root
+// TODO: Need to handle case where we are splitting the root
 template <typename KeyType, typename ValueType, class KeyComparator,
           class KeyEqualityChecker, class ValueEqualityChecker>
 void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
-       ValueEqualityChecker>::Split_Operation(Page * consolidated_page,
-           std::stack<PID>  & pages_visited, PID orig_pid) {
+            ValueEqualityChecker>::Split_Operation(Page* consolidated_page,
+                                                   std::stack<PID>&
+                                                       pages_visited,
+                                                   PID orig_pid) {
   bool split_required = false;
-  SplitDelta * split_delta;
-  IndexTermDelta * index_term_delta_for_split;
+  SplitDelta* split_delta;
+  IndexTermDelta* index_term_delta_for_split;
 
   /* Check if split required */
   if (consolidated_page->GetType() == INNER_NODE) {
@@ -1010,15 +1029,18 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 
       /* Choose a key to split on */
       int key_split_index = (node_to_split->children_.size() / 2) - 1;
-      KeyType new_separator_key = node_to_split->children_[key_split_index].first;
+      KeyType new_separator_key =
+          node_to_split->children_[key_split_index].first;
       new_inner_node->low_key_ = new_separator_key;
       new_inner_node->high_key_ = node_to_split->high_key_;
 
       /* Populate new node */
-      for (int i = (key_split_index + 1); i < node_to_split->children_.size(); i++) {
+      for (int i = (key_split_index + 1); i < node_to_split->children_.size();
+           i++) {
         // can optimize this in the future
         new_inner_node->children_.push_back(node_to_split->children_[i]);
-        assert(reverse_comparator_(node_to_split->children_[i].first, new_separator_key) > 0);
+        assert(reverse_comparator_(node_to_split->children_[i].first,
+                                   new_separator_key) > 0);
       }
 
       /* Install the new page in the mapping table */
@@ -1028,10 +1050,9 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
       split_delta = new SplitDelta(new_separator_key, new_node_PID);
 
       /* Create the index term delta for the parent */
-      index_term_delta_for_split = new IndexTermDelta(new_inner_node->low_key_,
-          new_inner_node->high_key_, new_node_PID);
+      index_term_delta_for_split = new IndexTermDelta(
+          new_inner_node->low_key_, new_inner_node->high_key_, new_node_PID);
       index_term_delta_for_split->absolute_max_ = new_inner_node->absolute_max_;
-
     }
   } else if (consolidated_page->GetType() == LEAF_NODE) {
     __attribute__((unused)) LeafNode* node_to_split =
@@ -1049,15 +1070,18 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 
       /* Choose a key to split on */
       int key_split_index = (node_to_split->data_items_.size() / 2) - 1;
-      KeyType new_separator_key = node_to_split->data_items_[key_split_index].first;
+      KeyType new_separator_key =
+          node_to_split->data_items_[key_split_index].first;
       new_leaf_node->low_key_ = new_separator_key;
       new_leaf_node->high_key_ = node_to_split->high_key_;
 
       /* Populate new node */
-      for (int i = (key_split_index + 1); i < node_to_split->data_items_.size(); i++) {
+      for (int i = (key_split_index + 1); i < node_to_split->data_items_.size();
+           i++) {
         // can optimize this in the future
         new_leaf_node->data_items_.push_back(node_to_split->data_items_[i]);
-        assert(reverse_comparator_(node_to_split->data_items_[i].first, new_separator_key) > 0);
+        assert(reverse_comparator_(node_to_split->data_items_[i].first,
+                                   new_separator_key) > 0);
       }
 
       /* Install the new page in the mapping table */
@@ -1067,8 +1091,8 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
       split_delta = new SplitDelta(new_separator_key, new_node_PID);
 
       /* Create the index term delta for the parent */
-      index_term_delta_for_split = new IndexTermDelta(new_leaf_node->low_key_,
-          new_leaf_node->high_key_, new_node_PID);
+      index_term_delta_for_split = new IndexTermDelta(
+          new_leaf_node->low_key_, new_leaf_node->high_key_, new_node_PID);
       index_term_delta_for_split->absolute_max_ = new_leaf_node->absolute_max_;
     }
 
@@ -1076,12 +1100,12 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
     assert(0);
   }
 
-  /* If split performed try to install split delta */ //delete if fails
+  /* If split performed try to install split delta */  // delete if fails
   if (split_required) {
     LOG_DEBUG("Performing Split");
     split_delta->SetDeltaNext(consolidated_page);
-    if (!map_table_[orig_pid].compare_exchange_strong(
-        consolidated_page, split_delta)) {
+    if (!map_table_[orig_pid].compare_exchange_strong(consolidated_page,
+                                                      split_delta)) {
       delete split_delta;
       delete index_term_delta_for_split;
       LOG_DEBUG("CAS of installing delta split failed");
@@ -1099,7 +1123,7 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
         if (parent_node->GetType() != REMOVE_NODE_DELTA) {
           index_term_delta_for_split->SetDeltaNext(parent_node);
           if (map_table_[pid_of_parent].compare_exchange_strong(
-              parent_node, index_term_delta_for_split)) {
+                  parent_node, index_term_delta_for_split)) {
             LOG_DEBUG("CAS of installing index term delta in parent succeeded");
             break;
           }
@@ -1116,26 +1140,27 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 template <typename KeyType, typename ValueType, class KeyComparator,
           class KeyEqualityChecker, class ValueEqualityChecker>
 bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
-       ValueEqualityChecker>::complete_the_split(PID side_link,
-           std::stack<PID>  & pages_visited) {
+            ValueEqualityChecker>::complete_the_split(PID side_link,
+                                                      std::stack<PID>&
+                                                          pages_visited) {
   Page* new_split_node = map_table_[side_link];
-  IndexTermDelta * index_term_delta_for_split;
+  IndexTermDelta* index_term_delta_for_split;
 
   if (new_split_node->GetType() == INNER_NODE) {
     InnerNode* new_inner_node = reinterpret_cast<InnerNode*>(new_split_node);
 
     /* Create the index term delta for the parent */
-    index_term_delta_for_split = new IndexTermDelta(new_inner_node->low_key_,
-        new_inner_node->high_key_, side_link);
+    index_term_delta_for_split = new IndexTermDelta(
+        new_inner_node->low_key_, new_inner_node->high_key_, side_link);
     index_term_delta_for_split->absolute_max_ = new_inner_node->absolute_max_;
 
   } else if (new_split_node->GetType() == LEAF_NODE) {
     __attribute__((unused)) LeafNode* new_leaf_node =
-            reinterpret_cast<LeafNode*>(new_split_node);
+        reinterpret_cast<LeafNode*>(new_split_node);
 
     /* Create the index term delta for the parent */
-    index_term_delta_for_split = new IndexTermDelta(new_leaf_node->low_key_,
-        new_leaf_node->high_key_, side_link);
+    index_term_delta_for_split = new IndexTermDelta(
+        new_leaf_node->low_key_, new_leaf_node->high_key_, side_link);
     index_term_delta_for_split->absolute_max_ = new_leaf_node->absolute_max_;
   } else {
     // I believe this should never happen - thoughts? (aaron)
@@ -1152,7 +1177,7 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
     if (parent_node->GetType() != REMOVE_NODE_DELTA) {
       index_term_delta_for_split->SetDeltaNext(parent_node);
       if (map_table_[pid_of_parent].compare_exchange_strong(
-          parent_node, index_term_delta_for_split)) {
+              parent_node, index_term_delta_for_split)) {
         LOG_DEBUG("CAS of installing index term delta in parent succeeded");
         return true;
       }
@@ -1169,12 +1194,14 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 template <typename KeyType, typename ValueType, class KeyComparator,
           class KeyEqualityChecker, class ValueEqualityChecker>
 void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
-       ValueEqualityChecker>::Merge_Operation(Page * consolidated_page,
-           std::stack<PID>  & pages_visited, PID orig_pid) {
+            ValueEqualityChecker>::Merge_Operation(Page* consolidated_page,
+                                                   std::stack<PID>&
+                                                       pages_visited,
+                                                   PID orig_pid) {
   bool merge_required = false;
-  RemoveNodeDelta * remove_node_delta;
-  NodeMergeDelta * merge_delta;
-  IndexTermDelta * index_term_delta_for_merge;
+  RemoveNodeDelta* remove_node_delta;
+  NodeMergeDelta* merge_delta;
+  IndexTermDelta* index_term_delta_for_merge;
   PID pid_merging_into;
 
   /* Check if merge required */
@@ -1185,8 +1212,8 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
       merge_required = true;
 
       /* Find the node to merge into */
-      pid_merging_into = find_left_sibling(pages_visited,
-          node_to_merge->low_key_);
+      pid_merging_into =
+          find_left_sibling(pages_visited, node_to_merge->low_key_);
 
       if (pid_merging_into == root_) {
         LOG_DEBUG("Merge abandoned - couldn't find left sibling");
@@ -1194,9 +1221,9 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
       }
 
       /* Consolidate the page we are merging into */
-      Page * current_top_of_page = map_table_[pid_merging_into];
+      Page* current_top_of_page = map_table_[pid_merging_into];
       assert(current_top_of_page->GetType() != REMOVE_NODE_DELTA);
-      Page * page_merging_into = Consolidate(pid_merging_into);
+      Page* page_merging_into = Consolidate(pid_merging_into);
 
       if (!page_merging_into) {
         return;
@@ -1206,37 +1233,42 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
       remove_node_delta = new RemoveNodeDelta(pid_merging_into);
 
       /* Create a new merge delta */
-      merge_delta = new NodeMergeDelta(node_to_merge->high_key_,
-          node_to_merge->absolute_max_, consolidated_page);
+      merge_delta =
+          new NodeMergeDelta(node_to_merge->high_key_,
+                             node_to_merge->absolute_max_, consolidated_page);
 
-      InnerNode* node_merging_into = reinterpret_cast<InnerNode*>(page_merging_into);
+      InnerNode* node_merging_into =
+          reinterpret_cast<InnerNode*>(page_merging_into);
       assert(node_merging_into->side_link_ == orig_pid);
 
       /* Create the index term delta for the parent */
-      index_term_delta_for_merge = new IndexTermDelta(node_merging_into->low_key_,
-              node_to_merge->high_key_, pid_merging_into);
+      index_term_delta_for_merge =
+          new IndexTermDelta(node_merging_into->low_key_,
+                             node_to_merge->high_key_, pid_merging_into);
       index_term_delta_for_merge->absolute_max_ = node_to_merge->absolute_max_;
-      index_term_delta_for_merge->absolute_min_ = node_merging_into->absolute_min_;
+      index_term_delta_for_merge->absolute_min_ =
+          node_merging_into->absolute_min_;
 
       /* Attempt to install the consolidated page */
       if (map_table_[pid_merging_into].compare_exchange_strong(
-          current_top_of_page, page_merging_into)) {
+              current_top_of_page, page_merging_into)) {
         FreeDeltaChain(current_top_of_page);
-        LOG_DEBUG("Successfully installed consolidated page we are merging into");
+        LOG_DEBUG(
+            "Successfully installed consolidated page we are merging into");
       } else {
         delete page_merging_into;
       }
     }
   } else if (consolidated_page->GetType() == LEAF_NODE) {
     __attribute__((unused)) LeafNode* node_to_merge =
-           reinterpret_cast<LeafNode*>(consolidated_page);
+        reinterpret_cast<LeafNode*>(consolidated_page);
     if ((node_to_merge->data_items_.size() < MERGE_SIZE) &&
         (!node_to_merge->absolute_min_)) {
       merge_required = true;
 
       /* Find the node to merge into */
-      pid_merging_into = find_left_sibling(pages_visited,
-          node_to_merge->low_key_);
+      pid_merging_into =
+          find_left_sibling(pages_visited, node_to_merge->low_key_);
 
       if (pid_merging_into == root_) {
         LOG_DEBUG("Merge abandoned - couldn't find left sibling");
@@ -1244,9 +1276,9 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
       }
 
       /* Consolidate the page we are merging into */
-      Page * current_top_of_page = map_table_[pid_merging_into];
+      Page* current_top_of_page = map_table_[pid_merging_into];
       assert(current_top_of_page->GetType() != REMOVE_NODE_DELTA);
-      Page * page_merging_into = Consolidate(pid_merging_into);
+      Page* page_merging_into = Consolidate(pid_merging_into);
 
       if (!page_merging_into) {
         return;
@@ -1256,25 +1288,30 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
       remove_node_delta = new RemoveNodeDelta(pid_merging_into);
 
       /* Create a new merge delta */
-      merge_delta = new NodeMergeDelta(node_to_merge->high_key_,
-          node_to_merge->absolute_max_, consolidated_page);
+      merge_delta =
+          new NodeMergeDelta(node_to_merge->high_key_,
+                             node_to_merge->absolute_max_, consolidated_page);
 
       __attribute__((unused)) LeafNode* node_merging_into =
-                reinterpret_cast<LeafNode*>(page_merging_into);
+          reinterpret_cast<LeafNode*>(page_merging_into);
       assert(node_merging_into->side_link_ == orig_pid);
 
       /* Create the index term delta for the parent */
-      index_term_delta_for_merge = new IndexTermDelta(node_merging_into->low_key_,
-              node_to_merge->high_key_, pid_merging_into);
+      index_term_delta_for_merge =
+          new IndexTermDelta(node_merging_into->low_key_,
+                             node_to_merge->high_key_, pid_merging_into);
       index_term_delta_for_merge->absolute_max_ = node_to_merge->absolute_max_;
-      index_term_delta_for_merge->absolute_min_ = node_merging_into->absolute_min_;
+      index_term_delta_for_merge->absolute_min_ =
+          node_merging_into->absolute_min_;
 
       /* Attempt to install the consolidated page */
       if (map_table_[pid_merging_into].compare_exchange_strong(
-          current_top_of_page, page_merging_into)) {
-        // TODO: Eventually we'll have epoch garbage collection. But now we free in this way.
+              current_top_of_page, page_merging_into)) {
+        // TODO: Eventually we'll have epoch garbage collection. But now we free
+        // in this way.
         FreeDeltaChain(page_merging_into);
-        LOG_DEBUG("Successfully installed consolidated page we are merging into");
+        LOG_DEBUG(
+            "Successfully installed consolidated page we are merging into");
       } else {
         delete page_merging_into;
       }
@@ -1287,8 +1324,8 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
   if (merge_required) {
     LOG_DEBUG("Performing Merge");
     remove_node_delta->SetDeltaNext(consolidated_page);
-    if (!map_table_[orig_pid].compare_exchange_strong(
-        consolidated_page, remove_node_delta)) {
+    if (!map_table_[orig_pid].compare_exchange_strong(consolidated_page,
+                                                      remove_node_delta)) {
       LOG_DEBUG("CAS of installing remove node failed");
       delete remove_node_delta;
       delete merge_delta;
@@ -1303,7 +1340,7 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
         if (page_merging_into->GetType() != REMOVE_NODE_DELTA) {
           merge_delta->SetDeltaNext(page_merging_into);
           if (map_table_[pid_merging_into].compare_exchange_strong(
-              page_merging_into, merge_delta)) {
+                  page_merging_into, merge_delta)) {
             LOG_DEBUG("CAS of installing node merge delta succeeded");
             break;
           }
@@ -1325,7 +1362,7 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
         if (parent_node->GetType() != REMOVE_NODE_DELTA) {
           index_term_delta_for_merge->SetDeltaNext(parent_node);
           if (map_table_[pid_of_parent].compare_exchange_strong(
-              parent_node, index_term_delta_for_merge)) {
+                  parent_node, index_term_delta_for_merge)) {
             LOG_DEBUG("CAS of installing index term delta in parent succeeded");
             break;
           }
@@ -1339,90 +1376,91 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
   }
 }
 
-//TODO: Handle case where parent is deleted, split, merged
+// TODO: Handle case where parent is deleted, split, merged
 /* Returns root PID if we fail to find child */
 template <typename KeyType, typename ValueType, class KeyComparator,
           class KeyEqualityChecker, class ValueEqualityChecker>
-std::uint64_t BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
-ValueEqualityChecker>::find_left_sibling(std::stack<PID>  & pages_visited,
-    KeyType merge_key) {
+std::uint64_t
+BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
+       ValueEqualityChecker>::find_left_sibling(std::stack<PID>& pages_visited,
+                                                KeyType merge_key) {
   PID parent_pid = pages_visited.top();
-  Page * parent_page = map_table_[parent_pid];
+  Page* parent_page = map_table_[parent_pid];
 
   /* Go over the delta chain looking for node neighboring the merge_key */
   while (true) {
-    switch(parent_page->GetType()) {
-    case INNER_NODE: {
-      InnerNode* inner_node = reinterpret_cast<InnerNode*>(parent_page);
+    switch (parent_page->GetType()) {
+      case INNER_NODE: {
+        InnerNode* inner_node = reinterpret_cast<InnerNode*>(parent_page);
 
-      for (const auto& child : inner_node->children_) {
-        if (reverse_comparator_(merge_key, child.first) == 0) {
-          return child.second;
+        for (const auto& child : inner_node->children_) {
+          if (reverse_comparator_(merge_key, child.first) == 0) {
+            return child.second;
+          }
         }
+
+        /* Couldn't find neighbor */
+        return root_;
+
+        break;
       }
+      case INDEX_TERM_DELTA: {
+        IndexTermDelta* idx_delta =
+            reinterpret_cast<IndexTermDelta*>(parent_page);
 
-      /* Couldn't find neighbor */
-      return root_;
-
-      break;
-    }
-    case INDEX_TERM_DELTA: {
-      IndexTermDelta* idx_delta =
-          reinterpret_cast<IndexTermDelta*>(parent_page);
-
-      if (reverse_comparator_(merge_key, idx_delta->high_separator_) == 0) {
-        return idx_delta->side_link_;
-      } else {
+        if (reverse_comparator_(merge_key, idx_delta->high_separator_) == 0) {
+          return idx_delta->side_link_;
+        } else {
+          parent_page = parent_page->GetDeltaNext();
+        }
+        continue;
+      }
+      case SPLIT_DELTA: {
+        /* If parent is split abandon merge */
+        // if split higher try more
+        return root_;
+        break;
+      }
+      case REMOVE_NODE_DELTA: {
+        /* If parent is deleted abandon merge */
+        return root_;
+        break;
+      }
+      case NODE_MERGE_DELTA: {
+        /* If parent is merged abandon merge */
+        return root_;
+        break;
+      }
+      case LEAF_NODE: {
+        assert(0);
+        break;
+      }
+      case MODIFY_DELTA: {
         parent_page = parent_page->GetDeltaNext();
+        continue;
       }
-      continue;
-    }
-    case SPLIT_DELTA: {
-      /* If parent is split abandon merge */
-      // if split higher try more
-      return root_;
-      break;
-    }
-    case REMOVE_NODE_DELTA: {
-      /* If parent is deleted abandon merge */
-      return root_;
-      break;
-    }
-    case NODE_MERGE_DELTA: {
-      /* If parent is merged abandon merge */
-      return root_;
-      break;
-    }
-    case LEAF_NODE: {
-      assert(0);
-      break;
-    }
-    case MODIFY_DELTA: {
-      parent_page = parent_page->GetDeltaNext();
-      continue;
-    }
-    default:
-      throw IndexException("Unrecognized page type\n");
-      break;
+      default:
+        throw IndexException("Unrecognized page type\n");
+        break;
     }
   }
 }
 
 template <typename KeyType, typename ValueType, class KeyComparator,
           class KeyEqualityChecker, class ValueEqualityChecker>
-bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
-ValueEqualityChecker>::complete_the_merge(RemoveNodeDelta * remove_node,
-    std::stack<PID>  & pages_visited) {
+bool BWTree<
+    KeyType, ValueType, KeyComparator, KeyEqualityChecker,
+    ValueEqualityChecker>::complete_the_merge(RemoveNodeDelta* remove_node,
+                                              std::stack<PID>& pages_visited) {
   PID megred_into_pid = remove_node->merged_into_;
-  IndexTermDelta * index_term_delta;
+  IndexTermDelta* index_term_delta;
 
   /* Get the high key of the page that's deleted */
-  Page * page_deleted = remove_node->GetDeltaNext();
-
+  Page* page_deleted = remove_node->GetDeltaNext();
 
   /* Consolidated the page we are merging into */
-  Page * page_merging_into = map_table_[megred_into_pid];
-  Page * page_merging_into_consolidate = Consolidate(megred_into_pid);
+  Page* page_merging_into = map_table_[megred_into_pid];
+  Page* page_merging_into_consolidate = Consolidate(megred_into_pid);
 
   if (!page_merging_into_consolidate) {
     LOG_DEBUG("Failed to consolidated page merging into");
@@ -1431,12 +1469,13 @@ ValueEqualityChecker>::complete_the_merge(RemoveNodeDelta * remove_node,
 
   /* Install consolidated page being merged into */
   if (!map_table_[megred_into_pid].compare_exchange_strong(
-      page_merging_into, page_merging_into_consolidate)) {
+          page_merging_into, page_merging_into_consolidate)) {
     delete page_merging_into_consolidate;
     LOG_DEBUG("CAS of consolidated page failed");
     return false;
   } else {
-    // TODO: Eventually we'll have epoch garbage collection. But now we free in this way.
+    // TODO: Eventually we'll have epoch garbage collection. But now we free in
+    // this way.
     FreeDeltaChain(page_merging_into);
   }
 
@@ -1444,25 +1483,27 @@ ValueEqualityChecker>::complete_the_merge(RemoveNodeDelta * remove_node,
   if (page_deleted->GetType() == INNER_NODE) {
     InnerNode* inner_node = reinterpret_cast<InnerNode*>(page_deleted);
     if (!is_merge_installed(page_merging_into_consolidate, page_deleted,
-        inner_node->high_key_)) {
+                            inner_node->high_key_)) {
       LOG_DEBUG("Need to install merge delta for incomplete SMO");
 
       /* Create a new merge delta */
-      NodeMergeDelta * merge_delta = new NodeMergeDelta(inner_node->high_key_,
-          inner_node->absolute_max_, page_deleted);
+      NodeMergeDelta* merge_delta = new NodeMergeDelta(
+          inner_node->high_key_, inner_node->absolute_max_, page_deleted);
 
       /* Install Merge Delta */
       merge_delta->SetDeltaNext(page_merging_into_consolidate);
       if (!map_table_[megred_into_pid].compare_exchange_strong(
-          page_merging_into_consolidate, merge_delta)) {
+              page_merging_into_consolidate, merge_delta)) {
         LOG_DEBUG("CAS of merge delta failed");
         delete merge_delta;
         return false;
       }
 
-      InnerNode* inner_merged_into = reinterpret_cast<InnerNode*>(page_merging_into_consolidate);
-      index_term_delta = new IndexTermDelta(inner_merged_into->low_key_,
-          inner_merged_into->high_key_, megred_into_pid);
+      InnerNode* inner_merged_into =
+          reinterpret_cast<InnerNode*>(page_merging_into_consolidate);
+      index_term_delta =
+          new IndexTermDelta(inner_merged_into->low_key_,
+                             inner_merged_into->high_key_, megred_into_pid);
       index_term_delta->absolute_max_ = inner_merged_into->absolute_max_;
       index_term_delta->absolute_min_ = inner_merged_into->absolute_min_;
     }
@@ -1470,27 +1511,27 @@ ValueEqualityChecker>::complete_the_merge(RemoveNodeDelta * remove_node,
     __attribute__((unused)) LeafNode* leaf =
         reinterpret_cast<LeafNode*>(page_deleted);
     if (!is_merge_installed(page_merging_into_consolidate, page_deleted,
-        leaf->high_key_)) {
+                            leaf->high_key_)) {
       LOG_DEBUG("Need to install merge delta for incomplete SMO");
 
       /* Create a new merge delta */
-      NodeMergeDelta * merge_delta = new NodeMergeDelta(leaf->high_key_,
-          leaf->absolute_max_, page_deleted);
-
+      NodeMergeDelta* merge_delta = new NodeMergeDelta(
+          leaf->high_key_, leaf->absolute_max_, page_deleted);
 
       /* Install Merge Delta */
       merge_delta->SetDeltaNext(page_merging_into_consolidate);
       if (!map_table_[megred_into_pid].compare_exchange_strong(
-          page_merging_into_consolidate, merge_delta)) {
+              page_merging_into_consolidate, merge_delta)) {
         LOG_DEBUG("CAS of merge delta failed");
         delete merge_delta;
         return false;
       }
 
       __attribute__((unused)) LeafNode* leaf_merged_into =
-              reinterpret_cast<LeafNode*>(page_merging_into_consolidate);
-      index_term_delta = new IndexTermDelta(leaf_merged_into->low_key_,
-          leaf_merged_into->high_key_, megred_into_pid);
+          reinterpret_cast<LeafNode*>(page_merging_into_consolidate);
+      index_term_delta =
+          new IndexTermDelta(leaf_merged_into->low_key_,
+                             leaf_merged_into->high_key_, megred_into_pid);
       index_term_delta->absolute_max_ = leaf_merged_into->absolute_max_;
       index_term_delta->absolute_min_ = leaf_merged_into->absolute_min_;
     }
@@ -1506,8 +1547,8 @@ ValueEqualityChecker>::complete_the_merge(RemoveNodeDelta * remove_node,
     Page* parent_node = map_table_[pid_of_parent];
     if (parent_node->GetType() != REMOVE_NODE_DELTA) {
       index_term_delta->SetDeltaNext(parent_node);
-      if (map_table_[pid_of_parent].compare_exchange_strong(
-          parent_node, index_term_delta)) {
+      if (map_table_[pid_of_parent].compare_exchange_strong(parent_node,
+                                                            index_term_delta)) {
         LOG_DEBUG("CAS of installing index term delta in parent succeeded");
         return true;
       }
@@ -1522,62 +1563,63 @@ ValueEqualityChecker>::complete_the_merge(RemoveNodeDelta * remove_node,
 template <typename KeyType, typename ValueType, class KeyComparator,
           class KeyEqualityChecker, class ValueEqualityChecker>
 bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
-ValueEqualityChecker>::is_merge_installed(Page * page_merging_into,
-    Page * compare_to, KeyType high_key) {
-  Page * current_page = page_merging_into;
+            ValueEqualityChecker>::is_merge_installed(Page* page_merging_into,
+                                                      Page* compare_to,
+                                                      KeyType high_key) {
+  Page* current_page = page_merging_into;
 
   while (true) {
-    switch(current_page->GetType()) {
-    case INNER_NODE: {
-      InnerNode* inner_node = reinterpret_cast<InnerNode*>(current_page);
+    switch (current_page->GetType()) {
+      case INNER_NODE: {
+        InnerNode* inner_node = reinterpret_cast<InnerNode*>(current_page);
 
-      if (reverse_comparator_(high_key, inner_node->high_key_) <= 0) {
-        return true;
-      } else {
-        return false;
+        if (reverse_comparator_(high_key, inner_node->high_key_) <= 0) {
+          return true;
+        } else {
+          return false;
+        }
+        continue;
       }
-      continue;
-    }
-    case INDEX_TERM_DELTA: {
-      current_page = current_page->GetDeltaNext();
-      continue;
-    }
-    case SPLIT_DELTA: {
-      assert(0);
-      continue;
-    }
-    case REMOVE_NODE_DELTA: {
-      assert(0);
-      continue;
-    }
-    case NODE_MERGE_DELTA: {
-      NodeMergeDelta* merge_delta =
-          reinterpret_cast<NodeMergeDelta*>(current_page);
-      if (merge_delta->physical_link_ == compare_to) {
-        return true;
+      case INDEX_TERM_DELTA: {
+        current_page = current_page->GetDeltaNext();
+        continue;
       }
+      case SPLIT_DELTA: {
+        assert(0);
+        continue;
+      }
+      case REMOVE_NODE_DELTA: {
+        assert(0);
+        continue;
+      }
+      case NODE_MERGE_DELTA: {
+        NodeMergeDelta* merge_delta =
+            reinterpret_cast<NodeMergeDelta*>(current_page);
+        if (merge_delta->physical_link_ == compare_to) {
+          return true;
+        }
 
-      current_page = current_page->GetDeltaNext();
-      continue;
-    }
-    case LEAF_NODE: {
-      __attribute__((unused)) LeafNode* leaf =
-          reinterpret_cast<LeafNode*>(current_page);
-
-      if (reverse_comparator_(high_key, leaf->high_key_) <= 0) {
-        return true;
-      } else {
-        return false;
+        current_page = current_page->GetDeltaNext();
+        continue;
       }
-      continue;
-    }
-    case MODIFY_DELTA: {
-      current_page = current_page->GetDeltaNext();
-      continue;
-    }
-    default:
-      throw IndexException("Unrecognized page type\n");
-      break;
+      case LEAF_NODE: {
+        __attribute__((unused)) LeafNode* leaf =
+            reinterpret_cast<LeafNode*>(current_page);
+
+        if (reverse_comparator_(high_key, leaf->high_key_) <= 0) {
+          return true;
+        } else {
+          return false;
+        }
+        continue;
+      }
+      case MODIFY_DELTA: {
+        current_page = current_page->GetDeltaNext();
+        continue;
+      }
+      default:
+        throw IndexException("Unrecognized page type\n");
+        break;
     }
   }
 

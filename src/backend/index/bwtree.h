@@ -227,8 +227,8 @@ class BWTree {
   class RemoveNodeDelta : public Page {
    public:
     PID merged_into_;
-    RemoveNodeDelta(PID merged_into) : Page(REMOVE_NODE_DELTA),
-        merged_into_(merged_into) {}
+    RemoveNodeDelta(PID merged_into)
+        : Page(REMOVE_NODE_DELTA), merged_into_(merged_into) {}
   };
 
   class NodeMergeDelta : public Page {
@@ -261,10 +261,13 @@ class BWTree {
                        PID orig_pid);
   bool complete_the_split(PID side_link, std::stack<PID>& pages_visited);
 
-  void Merge_Operation(Page * consolidated_page, std::stack<PID>  & pages_visited, PID orig_pid);
-  PID find_left_sibling(std::stack<PID>  & pages_visited, KeyType merge_key);
-  bool complete_the_merge(RemoveNodeDelta * remove_node, std::stack<PID>  & pages_visited);
-  bool is_merge_installed(Page * page_merging_into, Page * compare_to, KeyType high_key);
+  void Merge_Operation(Page* consolidated_page, std::stack<PID>& pages_visited,
+                       PID orig_pid);
+  PID find_left_sibling(std::stack<PID>& pages_visited, KeyType merge_key);
+  bool complete_the_merge(RemoveNodeDelta* remove_node,
+                          std::stack<PID>& pages_visited);
+  bool is_merge_installed(Page* page_merging_into, Page* compare_to,
+                          KeyType high_key);
 
   inline PID InstallNewMapping(Page* new_page) {
     PID new_slot = PID_counter_++;
@@ -394,10 +397,10 @@ class BWTree {
           for (auto& key_value : index_term_ranges) {
             if ((((first_element && absolute_min) ||
                   (!idx_delta->absolute_min_ &&
-                      reverse_comparator_(key_value.first, idx_delta->low_separator_) <=
-                       0))) &&
-                reverse_comparator_(key_value.second.first, idx_delta->low_separator_) >
-                    0) {
+                   reverse_comparator_(key_value.first,
+                                       idx_delta->low_separator_) <= 0))) &&
+                reverse_comparator_(key_value.second.first,
+                                    idx_delta->low_separator_) > 0) {
               current_page = current_page->GetDeltaNext();
               continue;
             }
@@ -508,11 +511,11 @@ class BWTree {
       new_leaf->side_link_ = side_link;
 
       LOG_DEBUG("Consolidate leaf item:");
-      //KeyType old_key;
+      // KeyType old_key;
       for (auto& key_location : key_locations) {
         new_leaf->data_items_.push_back(key_location);
-        //LOG_DEBUG("%d", comparator_(old_key, key_location.first));
-        //old_key = key_location.first;
+        // LOG_DEBUG("%d", comparator_(old_key, key_location.first));
+        // old_key = key_location.first;
         LOG_DEBUG("one entry");
       }
       LOG_DEBUG("Consolidate leaf item end.");
@@ -552,7 +555,7 @@ class BWTree {
   }
 
   inline void FreeDeltaChain(Page* page) {
-    Page *free_page;
+    Page* free_page;
     while (page != nullptr) {
       free_page = page;
       page = page->GetDeltaNext();
@@ -563,19 +566,15 @@ class BWTree {
   // ***** Member variables
 
   class ReverseComparator {
-  public:
+   public:
     KeyComparator comparator_;
 
-    ReverseComparator(KeyComparator a):comparator_(a) {
-    }
+    ReverseComparator(KeyComparator a) : comparator_(a) {}
 
-    inline int operator()(const KeyType &lhs,
-                           const KeyType &rhs) const {
-      if (comparator_(lhs, rhs))
-        return -1;
+    inline int operator()(const KeyType& lhs, const KeyType& rhs) const {
+      if (comparator_(lhs, rhs)) return -1;
 
-      if (comparator_(rhs, lhs))
-        return 1;
+      if (comparator_(rhs, lhs)) return 1;
 
       return 0;
     }
