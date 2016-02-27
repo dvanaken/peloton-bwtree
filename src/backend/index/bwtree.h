@@ -26,7 +26,7 @@
 
 #define CONSOLIDATE_THRESHOLD 10
 #define SPLIT_SIZE 5
-#define MERGE_SIZE 2
+#define MERGE_SIZE 3
 
 namespace peloton {
 namespace index {
@@ -49,6 +49,7 @@ class BWTree {
 
  public:
   BWTree(const KeyComparator& comparator, const KeyEqualityChecker& equals);
+  ~BWTree();
 
   // TODO (dana): I can't get this to compile after I add allow_duplicate as a
   // param
@@ -350,8 +351,8 @@ class BWTree {
             for (auto& key_value : index_term_ranges) {
               if (((first_element && absolute_min) ||
                    (!(first_child && inner_node->absolute_min_) &&
-                    comparator_(key_value.first, last_key) <= 0)) &&
-                  comparator_(key_value.second.first, last_key) > 0) {
+                    reverse_comparator_(key_value.first, last_key) <= 0)) &&
+                  reverse_comparator_(key_value.second.first, last_key) > 0) {
                 insert = false;
                 break;
               }
@@ -360,7 +361,7 @@ class BWTree {
 
             // Check whether the child has been split out
             if (split_indicator &&
-                comparator_(split_separator, child.first) < 0)
+                reverse_comparator_(split_separator, child.first) < 0)
               insert = false;
 
             if (insert) {
@@ -393,9 +394,9 @@ class BWTree {
           for (auto& key_value : index_term_ranges) {
             if ((((first_element && absolute_min) ||
                   (!idx_delta->absolute_min_ &&
-                   comparator_(key_value.first, idx_delta->low_separator_) <=
+                      reverse_comparator_(key_value.first, idx_delta->low_separator_) <=
                        0))) &&
-                comparator_(key_value.second.first, idx_delta->low_separator_) >
+                reverse_comparator_(key_value.second.first, idx_delta->low_separator_) >
                     0) {
               current_page = current_page->GetDeltaNext();
               continue;
@@ -507,8 +508,11 @@ class BWTree {
       new_leaf->side_link_ = side_link;
 
       LOG_DEBUG("Consolidate leaf item:");
+      //KeyType old_key;
       for (auto& key_location : key_locations) {
         new_leaf->data_items_.push_back(key_location);
+        //LOG_DEBUG("%d", comparator_(old_key, key_location.first));
+        //old_key = key_location.first;
         LOG_DEBUG("one entry");
       }
       LOG_DEBUG("Consolidate leaf item end.");
@@ -547,7 +551,35 @@ class BWTree {
     }
   }
 
+  inline void FreeDeltaChain(Page* page) {
+    Page *free_page;
+    while (page != nullptr) {
+      free_page = page;
+      page = page->GetDeltaNext();
+      delete free_page;
+    }
+  }
+
   // ***** Member variables
+
+  class ReverseComparator {
+  public:
+    KeyComparator comparator_;
+
+    ReverseComparator(KeyComparator a):comparator_(a) {
+    }
+
+    inline int operator()(const KeyType &lhs,
+                           const KeyType &rhs) const {
+      if (comparator_(lhs, rhs))
+        return -1;
+
+      if (comparator_(rhs, lhs))
+        return 1;
+
+      return 0;
+    }
+  };
 
   // PID of the root node
   PID root_;
@@ -569,6 +601,8 @@ class BWTree {
 
   // Key equality function object
   KeyEqualityChecker equals_;
+
+  ReverseComparator reverse_comparator_;
 
   // Value equality function object
   ValueEqualityChecker value_equals_;
