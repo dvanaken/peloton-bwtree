@@ -786,6 +786,13 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
     switch (current_page->GetType()) {
       case INNER_NODE: {
         InnerNode* inner_node = reinterpret_cast<InnerNode*>(current_page);
+        if (reverse_comparator_(key, inner_node->high_key_) > 0 &&
+            inner_node->side_link_ != NullPID) {
+          current_PID = inner_node->side_link_;
+          current_page = map_table_[current_PID];
+          head_of_delta = current_page;
+          break;
+        }
         assert(inner_node->absolute_min_ ||
                reverse_comparator_(key, inner_node->low_key_) > 0);
         assert(inner_node->absolute_max_ ||
@@ -854,15 +861,31 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
         break;
       }
       case REMOVE_NODE_DELTA: {
+        current_page = current_page->GetDeltaNext();
         break;
       }
       case NODE_MERGE_DELTA: {
+        NodeMergeDelta* merge_delta =
+            reinterpret_cast<NodeMergeDelta*>(current_page);
+
+        /* Check if the key is in the merged node */
+        if (reverse_comparator_(key, merge_delta->separator_) > 0) {
+          current_page = merge_delta->physical_link_;
+        } else {
+          current_page = current_page->GetDeltaNext();
+        }
         break;
       }
       case LEAF_NODE: {
         LeafNode* leaf = reinterpret_cast<LeafNode*>(current_page);
 
-        // TODO: We need to account for side link here
+        if (reverse_comparator_(key, leaf->high_key_) > 0 &&
+            leaf->side_link_ != NullPID) {
+          current_PID = leaf->side_link_;
+          current_page = map_table_[current_PID];
+          head_of_delta = current_page;
+          break;
+        }
 
         // TODO: this lookup should be binary search
         // Check if the given key is already located in this leaf
@@ -915,12 +938,17 @@ template <typename KeyType, typename ValueType, class KeyComparator,
 std::vector<ValueType>
 BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
        ValueEqualityChecker>::SearchAllKeys() {
+  LOG_DEBUG("Trying searchAllKeys");
   std::vector<ValueType> result;
 
   // Finally I found out a way to use set here... so we dont't need this
   // VisitedChecker<KeyType, KeyEqualityChecker> visited_keys;
 
   std::set<KeyType, KeyComparator> visited_keys(comparator_);
+  bool split_indicator = false;
+  bool merge_indicator = false;
+  KeyType split_separator;
+  PID split_next_node;
 
   Page* current_page = map_table_[root_];
   PID current_PID = root_;
@@ -956,21 +984,33 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
         continue;
       }
       case SPLIT_DELTA: {
+        SplitDelta* split_delta = reinterpret_cast<SplitDelta*>(current_page);
+        split_indicator = true;
+        split_separator = split_delta->separator_;
+        split_next_node = split_delta->side_link_;
+        current_page = split_delta->GetDeltaNext();
         break;
       }
       case REMOVE_NODE_DELTA: {
+        current_page = current_page->GetDeltaNext();
         break;
       }
       case NODE_MERGE_DELTA: {
+        merge_indicator = true;
+        current_page = current_page->GetDeltaNext();
         break;
       }
       case LEAF_NODE: {
+        LOG_DEBUG("SearchAllKeys into one leaf node");
         LeafNode* leaf = reinterpret_cast<LeafNode*>(current_page);
 
         // Traverse all data item in the leaf. If we already visited before,
         // then skip.
         std::vector<ValueType> data_items;
         for (const auto& key_values : leaf->data_items_) {
+          if (split_indicator &&
+              reverse_comparator_(key_values.first, split_separator) > 0)
+            break;
           if (visited_keys.find(key_values.first) == visited_keys.end()) {
             // if (visited_keys.find(key_values.first) == visited_keys.end()) {
             visited_keys.insert(key_values.first);
@@ -979,8 +1019,24 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
           }
         }
 
-        // TODO: Need to traverse next leaf in reality
-        return result;
+        if (!merge_indicator) visited_keys.clear();
+
+        if (split_indicator) {
+          current_PID = split_next_node;
+        } else {
+          if (leaf->next_leaf_ != NullPID)
+            current_PID = leaf->next_leaf_;
+          else
+            return result;
+        }
+
+        current_page = map_table_[current_PID];
+        head_of_delta = current_page;
+
+        split_indicator = false;
+        merge_indicator = false;
+
+        break;
       }
       case MODIFY_DELTA: {
         ModifyDelta* mod_delta = reinterpret_cast<ModifyDelta*>(current_page);

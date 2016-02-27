@@ -24,9 +24,9 @@
 #include "backend/common/logger.h"
 #include "backend/index/index_key.h"
 
-#define CONSOLIDATE_THRESHOLD 10
-#define SPLIT_SIZE 5
-#define MERGE_SIZE 3
+#define CONSOLIDATE_THRESHOLD 8
+#define SPLIT_SIZE 3
+#define MERGE_SIZE 4
 
 namespace peloton {
 namespace index {
@@ -456,6 +456,9 @@ class BWTree {
           // then skip.
           std::vector<ValueType> data_items;
           for (const auto& key_values : leaf->data_items_) {
+            if (split_indicator &&
+                reverse_comparator_(split_separator, key_values.first) < 0)
+              break;
             key_locations.insert(key_values);
           }
 
@@ -505,15 +508,20 @@ class BWTree {
       new_leaf->absolute_min_ = absolute_min;
       if (!split_indicator) new_leaf->absolute_max_ = absolute_max;
 
-      new_leaf->next_leaf_ = prev_leaf;
-      new_leaf->prev_leaf_ = next_leaf;
+      if (split_indicator)
+        new_leaf->next_leaf_ = side_link;
+      else
+        new_leaf->next_leaf_ = next_leaf;
+
+      new_leaf->prev_leaf_ = prev_leaf;
 
       new_leaf->side_link_ = side_link;
 
       LOG_DEBUG("Consolidate leaf item:");
       // KeyType old_key;
       for (auto& key_location : key_locations) {
-        new_leaf->data_items_.push_back(key_location);
+        if (key_location.second.size())
+          new_leaf->data_items_.push_back(key_location);
         // LOG_DEBUG("%d", comparator_(old_key, key_location.first));
         // old_key = key_location.first;
         LOG_DEBUG("one entry");
@@ -555,6 +563,9 @@ class BWTree {
   }
 
   inline void FreeDeltaChain(Page* page) {
+    // Actually we can't free stale delta chain here, because other threads
+    // might be reading it.
+    return;
     Page* free_page;
     while (page != nullptr) {
       free_page = page;
