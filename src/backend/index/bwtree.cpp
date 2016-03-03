@@ -1610,7 +1610,7 @@ bool BWTree<
       }
     } else {
       delete index_term_delta;
-      LOG_DEBUG("CAS of installing index term delta in parent failed");
+      LOG_DEBUG("CAS of installing index term delta in parent failed because parent is removed");
       return false;
     }
   }
