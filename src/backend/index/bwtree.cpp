@@ -266,6 +266,27 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
                 reinterpret_cast<LeafNode*>(current_page);
             bool inserted;  // Whether this <key, value> pair is inserted
 
+            /* Check if we need to complete split SMO */
+            if (!leaf->absolute_max_ && (reverse_comparator_(key, leaf->high_key_) > 0)) {
+              /* Need to fix this before continuing */
+              bool split_completed =
+                  complete_the_split(leaf->side_link_, pages_visited);
+
+              /* If it fails restart the insert */
+              if (!split_completed) {
+                attempt_insert = false;
+                LOG_DEBUG("Split SMO completion failed");
+                continue;
+              } else {
+                LOG_DEBUG("Split SMO completion succeeded");
+              }
+
+              // Don't need to add current page to stack b/c it's not the parent
+              current_PID = leaf->side_link_;
+              current_page = map_table_[current_PID];
+              head_of_delta = current_page;
+            }
+
             // TODO: this lookup should be binary search
             // Check if the given key is already located in this leaf
             bool found_key = false;
@@ -601,6 +622,27 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
         case LEAF_NODE: {
           __attribute__((unused)) LeafNode* leaf =
               reinterpret_cast<LeafNode*>(current_page);
+
+          /* Check if we need to complete split SMO */
+          if (!leaf->absolute_max_ && (reverse_comparator_(key, leaf->high_key_) > 0)) {
+            /* Need to fix this before continuing */
+            bool split_completed =
+                complete_the_split(leaf->side_link_, pages_visited);
+
+            /* If it fails restart the insert */
+            if (!split_completed) {
+              attempt_delete = false;
+              LOG_DEBUG("Split SMO completion failed");
+              continue;
+            } else {
+              LOG_DEBUG("Split SMO completion succeeded");
+            }
+
+            // Don't need to add current page to stack b/c it's not the parent
+            current_PID = leaf->side_link_;
+            current_page = map_table_[current_PID];
+            head_of_delta = current_page;
+          }
 
           bool found_location = false;
           std::vector<ValueType> data_items;
