@@ -1407,7 +1407,7 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
               current_top_of_page, page_merging_into)) {
         // TODO: Eventually we'll have epoch garbage collection. But now we free
         // in this way.
-        FreeDeltaChain(page_merging_into);
+        FreeDeltaChain(current_top_of_page);
         LOG_DEBUG(
             "Successfully installed consolidated page we are merging into");
       } else {
