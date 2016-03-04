@@ -42,6 +42,7 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
     Page* page = map_table_[i];
     Page* free_page;
     while (page != nullptr) {
+      LOG_DEBUG("Freeing page in delta chain for PID %d\n", (int)i);
       free_page = page;
       page = page->GetDeltaNext();
       delete free_page;
@@ -823,6 +824,13 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
                                         const KeyType& key) {
   Page* current_page = map_table_[root_];
   PID current_PID = root_;
+
+  /* If empty root w/ no children then search fails */
+  if (current_page->GetType() == INNER_NODE &&
+      reinterpret_cast<InnerNode*>(current_page)->children_.size() == 0) {
+    LOG_DEBUG("SearchKey returning nothing because BWTree is empty");
+    return std::vector<ValueType>();
+  }
   __attribute__((unused)) Page* head_of_delta = current_page;
   while (true) {
     switch (current_page->GetType()) {
@@ -983,6 +991,15 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
   LOG_DEBUG("Trying searchAllKeys");
   std::vector<ValueType> result;
 
+  Page* current_page = map_table_[root_];
+  PID current_PID = root_;
+  /* If empty root w/ no children then search fails */
+  if (current_page->GetType() == INNER_NODE &&
+      reinterpret_cast<InnerNode*>(current_page)->children_.size() == 0) {
+    LOG_DEBUG("SearchAllKeys returning nothing because BWTree is empty");
+    return result;
+  }
+
   // Finally I found out a way to use set here... so we dont't need this
   // VisitedChecker<KeyType, KeyEqualityChecker> visited_keys;
 
@@ -992,8 +1009,6 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
   KeyType split_separator;
   PID split_next_node;
 
-  Page* current_page = map_table_[root_];
-  PID current_PID = root_;
   __attribute__((unused)) Page* head_of_delta = current_page;
   while (true) {
     switch (current_page->GetType()) {
