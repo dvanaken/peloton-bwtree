@@ -67,7 +67,7 @@ class BWTree {
 
   // Search functions
   std::vector<ValueType> SearchKey(const KeyType& key);
-  std::vector<ValueType> SearchAllKeys();
+  std::map<KeyType, std::vector<ValueType>, KeyComparator> SearchAllKeys();
 
  private:
   // ***** Different types of page records

@@ -985,11 +985,12 @@ class VisitedChecker {
 
 template <typename KeyType, typename ValueType, class KeyComparator,
           class KeyEqualityChecker, class ValueEqualityChecker>
-std::vector<ValueType>
+std::map<KeyType, std::vector<ValueType>, KeyComparator>
 BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
        ValueEqualityChecker>::SearchAllKeys() {
   LOG_DEBUG("Trying searchAllKeys");
-  std::vector<ValueType> result;
+  //std::vector<ValueType> result;
+  std::map<KeyType, std::vector<ValueType>, KeyComparator> visited_keys(comparator_);
 
   Page* current_page = map_table_[root_];
   PID current_PID = root_;
@@ -997,15 +998,14 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
   if (current_page->GetType() == INNER_NODE &&
       reinterpret_cast<InnerNode*>(current_page)->children_.size() == 0) {
     LOG_DEBUG("SearchAllKeys returning nothing because BWTree is empty");
-    return result;
+    return visited_keys;
   }
 
   // Finally I found out a way to use set here... so we dont't need this
   // VisitedChecker<KeyType, KeyEqualityChecker> visited_keys;
 
-  std::set<KeyType, KeyComparator> visited_keys(comparator_);
   bool split_indicator = false;
-  bool merge_indicator = false;
+  __attribute__((unused)) bool merge_indicator = false;
   KeyType split_separator;
   PID split_next_node;
 
@@ -1015,7 +1015,7 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
       case INNER_NODE: {
         InnerNode* inner_node = reinterpret_cast<InnerNode*>(current_page);
         if (inner_node->children_.size() == 0) {
-          return result;
+          return visited_keys;
         } else {
           current_PID = inner_node->children_[0].second;
           current_page = map_table_[current_PID];
@@ -1068,15 +1068,16 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
           if (split_indicator &&
               reverse_comparator_(key_values.first, split_separator) > 0)
             break;
-          if (visited_keys.find(key_values.first) == visited_keys.end()) {
+
+          visited_keys.insert(std::make_pair(key_values.first, key_values.second));
+          //if (visited_keys.find(key_values.first) == visited_keys.end()) {
             // if (visited_keys.find(key_values.first) == visited_keys.end()) {
-            visited_keys.insert(key_values.first);
-            result.insert(result.end(), key_values.second.begin(),
-                          key_values.second.end());
-          }
+            //result.insert(result.end(), key_values.second.begin(),
+            //              key_values.second.end());
+          //}
         }
 
-        if (!merge_indicator) visited_keys.clear();
+        //if (!merge_indicator) visited_keys.clear();
 
         if (split_indicator) {
           current_PID = split_next_node;
@@ -1084,7 +1085,7 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
           if (leaf->next_leaf_ != NullPID)
             current_PID = leaf->next_leaf_;
           else
-            return result;
+            return visited_keys;
         }
 
         current_page = map_table_[current_PID];
@@ -1097,12 +1098,12 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
       }
       case MODIFY_DELTA: {
         ModifyDelta* mod_delta = reinterpret_cast<ModifyDelta*>(current_page);
-        if (visited_keys.find(mod_delta->key_) == visited_keys.end()) {
+        visited_keys.insert(std::make_pair(mod_delta->key_, mod_delta->locations_));
+        //if (visited_keys.find(mod_delta->key_) == visited_keys.end()) {
           // if (visited_keys.find(mod_delta->key_) == visited_keys.end()) {
-          visited_keys.insert(mod_delta->key_);
-          result.insert(result.end(), mod_delta->locations_.begin(),
-                        mod_delta->locations_.end());
-        }
+          //result.insert(result.end(), mod_delta->locations_.begin(),
+          //              mod_delta->locations_.end());
+        //}
 
         current_page = current_page->GetDeltaNext();
         continue;
