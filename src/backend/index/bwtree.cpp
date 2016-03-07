@@ -355,12 +355,12 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
                     LOG_DEBUG("CAS of consolidation success");
 
                     /* Check if split is required and perform the operation */
-                    Split_Operation(consolidated_page, pages_visited,
-                                    current_PID);
-
-                    /* Check if merge is requires and perform the operation */
-                    Merge_Operation(consolidated_page, pages_visited,
-                                    current_PID);
+                    if (!Split_Operation(consolidated_page, pages_visited,
+                        current_PID)) {
+                      /* Check if merge is requires and perform the operation */
+                      Merge_Operation(consolidated_page, pages_visited,
+                          current_PID);
+                    }
                   }
                 }
               }
@@ -431,12 +431,13 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
                     LOG_DEBUG("CAS of consolidation success");
 
                     /* Check if split is required and perform the operation */
-                    Split_Operation(consolidated_page, pages_visited,
-                                    current_PID);
+                    if (!Split_Operation(consolidated_page, pages_visited,
+                        current_PID)) {
 
-                    /* Check if merge is requires and perform the operation */
-                    Merge_Operation(consolidated_page, pages_visited,
-                                    current_PID);
+                      /* Check if merge is requires and perform the operation */
+                      Merge_Operation(consolidated_page, pages_visited,
+                          current_PID);
+                    }
                   }
                 }
               }
@@ -711,10 +712,11 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
                 LOG_DEBUG("CAS of consolidation success");
 
                 /* Check if split is required and perform the operation */
-                Split_Operation(consolidated_page, pages_visited, current_PID);
+                if (!Split_Operation(consolidated_page, pages_visited, current_PID)) {
 
-                /* Check if merge is requires and perform the operation */
-                Merge_Operation(consolidated_page, pages_visited, current_PID);
+                  /* Check if merge is requires and perform the operation */
+                  Merge_Operation(consolidated_page, pages_visited, current_PID);
+                }
               }
             }
           }
@@ -789,12 +791,13 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
                   LOG_DEBUG("CAS of consolidation success");
 
                   /* Check if split is required and perform the operation */
-                  Split_Operation(consolidated_page, pages_visited,
-                                  current_PID);
+                  if (!Split_Operation(consolidated_page, pages_visited,
+                      current_PID)) {
 
-                  /* Check if merge is requires and perform the operation */
-                  Merge_Operation(consolidated_page, pages_visited,
-                                  current_PID);
+                    /* Check if merge is requires and perform the operation */
+                    Merge_Operation(consolidated_page, pages_visited,
+                        current_PID);
+                  }
                 }
               }
             }
@@ -1120,7 +1123,7 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 // TODO: Need to handle case where we are splitting the root
 template <typename KeyType, typename ValueType, class KeyComparator,
           class KeyEqualityChecker, class ValueEqualityChecker>
-void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
+bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             ValueEqualityChecker>::Split_Operation(Page* consolidated_page,
                                                    std::stack<PID>&
                                                        pages_visited,
@@ -1248,7 +1251,7 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
       }
 
       LOG_DEBUG("CAS of installing delta split failed");
-      return;
+      return false;
     } else {
       LOG_DEBUG("CAS of installing delta split success");
 
@@ -1259,10 +1262,10 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
                                                               new_root_node)) {
           LOG_DEBUG("CAS of installing new root node failed");
           delete new_root_node;
-          return;
+          return false;
         }
         LOG_DEBUG("Installing new root node successful");
-        return;
+        return true;
       } else {
         /* Get PID of parent node */
         PID pid_of_parent = pages_visited.top();
@@ -1276,17 +1279,18 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             if (map_table_[pid_of_parent].compare_exchange_strong(
                 parent_node, index_term_delta_for_split)) {
               LOG_DEBUG("CAS of installing index term delta in parent succeeded");
-              break;
+              return true;
             }
           } else {
             delete index_term_delta_for_split;
             LOG_DEBUG("CAS of installing index term delta in parent failed");
-            return;
+            return false;
           }
         }
       }
     }
   }
+  return true;
 }
 
 template <typename KeyType, typename ValueType, class KeyComparator,
