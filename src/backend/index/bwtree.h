@@ -25,8 +25,8 @@
 #include "backend/index/index_key.h"
 
 #define CONSOLIDATE_THRESHOLD 5
-#define SPLIT_SIZE 1
-#define MERGE_SIZE 4
+#define SPLIT_SIZE 20
+#define MERGE_SIZE 5
 
 namespace peloton {
 namespace index {
@@ -257,7 +257,7 @@ class BWTree {
 
   // ***** Functions for internal usage
 
-  void Split_Operation(Page* consolidated_page, std::stack<PID>& pages_visited,
+  bool Split_Operation(Page* consolidated_page, std::stack<PID>& pages_visited,
                        PID orig_pid);
   bool complete_the_split(PID side_link, std::stack<PID>& pages_visited);
 
