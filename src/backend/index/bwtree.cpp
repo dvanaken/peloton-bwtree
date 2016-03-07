@@ -1029,11 +1029,12 @@ class VisitedChecker {
 
 template <typename KeyType, typename ValueType, class KeyComparator,
           class KeyEqualityChecker, class ValueEqualityChecker>
-std::vector<ValueType>
+std::map<KeyType, std::vector<ValueType>, KeyComparator>
 BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
        ValueEqualityChecker>::SearchAllKeys() {
   LOG_DEBUG("Trying searchAllKeys");
-  std::vector<ValueType> result;
+  //std::vector<ValueType> result;
+  std::map<KeyType, std::vector<ValueType>, KeyComparator> visited_keys(comparator_);
 
   Page* current_page = map_table_[root_];
   PID current_PID = root_;
@@ -1041,15 +1042,14 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
   if (current_page->GetType() == INNER_NODE &&
       reinterpret_cast<InnerNode*>(current_page)->children_.size() == 0) {
     LOG_DEBUG("SearchAllKeys returning nothing because BWTree is empty");
-    return result;
+    return visited_keys;
   }
 
   // Finally I found out a way to use set here... so we dont't need this
   // VisitedChecker<KeyType, KeyEqualityChecker> visited_keys;
 
-  std::set<KeyType, KeyComparator> visited_keys(comparator_);
   bool split_indicator = false;
-  bool merge_indicator = false;
+  __attribute__((unused)) bool merge_indicator = false;
   KeyType split_separator;
   PID split_next_node;
 
@@ -1059,7 +1059,7 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
       case INNER_NODE: {
         InnerNode* inner_node = reinterpret_cast<InnerNode*>(current_page);
         if (inner_node->children_.size() == 0) {
-          return result;
+          return visited_keys;
         } else {
           current_PID = inner_node->children_[0].second;
           current_page = map_table_[current_PID];
@@ -1112,15 +1112,16 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
           if (split_indicator &&
               reverse_comparator_(key_values.first, split_separator) > 0)
             break;
-          if (visited_keys.find(key_values.first) == visited_keys.end()) {
+
+          visited_keys.insert(std::make_pair(key_values.first, key_values.second));
+          //if (visited_keys.find(key_values.first) == visited_keys.end()) {
             // if (visited_keys.find(key_values.first) == visited_keys.end()) {
-            visited_keys.insert(key_values.first);
-            result.insert(result.end(), key_values.second.begin(),
-                          key_values.second.end());
-          }
+            //result.insert(result.end(), key_values.second.begin(),
+            //              key_values.second.end());
+          //}
         }
 
-        if (!merge_indicator) visited_keys.clear();
+        //if (!merge_indicator) visited_keys.clear();
 
         if (split_indicator) {
           current_PID = split_next_node;
@@ -1128,7 +1129,7 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
           if (leaf->next_leaf_ != NullPID)
             current_PID = leaf->next_leaf_;
           else
-            return result;
+            return visited_keys;
         }
 
         current_page = map_table_[current_PID];
@@ -1141,12 +1142,12 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
       }
       case MODIFY_DELTA: {
         ModifyDelta* mod_delta = reinterpret_cast<ModifyDelta*>(current_page);
-        if (visited_keys.find(mod_delta->key_) == visited_keys.end()) {
+        visited_keys.insert(std::make_pair(mod_delta->key_, mod_delta->locations_));
+        //if (visited_keys.find(mod_delta->key_) == visited_keys.end()) {
           // if (visited_keys.find(mod_delta->key_) == visited_keys.end()) {
-          visited_keys.insert(mod_delta->key_);
-          result.insert(result.end(), mod_delta->locations_.begin(),
-                        mod_delta->locations_.end());
-        }
+          //result.insert(result.end(), mod_delta->locations_.begin(),
+          //              mod_delta->locations_.end());
+        //}
 
         current_page = current_page->GetDeltaNext();
         continue;
@@ -1171,6 +1172,8 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
   bool split_required = false;
   SplitDelta* split_delta;
   IndexTermDelta* index_term_delta_for_split;
+  InnerNode* new_root_node;
+  PID reinstalled_root = root_;
 
   /* Check if split required */
   if (consolidated_page->GetType() == INNER_NODE) {
@@ -1206,10 +1209,24 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
       /* Create the Delta Split to Install */
       split_delta = new SplitDelta(new_separator_key, new_node_PID);
 
-      /* Create the index term delta for the parent */
-      index_term_delta_for_split = new IndexTermDelta(
-          new_inner_node->low_key_, new_inner_node->high_key_, new_node_PID);
-      index_term_delta_for_split->absolute_max_ = new_inner_node->absolute_max_;
+      /* Check if you are splitting the root node */
+      // Need to check how we consolidate to make sure we have correct behavior
+      if (orig_pid == root_) {
+        LOG_DEBUG("Attempting to split the root node");
+        /* Copy over the old root node to a new location */
+        reinstalled_root = InstallNewMapping(consolidated_page);
+        /* Create the new root node */
+        new_root_node = new InnerNode();
+        new_root_node->absolute_min_ = true;
+        new_root_node->absolute_max_ = true;
+        new_root_node->children_.push_back(std::make_pair(new_separator_key, reinstalled_root));
+        new_root_node->children_.push_back(std::make_pair(new_inner_node->high_key_, new_node_PID));
+      } else {
+        /* Create the index term delta for the parent */
+        index_term_delta_for_split = new IndexTermDelta(
+            new_inner_node->low_key_, new_inner_node->high_key_, new_node_PID);
+        index_term_delta_for_split->absolute_max_ = new_inner_node->absolute_max_;
+      }
     }
   } else if (consolidated_page->GetType() == LEAF_NODE) {
     __attribute__((unused)) LeafNode* node_to_split =
@@ -1261,33 +1278,53 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
   if (split_required) {
     LOG_DEBUG("Performing Split");
     split_delta->SetDeltaNext(consolidated_page);
-    if (!map_table_[orig_pid].compare_exchange_strong(consolidated_page,
+    PID pid_to_use = (orig_pid == root_) ? reinstalled_root : orig_pid;
+    assert(pid_to_use != root_);
+    if (!map_table_[pid_to_use].compare_exchange_strong(consolidated_page,
                                                       split_delta)) {
       delete split_delta;
-      delete index_term_delta_for_split;
+      if (orig_pid == root_) {
+        delete new_root_node;
+      } else {
+        delete index_term_delta_for_split;
+      }
+
       LOG_DEBUG("CAS of installing delta split failed");
       return;
     } else {
       LOG_DEBUG("CAS of installing delta split success");
 
-      /* Get PID of parent node */
-      PID pid_of_parent = pages_visited.top();
-
-      /* Attempt to install index term delta on the parent */
-      while (true) {
-        // Safe to keep retrying - thoughts? (aaron)
-        Page* parent_node = map_table_[pid_of_parent];
-        if (parent_node->GetType() != REMOVE_NODE_DELTA) {
-          index_term_delta_for_split->SetDeltaNext(parent_node);
-          if (map_table_[pid_of_parent].compare_exchange_strong(
-                  parent_node, index_term_delta_for_split)) {
-            LOG_DEBUG("CAS of installing index term delta in parent succeeded");
-            break;
-          }
-        } else {
-          delete index_term_delta_for_split;
-          LOG_DEBUG("CAS of installing index term delta in parent failed");
+      /* Check if we are splitting the root node */
+      if (orig_pid == root_) {
+        assert (new_root_node);
+        if (!map_table_[root_].compare_exchange_strong(consolidated_page,
+                                                              new_root_node)) {
+          LOG_DEBUG("CAS of installing new root node failed");
+          delete new_root_node;
           return;
+        }
+        LOG_DEBUG("Installing new root node successful");
+        return;
+      } else {
+        /* Get PID of parent node */
+        PID pid_of_parent = pages_visited.top();
+
+        /* Attempt to install index term delta on the parent */
+        while (true) {
+          // Safe to keep retrying - thoughts? (aaron)
+          Page* parent_node = map_table_[pid_of_parent];
+          if (parent_node->GetType() != REMOVE_NODE_DELTA) {
+            index_term_delta_for_split->SetDeltaNext(parent_node);
+            if (map_table_[pid_of_parent].compare_exchange_strong(
+                parent_node, index_term_delta_for_split)) {
+              LOG_DEBUG("CAS of installing index term delta in parent succeeded");
+              break;
+            }
+          } else {
+            delete index_term_delta_for_split;
+            LOG_DEBUG("CAS of installing index term delta in parent failed");
+            return;
+          }
         }
       }
     }
