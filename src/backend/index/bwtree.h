@@ -570,7 +570,51 @@ class BWTree {
     while (page != nullptr) {
       free_page = page;
       page = page->GetDeltaNext();
-      delete free_page;
+      switch (free_page->GetType()) {
+        case INNER_NODE: {
+          InnerNode* inner_node = reinterpret_cast<InnerNode*>(free_page);
+          delete inner_node;
+          break;
+        }
+        case INDEX_TERM_DELTA: {
+          IndexTermDelta* idx_delta =
+              reinterpret_cast<IndexTermDelta*>(free_page);
+          delete idx_delta;
+          break;
+        }
+        case LEAF_NODE: {
+          LeafNode* leaf = reinterpret_cast<LeafNode*>(free_page);
+          delete leaf;
+          break;
+        }
+        case MODIFY_DELTA: {
+          ModifyDelta* mod_delta =
+              reinterpret_cast<ModifyDelta*>(free_page);
+          delete mod_delta;
+          break;
+        }
+        case SPLIT_DELTA: {
+          SplitDelta* split_delta =
+              reinterpret_cast<SplitDelta*>(free_page);
+          delete split_delta;
+          break;
+        }
+        case REMOVE_NODE_DELTA: {
+          RemoveNodeDelta* remove_delta =
+              reinterpret_cast<RemoveNodeDelta*>(free_page);
+          delete remove_delta;
+          break;
+        }
+        case NODE_MERGE_DELTA: {
+          NodeMergeDelta* merge_delta =
+              reinterpret_cast<NodeMergeDelta*>(free_page);
+          delete merge_delta;
+          break;
+        }
+        default:
+          throw IndexException("Unrecognized page type\n");
+          break;
+      }
     }
   }
 
