@@ -25,8 +25,8 @@
 #include "backend/index/index_key.h"
 
 #define CONSOLIDATE_THRESHOLD 5
-#define SPLIT_SIZE 60
-#define MERGE_SIZE 10
+#define SPLIT_SIZE 20
+#define MERGE_SIZE 5
 
 namespace peloton {
 namespace index {
