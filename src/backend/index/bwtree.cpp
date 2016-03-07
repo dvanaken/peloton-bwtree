@@ -1135,6 +1135,7 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
   if (consolidated_page->GetType() == INNER_NODE) {
     InnerNode* node_to_split = reinterpret_cast<InnerNode*>(consolidated_page);
     if (node_to_split->children_.size() > SPLIT_SIZE) {
+      LOG_DEBUG("Attempting Split");
       split_required = true;
 
       /* Create new node */
@@ -1188,6 +1189,7 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
     __attribute__((unused)) LeafNode* node_to_split =
         reinterpret_cast<LeafNode*>(consolidated_page);
     if (node_to_split->data_items_.size() > SPLIT_SIZE) {
+      LOG_DEBUG("Attempting Split");
       split_required = true;
 
       /* Create new node */
@@ -1314,7 +1316,7 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
     index_term_delta_for_split->absolute_max_ = new_leaf_node->absolute_max_;
   } else {
     // I believe this should never happen - thoughts? (aaron)
-    assert(0);
+    return false;
   }
 
   /* Get PID of parent node */
@@ -1353,12 +1355,14 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
   NodeMergeDelta* merge_delta;
   IndexTermDelta* index_term_delta_for_merge;
   PID pid_merging_into;
+  Page* page_merging_into;
 
   /* Check if merge required */
   if (consolidated_page->GetType() == INNER_NODE) {
     InnerNode* node_to_merge = reinterpret_cast<InnerNode*>(consolidated_page);
     if ((node_to_merge->children_.size() < MERGE_SIZE) &&
         (!node_to_merge->absolute_min_)) {
+      LOG_DEBUG("Attempting Merge");
       merge_required = true;
 
       /* Find the node to merge into */
@@ -1372,8 +1376,12 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 
       /* Consolidate the page we are merging into */
       Page* current_top_of_page = map_table_[pid_merging_into];
+      if (current_top_of_page->GetType() == REMOVE_NODE_DELTA) {
+        LOG_DEBUG("Merge abandoned - problem w/ left sibling");
+        return;
+      }
       assert(current_top_of_page->GetType() != REMOVE_NODE_DELTA);
-      Page* page_merging_into = Consolidate(pid_merging_into);
+      page_merging_into = Consolidate(pid_merging_into);
 
       if (!page_merging_into) {
         return;
@@ -1389,6 +1397,12 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 
       InnerNode* node_merging_into =
           reinterpret_cast<InnerNode*>(page_merging_into);
+
+      if (node_merging_into->side_link_ != orig_pid) {
+        LOG_DEBUG("Abandoning Merge - problem w/ left sibling");
+        delete merge_delta;
+        return;
+      }
       assert(node_merging_into->side_link_ == orig_pid);
 
       /* Create the index term delta for the parent */
@@ -1407,6 +1421,10 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             "Successfully installed consolidated page we are merging into");
       } else {
         delete page_merging_into;
+        delete remove_node_delta;
+        delete merge_delta;
+        LOG_DEBUG("Abandoning merge - failed to install consolidated page");
+        return;
       }
     }
   } else if (consolidated_page->GetType() == LEAF_NODE) {
@@ -1414,6 +1432,7 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
         reinterpret_cast<LeafNode*>(consolidated_page);
     if ((node_to_merge->data_items_.size() < MERGE_SIZE) &&
         (!node_to_merge->absolute_min_)) {
+      LOG_DEBUG("Attempting Merge");
       merge_required = true;
 
       /* Find the node to merge into */
@@ -1427,8 +1446,12 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 
       /* Consolidate the page we are merging into */
       Page* current_top_of_page = map_table_[pid_merging_into];
+      if (current_top_of_page->GetType() == REMOVE_NODE_DELTA) {
+        LOG_DEBUG("Merge abandoned - problem w/ left sibling");
+        return;
+      }
       assert(current_top_of_page->GetType() != REMOVE_NODE_DELTA);
-      Page* page_merging_into = Consolidate(pid_merging_into);
+      page_merging_into = Consolidate(pid_merging_into);
 
       if (!page_merging_into) {
         return;
@@ -1444,6 +1467,12 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 
       __attribute__((unused)) LeafNode* node_merging_into =
           reinterpret_cast<LeafNode*>(page_merging_into);
+
+      if (node_merging_into->side_link_ != orig_pid) {
+        LOG_DEBUG("Abandoning Merge - problem w/ left sibling");
+        delete merge_delta;
+        return;
+      }
       assert(node_merging_into->side_link_ == orig_pid);
 
       /* Create the index term delta for the parent */
@@ -1464,6 +1493,10 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             "Successfully installed consolidated page we are merging into");
       } else {
         delete page_merging_into;
+        delete remove_node_delta;
+        delete merge_delta;
+        LOG_DEBUG("Abandoning merge - failed to install consolidated page");
+        return;
       }
     }
   } else {
@@ -1485,15 +1518,16 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
       LOG_DEBUG("CAS of installing remove node success");
 
       /* Attempt to install node merge delta */
-      while (true) {
-        Page* page_merging_into = map_table_[pid_merging_into];
-        if (page_merging_into->GetType() != REMOVE_NODE_DELTA) {
-          merge_delta->SetDeltaNext(page_merging_into);
-          if (map_table_[pid_merging_into].compare_exchange_strong(
-                  page_merging_into, merge_delta)) {
-            LOG_DEBUG("CAS of installing node merge delta succeeded");
-            break;
-          }
+      if (page_merging_into->GetType() == REMOVE_NODE_DELTA) {
+        delete merge_delta;
+        delete index_term_delta_for_merge;
+        LOG_DEBUG("CAS of installing node merge delta failed");
+        return;
+      } else {
+        merge_delta->SetDeltaNext(page_merging_into);
+        if (map_table_[pid_merging_into].compare_exchange_strong(
+            page_merging_into, merge_delta)) {
+          LOG_DEBUG("CAS of installing node merge delta succeeded");
         } else {
           delete merge_delta;
           delete index_term_delta_for_merge;
@@ -1545,6 +1579,7 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 
         for (const auto& child : inner_node->children_) {
           if (reverse_comparator_(merge_key, child.first) == 0) {
+            LOG_DEBUG("Found left sibling in Inner Node");
             return child.second;
           }
         }
@@ -1559,6 +1594,7 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             reinterpret_cast<IndexTermDelta*>(parent_page);
 
         if (reverse_comparator_(merge_key, idx_delta->high_separator_) == 0) {
+          LOG_DEBUG("Found left sibling in Index Term Delta");
           return idx_delta->side_link_;
         } else {
           parent_page = parent_page->GetDeltaNext();
