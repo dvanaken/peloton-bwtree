@@ -69,6 +69,7 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
   finished_ = true;
   exec_finished.notify_one();
   epoch_manager_.join();
+  delete key_tuple_schema;
 
   // Free chains in map table
   for (PID i = 0; i < PID_counter_; ++i) {
@@ -1938,7 +1939,7 @@ template <typename KeyType, typename ValueType, class KeyComparator,
           class KeyEqualityChecker, class ValueEqualityChecker>
 void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             ValueEqualityChecker>::DeregisterWorker(uint64_t worker_epoch) {
-  LOG_DEBUG("Registering thread from epoch %u", (unsigned) worker_epoch);
+  LOG_DEBUG("Deregistering thread from epoch %u", (unsigned) worker_epoch);
   --(active_threads_map_[worker_epoch]);
   assert(active_threads_map_[worker_epoch] >= 0);
 }
