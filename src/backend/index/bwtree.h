@@ -531,7 +531,7 @@ class BWTree {
       return new_leaf;
     } else {
       InnerNode* new_inner = new InnerNode();
-      if (!key_locations.empty()) {
+      if (!index_term_ranges.empty()) {
         new_inner->low_key_ = index_term_ranges.begin()->first;
         new_inner->high_key_ = index_term_ranges.rbegin()->second.first;
       } else {
@@ -542,7 +542,7 @@ class BWTree {
 
       new_inner->side_link_ = side_link;
 
-      if (!key_locations.empty()) {
+      if (!index_term_ranges.empty()) {
         LOG_DEBUG("Consolidate inner item:");
         bool first_child = true;
         PID last_PID = index_term_ranges.begin()->second.second;
