@@ -9,11 +9,20 @@
 // Copyright (c) 2015, Carnegie Mellon University Database Group
 //
 //===----------------------------------------------------------------------===//
+#include <chrono>
+#include <condition_variable>
+#include <mutex>
+#include <thread>
 
 #include "backend/index/bwtree.h"
 
 namespace peloton {
 namespace index {
+
+std::condition_variable exec_finished;
+
+// TODO: this lock is temporary
+std::mutex epoch_list_mtx;
 
 template <typename KeyType, typename ValueType, class KeyComparator,
           class KeyEqualityChecker, class ValueEqualityChecker>
@@ -22,13 +31,21 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
                                      const KeyEqualityChecker& equals)
     : comparator_(comparator),
       equals_(equals),
-      reverse_comparator_(comparator) {
+      reverse_comparator_(comparator),
+      epoch_manager_() {
   root_ = 0;
   PID_counter_ = 1;
   allow_duplicate_ = true;
 
   InnerNode* root_base_page = new InnerNode();
   map_table_[root_] = root_base_page;
+
+  // Initialize state for epoch manager
+  finished_ = false;
+  epoch_ = 0;
+  active_threads_map_[epoch_] = 0;
+  epoch_garbage_[epoch_] = std::vector<Page*>();
+  Start();
 
   // Can't do this here because we're using atomic inside vector
   // map_table_.resize(1000000);
@@ -38,14 +55,19 @@ template <typename KeyType, typename ValueType, class KeyComparator,
           class KeyEqualityChecker, class ValueEqualityChecker>
 BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
        ValueEqualityChecker>::~BWTree() {
+  finished_ = true;
+  exec_finished.notify_one();
+  epoch_manager_.join();
+
+  // Free chains in map table
   for (PID i = 0; i < PID_counter_; ++i) {
     Page* page = map_table_[i];
-    Page* free_page;
-    while (page != nullptr) {
-      LOG_DEBUG("Freeing page in delta chain for PID %d\n", (int)i);
-      free_page = page;
-      page = page->GetDeltaNext();
-      delete free_page;
+    FreeDeltaChain(page);
+  }
+  // Free any chains left in the garbage collection queue
+  for (auto item : epoch_garbage_) {
+    for (Page *page : item.second) {
+      FreeDeltaChain(page);
     }
   }
 }
@@ -74,6 +96,7 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             ValueEqualityChecker>::Insert(const KeyType& key,
                                           const ValueType& data) {
   LOG_DEBUG("Trying new insert");
+  uint64_t worker_epoch = RegisterWorker();
   while (true) {
     Page* root_page = map_table_[root_];
     if (root_page->GetType() == INNER_NODE &&
@@ -104,12 +127,13 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
       // and start over the insert again.
       if (map_table_[root_].compare_exchange_strong(root_page,
                                                     index_term_page)) {
-        LOG_DEBUG("CAS of first index_term_page successfull");
+        LOG_DEBUG("CAS of first index_term_page successful");
+        DeregisterWorker(worker_epoch);
         return true;
       } else {
         // TODO: Garbage collect leaf_base_page, index_term_page and leaf_PID.
         delete index_term_page;
-
+        // delete leaf_base_page; // TODO: I think we need to delete this too
         continue;
       }
     } else {
@@ -351,20 +375,22 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
                   } else {
                     // TODO: Eventually we'll have epoch garbage collection. But
                     // now we free in this way.
-                    FreeDeltaChain(new_modify_delta_page);
+                    //FreeDeltaChain(new_modify_delta_page);
+                    DeallocatePage(new_modify_delta_page);
                     LOG_DEBUG("CAS of consolidation success");
 
                     /* Check if split is required and perform the operation */
-                    Split_Operation(consolidated_page, pages_visited,
-                                    current_PID);
-
-                    /* Check if merge is requires and perform the operation */
-                    Merge_Operation(consolidated_page, pages_visited,
-                                    current_PID);
+                    if (!Split_Operation(consolidated_page, pages_visited,
+                        current_PID)) {
+                      /* Check if merge is requires and perform the operation */
+                      Merge_Operation(consolidated_page, pages_visited,
+                          current_PID);
+                    }
                   }
                 }
               }
             }
+            DeregisterWorker(worker_epoch);
             return inserted;
           }
           case MODIFY_DELTA: {
@@ -427,20 +453,23 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
                   } else {
                     // TODO: Eventually we'll have epoch garbage collection. But
                     // now we free in this way.
-                    FreeDeltaChain(new_modify_delta_page);
+                    //FreeDeltaChain(new_modify_delta_page);
+                    DeallocatePage(new_modify_delta_page);
                     LOG_DEBUG("CAS of consolidation success");
 
                     /* Check if split is required and perform the operation */
-                    Split_Operation(consolidated_page, pages_visited,
-                                    current_PID);
+                    if (!Split_Operation(consolidated_page, pages_visited,
+                        current_PID)) {
 
-                    /* Check if merge is requires and perform the operation */
-                    Merge_Operation(consolidated_page, pages_visited,
-                                    current_PID);
+                      /* Check if merge is requires and perform the operation */
+                      Merge_Operation(consolidated_page, pages_visited,
+                          current_PID);
+                    }
                   }
                 }
               }
             }
+            DeregisterWorker(worker_epoch);
             return inserted;
           }
           default:
@@ -450,7 +479,7 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
       }
     }
   }
-
+  DeregisterWorker(worker_epoch);
   return false;
 }
 
@@ -460,6 +489,7 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             ValueEqualityChecker>::Delete(const KeyType& key,
                                           const ValueType& data) {
   LOG_DEBUG("Trying delete");
+  uint64_t worker_epoch = RegisterWorker();
   while (true) {
     Page* root_page = map_table_[root_];
 
@@ -467,6 +497,7 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
     if (root_page->GetType() == INNER_NODE &&
         reinterpret_cast<InnerNode*>(root_page)->children_.size() == 0) {
       LOG_DEBUG("Delete false 1");
+      DeregisterWorker(worker_epoch);
       return false;
     }
 
@@ -672,6 +703,7 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 
           /* If location not found delete fails */
           if (!found_location) {
+            DeregisterWorker(worker_epoch);
             return false;
           }
 
@@ -707,18 +739,20 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
               } else {
                 // TODO: Eventually we'll have epoch garbage collection. But now
                 // we free in this way.
-                FreeDeltaChain(new_modify_delta_page);
+                //FreeDeltaChain(new_modify_delta_page);
+                DeallocatePage(new_modify_delta_page);
                 LOG_DEBUG("CAS of consolidation success");
 
                 /* Check if split is required and perform the operation */
-                Split_Operation(consolidated_page, pages_visited, current_PID);
+                if (!Split_Operation(consolidated_page, pages_visited, current_PID)) {
 
-                /* Check if merge is requires and perform the operation */
-                Merge_Operation(consolidated_page, pages_visited, current_PID);
+                  /* Check if merge is requires and perform the operation */
+                  Merge_Operation(consolidated_page, pages_visited, current_PID);
+                }
               }
             }
           }
-
+          DeregisterWorker(worker_epoch);
           return found_location;
         }
         case MODIFY_DELTA: {
@@ -730,6 +764,7 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 
             /* If empty means nothing to delete */
             if (mod_delta->locations_.size() == 0) {
+              DeregisterWorker(worker_epoch);
               return false;
             }
 
@@ -749,6 +784,7 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 
             /* Didn't find location to delete */
             if (!found_location) {
+              DeregisterWorker(worker_epoch);
               return false;
             }
 
@@ -784,17 +820,19 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
                 } else {
                   // TODO: Eventually we'll have epoch garbage collection. But
                   // now we free in this way.
-                  FreeDeltaChain(new_modify_delta_page);
+                  //FreeDeltaChain(new_modify_delta_page);
+                  DeallocatePage(new_modify_delta_page);
 
                   LOG_DEBUG("CAS of consolidation success");
 
                   /* Check if split is required and perform the operation */
-                  Split_Operation(consolidated_page, pages_visited,
-                                  current_PID);
+                  if (!Split_Operation(consolidated_page, pages_visited,
+                      current_PID)) {
 
-                  /* Check if merge is requires and perform the operation */
-                  Merge_Operation(consolidated_page, pages_visited,
-                                  current_PID);
+                    /* Check if merge is requires and perform the operation */
+                    Merge_Operation(consolidated_page, pages_visited,
+                        current_PID);
+                  }
                 }
               }
             }
@@ -802,7 +840,7 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             current_page = current_page->GetDeltaNext();
             continue;
           }
-
+          DeregisterWorker(worker_epoch);
           return found_location;
         }
         default:
@@ -813,6 +851,7 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
   }
 
   /* Deletion Failed */
+  DeregisterWorker(worker_epoch);
   return false;
 }
 
@@ -824,11 +863,13 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
                                         const KeyType& key) {
   Page* current_page = map_table_[root_];
   PID current_PID = root_;
+  uint64_t worker_epoch = RegisterWorker();
 
   /* If empty root w/ no children then search fails */
   if (current_page->GetType() == INNER_NODE &&
       reinterpret_cast<InnerNode*>(current_page)->children_.size() == 0) {
     LOG_DEBUG("SearchKey returning nothing because BWTree is empty");
+    DeregisterWorker(worker_epoch);
     return std::vector<ValueType>();
   }
   __attribute__((unused)) Page* head_of_delta = current_page;
@@ -942,6 +983,7 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
         std::vector<ValueType> data_items;
         for (const auto& key_values : leaf->data_items_) {
           if (equals_(key, key_values.first)) {
+            DeregisterWorker(worker_epoch);
             return key_values.second;
           }
         }
@@ -950,6 +992,7 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
       case MODIFY_DELTA: {
         ModifyDelta* mod_delta = reinterpret_cast<ModifyDelta*>(current_page);
         if (equals_(key, mod_delta->key_)) {
+          DeregisterWorker(worker_epoch);
           return mod_delta->locations_;
         } else {
           // This is not our key so we keep traversing the delta chain
@@ -994,10 +1037,13 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 
   Page* current_page = map_table_[root_];
   PID current_PID = root_;
+  uint64_t worker_epoch = RegisterWorker();
+
   /* If empty root w/ no children then search fails */
   if (current_page->GetType() == INNER_NODE &&
       reinterpret_cast<InnerNode*>(current_page)->children_.size() == 0) {
     LOG_DEBUG("SearchAllKeys returning nothing because BWTree is empty");
+    DeregisterWorker(worker_epoch);
     return visited_keys;
   }
 
@@ -1015,6 +1061,7 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
       case INNER_NODE: {
         InnerNode* inner_node = reinterpret_cast<InnerNode*>(current_page);
         if (inner_node->children_.size() == 0) {
+          DeregisterWorker(worker_epoch);
           return visited_keys;
         } else {
           current_PID = inner_node->children_[0].second;
@@ -1084,8 +1131,10 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
         } else {
           if (leaf->next_leaf_ != NullPID)
             current_PID = leaf->next_leaf_;
-          else
+          else {
+            DeregisterWorker(worker_epoch);
             return visited_keys;
+          }
         }
 
         current_page = map_table_[current_PID];
@@ -1120,7 +1169,7 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 // TODO: Need to handle case where we are splitting the root
 template <typename KeyType, typename ValueType, class KeyComparator,
           class KeyEqualityChecker, class ValueEqualityChecker>
-void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
+bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             ValueEqualityChecker>::Split_Operation(Page* consolidated_page,
                                                    std::stack<PID>&
                                                        pages_visited,
@@ -1128,11 +1177,14 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
   bool split_required = false;
   SplitDelta* split_delta;
   IndexTermDelta* index_term_delta_for_split;
+  InnerNode* new_root_node;
+  PID reinstalled_root = root_;
 
   /* Check if split required */
   if (consolidated_page->GetType() == INNER_NODE) {
     InnerNode* node_to_split = reinterpret_cast<InnerNode*>(consolidated_page);
     if (node_to_split->children_.size() > SPLIT_SIZE) {
+      LOG_DEBUG("Attempting Split");
       split_required = true;
 
       /* Create new node */
@@ -1163,15 +1215,30 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
       /* Create the Delta Split to Install */
       split_delta = new SplitDelta(new_separator_key, new_node_PID);
 
-      /* Create the index term delta for the parent */
-      index_term_delta_for_split = new IndexTermDelta(
-          new_inner_node->low_key_, new_inner_node->high_key_, new_node_PID);
-      index_term_delta_for_split->absolute_max_ = new_inner_node->absolute_max_;
+      /* Check if you are splitting the root node */
+      // Need to check how we consolidate to make sure we have correct behavior
+      if (orig_pid == root_) {
+        LOG_DEBUG("Attempting to split the root node");
+        /* Copy over the old root node to a new location */
+        reinstalled_root = InstallNewMapping(consolidated_page);
+        /* Create the new root node */
+        new_root_node = new InnerNode();
+        new_root_node->absolute_min_ = true;
+        new_root_node->absolute_max_ = true;
+        new_root_node->children_.push_back(std::make_pair(new_separator_key, reinstalled_root));
+        new_root_node->children_.push_back(std::make_pair(new_inner_node->high_key_, new_node_PID));
+      } else {
+        /* Create the index term delta for the parent */
+        index_term_delta_for_split = new IndexTermDelta(
+            new_inner_node->low_key_, new_inner_node->high_key_, new_node_PID);
+        index_term_delta_for_split->absolute_max_ = new_inner_node->absolute_max_;
+      }
     }
   } else if (consolidated_page->GetType() == LEAF_NODE) {
     __attribute__((unused)) LeafNode* node_to_split =
         reinterpret_cast<LeafNode*>(consolidated_page);
     if (node_to_split->data_items_.size() > SPLIT_SIZE) {
+      LOG_DEBUG("Attempting Split");
       split_required = true;
 
       /* Create new node */
@@ -1218,37 +1285,58 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
   if (split_required) {
     LOG_DEBUG("Performing Split");
     split_delta->SetDeltaNext(consolidated_page);
-    if (!map_table_[orig_pid].compare_exchange_strong(consolidated_page,
+    PID pid_to_use = (orig_pid == root_) ? reinstalled_root : orig_pid;
+    assert(pid_to_use != root_);
+    if (!map_table_[pid_to_use].compare_exchange_strong(consolidated_page,
                                                       split_delta)) {
       delete split_delta;
-      delete index_term_delta_for_split;
+      if (orig_pid == root_) {
+        delete new_root_node;
+      } else {
+        delete index_term_delta_for_split;
+      }
+
       LOG_DEBUG("CAS of installing delta split failed");
-      return;
+      return false;
     } else {
       LOG_DEBUG("CAS of installing delta split success");
 
-      /* Get PID of parent node */
-      PID pid_of_parent = pages_visited.top();
+      /* Check if we are splitting the root node */
+      if (orig_pid == root_) {
+        assert (new_root_node);
+        if (!map_table_[root_].compare_exchange_strong(consolidated_page,
+                                                              new_root_node)) {
+          LOG_DEBUG("CAS of installing new root node failed");
+          delete new_root_node;
+          return false;
+        }
+        LOG_DEBUG("Installing new root node successful");
+        return true;
+      } else {
+        /* Get PID of parent node */
+        PID pid_of_parent = pages_visited.top();
 
-      /* Attempt to install index term delta on the parent */
-      while (true) {
-        // Safe to keep retrying - thoughts? (aaron)
-        Page* parent_node = map_table_[pid_of_parent];
-        if (parent_node->GetType() != REMOVE_NODE_DELTA) {
-          index_term_delta_for_split->SetDeltaNext(parent_node);
-          if (map_table_[pid_of_parent].compare_exchange_strong(
-                  parent_node, index_term_delta_for_split)) {
-            LOG_DEBUG("CAS of installing index term delta in parent succeeded");
-            break;
+        /* Attempt to install index term delta on the parent */
+        while (true) {
+          // Safe to keep retrying - thoughts? (aaron)
+          Page* parent_node = map_table_[pid_of_parent];
+          if (parent_node->GetType() != REMOVE_NODE_DELTA) {
+            index_term_delta_for_split->SetDeltaNext(parent_node);
+            if (map_table_[pid_of_parent].compare_exchange_strong(
+                parent_node, index_term_delta_for_split)) {
+              LOG_DEBUG("CAS of installing index term delta in parent succeeded");
+              return true;
+            }
+          } else {
+            delete index_term_delta_for_split;
+            LOG_DEBUG("CAS of installing index term delta in parent failed");
+            return false;
           }
-        } else {
-          delete index_term_delta_for_split;
-          LOG_DEBUG("CAS of installing index term delta in parent failed");
-          return;
         }
       }
     }
   }
+  return true;
 }
 
 template <typename KeyType, typename ValueType, class KeyComparator,
@@ -1278,7 +1366,7 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
     index_term_delta_for_split->absolute_max_ = new_leaf_node->absolute_max_;
   } else {
     // I believe this should never happen - thoughts? (aaron)
-    assert(0);
+    return false;
   }
 
   /* Get PID of parent node */
@@ -1317,12 +1405,14 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
   NodeMergeDelta* merge_delta;
   IndexTermDelta* index_term_delta_for_merge;
   PID pid_merging_into;
+  Page* page_merging_into;
 
   /* Check if merge required */
   if (consolidated_page->GetType() == INNER_NODE) {
     InnerNode* node_to_merge = reinterpret_cast<InnerNode*>(consolidated_page);
     if ((node_to_merge->children_.size() < MERGE_SIZE) &&
         (!node_to_merge->absolute_min_)) {
+      LOG_DEBUG("Attempting Merge");
       merge_required = true;
 
       /* Find the node to merge into */
@@ -1336,8 +1426,12 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 
       /* Consolidate the page we are merging into */
       Page* current_top_of_page = map_table_[pid_merging_into];
+      if (current_top_of_page->GetType() == REMOVE_NODE_DELTA) {
+        LOG_DEBUG("Merge abandoned - problem w/ left sibling");
+        return;
+      }
       assert(current_top_of_page->GetType() != REMOVE_NODE_DELTA);
-      Page* page_merging_into = Consolidate(pid_merging_into);
+      page_merging_into = Consolidate(pid_merging_into);
 
       if (!page_merging_into) {
         return;
@@ -1353,6 +1447,12 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 
       InnerNode* node_merging_into =
           reinterpret_cast<InnerNode*>(page_merging_into);
+
+      if (node_merging_into->side_link_ != orig_pid) {
+        LOG_DEBUG("Abandoning Merge - problem w/ left sibling");
+        delete merge_delta;
+        return;
+      }
       assert(node_merging_into->side_link_ == orig_pid);
 
       /* Create the index term delta for the parent */
@@ -1366,11 +1466,16 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
       /* Attempt to install the consolidated page */
       if (map_table_[pid_merging_into].compare_exchange_strong(
               current_top_of_page, page_merging_into)) {
-        FreeDeltaChain(current_top_of_page);
+        //FreeDeltaChain(current_top_of_page);
+        DeallocatePage(current_top_of_page);
         LOG_DEBUG(
             "Successfully installed consolidated page we are merging into");
       } else {
         delete page_merging_into;
+        delete remove_node_delta;
+        delete merge_delta;
+        LOG_DEBUG("Abandoning merge - failed to install consolidated page");
+        return;
       }
     }
   } else if (consolidated_page->GetType() == LEAF_NODE) {
@@ -1378,6 +1483,7 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
         reinterpret_cast<LeafNode*>(consolidated_page);
     if ((node_to_merge->data_items_.size() < MERGE_SIZE) &&
         (!node_to_merge->absolute_min_)) {
+      LOG_DEBUG("Attempting Merge");
       merge_required = true;
 
       /* Find the node to merge into */
@@ -1391,8 +1497,12 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 
       /* Consolidate the page we are merging into */
       Page* current_top_of_page = map_table_[pid_merging_into];
+      if (current_top_of_page->GetType() == REMOVE_NODE_DELTA) {
+        LOG_DEBUG("Merge abandoned - problem w/ left sibling");
+        return;
+      }
       assert(current_top_of_page->GetType() != REMOVE_NODE_DELTA);
-      Page* page_merging_into = Consolidate(pid_merging_into);
+      page_merging_into = Consolidate(pid_merging_into);
 
       if (!page_merging_into) {
         return;
@@ -1408,6 +1518,12 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 
       __attribute__((unused)) LeafNode* node_merging_into =
           reinterpret_cast<LeafNode*>(page_merging_into);
+
+      if (node_merging_into->side_link_ != orig_pid) {
+        LOG_DEBUG("Abandoning Merge - problem w/ left sibling");
+        delete merge_delta;
+        return;
+      }
       assert(node_merging_into->side_link_ == orig_pid);
 
       /* Create the index term delta for the parent */
@@ -1423,11 +1539,16 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
               current_top_of_page, page_merging_into)) {
         // TODO: Eventually we'll have epoch garbage collection. But now we free
         // in this way.
-        FreeDeltaChain(current_top_of_page);
+        //FreeDeltaChain(current_top_of_page);
+        DeallocatePage(current_top_of_page);
         LOG_DEBUG(
             "Successfully installed consolidated page we are merging into");
       } else {
         delete page_merging_into;
+        delete remove_node_delta;
+        delete merge_delta;
+        LOG_DEBUG("Abandoning merge - failed to install consolidated page");
+        return;
       }
     }
   } else {
@@ -1449,15 +1570,16 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
       LOG_DEBUG("CAS of installing remove node success");
 
       /* Attempt to install node merge delta */
-      while (true) {
-        Page* page_merging_into = map_table_[pid_merging_into];
-        if (page_merging_into->GetType() != REMOVE_NODE_DELTA) {
-          merge_delta->SetDeltaNext(page_merging_into);
-          if (map_table_[pid_merging_into].compare_exchange_strong(
-                  page_merging_into, merge_delta)) {
-            LOG_DEBUG("CAS of installing node merge delta succeeded");
-            break;
-          }
+      if (page_merging_into->GetType() == REMOVE_NODE_DELTA) {
+        delete merge_delta;
+        delete index_term_delta_for_merge;
+        LOG_DEBUG("CAS of installing node merge delta failed");
+        return;
+      } else {
+        merge_delta->SetDeltaNext(page_merging_into);
+        if (map_table_[pid_merging_into].compare_exchange_strong(
+            page_merging_into, merge_delta)) {
+          LOG_DEBUG("CAS of installing node merge delta succeeded");
         } else {
           delete merge_delta;
           delete index_term_delta_for_merge;
@@ -1509,6 +1631,7 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 
         for (const auto& child : inner_node->children_) {
           if (reverse_comparator_(merge_key, child.first) == 0) {
+            LOG_DEBUG("Found left sibling in Inner Node");
             return child.second;
           }
         }
@@ -1523,6 +1646,7 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             reinterpret_cast<IndexTermDelta*>(parent_page);
 
         if (reverse_comparator_(merge_key, idx_delta->high_separator_) == 0) {
+          LOG_DEBUG("Found left sibling in Index Term Delta");
           return idx_delta->side_link_;
         } else {
           parent_page = parent_page->GetDeltaNext();
@@ -1590,7 +1714,8 @@ bool BWTree<
   } else {
     // TODO: Eventually we'll have epoch garbage collection. But now we free in
     // this way.
-    FreeDeltaChain(page_merging_into);
+    //FreeDeltaChain(page_merging_into);
+    DeallocatePage(page_merging_into);
   }
 
   /* Check if merge delta is present */
@@ -1739,6 +1864,90 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 
   assert(0);
   return false;
+}
+
+template <typename KeyType, typename ValueType, class KeyComparator,
+          class KeyEqualityChecker, class ValueEqualityChecker>
+void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
+            ValueEqualityChecker>::RunEpochManager() {
+  std::mutex mtx;
+  std::unique_lock<std::mutex> lck(mtx);
+  while (exec_finished.wait_for(lck,
+        std::chrono::milliseconds(EPOCH_INTERVAL_MS)) == std::cv_status::timeout
+      && !finished_) {
+    LOG_DEBUG("Timed out...");
+    // Get next epoch #
+    uint64_t next_epoch = epoch_ + 1;
+    LOG_DEBUG("Incrementing epoch to %u", (unsigned) next_epoch);
+
+    // Add new epoch slots to the active workers map and the garbage
+    // collection map
+    active_threads_map_[next_epoch] = 0;
+    epoch_garbage_[next_epoch] = std::vector<Page*>();
+
+    // Now increment the global epoch counter. This should always be
+    // equal to next_epoch because this thread should be the only one
+    // ever changing it.
+    ++epoch_;
+    assert(epoch_ == next_epoch);
+    if (finished_)
+      break;
+  }
+  LOG_DEBUG("Woken up, exiting...");
+}
+
+template <typename KeyType, typename ValueType, class KeyComparator,
+          class KeyEqualityChecker, class ValueEqualityChecker>
+uint64_t BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
+            ValueEqualityChecker>::RegisterWorker() {
+  uint64_t current_epoch = epoch_;
+  LOG_DEBUG("Registering thread for epoch %u", (unsigned) current_epoch);
+  ++(active_threads_map_[current_epoch]);
+  return current_epoch;
+}
+
+template <typename KeyType, typename ValueType, class KeyComparator,
+          class KeyEqualityChecker, class ValueEqualityChecker>
+void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
+            ValueEqualityChecker>::DeregisterWorker(uint64_t worker_epoch) {
+  LOG_DEBUG("Registering thread from epoch %u", (unsigned) worker_epoch);
+  --(active_threads_map_[worker_epoch]);
+  assert(active_threads_map_[worker_epoch] >= 0);
+}
+
+template <typename KeyType, typename ValueType, class KeyComparator,
+          class KeyEqualityChecker, class ValueEqualityChecker>
+void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
+            ValueEqualityChecker>::DeallocatePage(Page *page) {
+  std::unique_lock<std::mutex> epoch_lck(epoch_list_mtx);
+  epoch_garbage_[epoch_].push_back(page);
+}
+
+template <typename KeyType, typename ValueType, class KeyComparator,
+          class KeyEqualityChecker, class ValueEqualityChecker>
+bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
+            ValueEqualityChecker>::Cleanup() {
+  // TODO: remove coarse-grain locking
+  std::unique_lock<std::mutex> epoch_lck(epoch_list_mtx);
+  uint64_t current_epoch = epoch_;
+
+  // Find all epochs that are safe to garbage collect
+  std::vector<uint64_t> safe_epochs;
+  for (uint64_t i = 0; i < current_epoch; ++i) {
+    auto entry = active_threads_map_.find(i);
+    if (entry != active_threads_map_.end() && entry->second == 0) {
+      // This is a valid epoch and there are no active threads remaining
+      safe_epochs.push_back(entry->second);
+      active_threads_map_.erase(entry);
+    }
+  }
+  for (uint64_t safe_epoch : safe_epochs) {
+    std::vector<Page*>& dealloc_pages = epoch_garbage_[safe_epoch];
+    for (Page *chain_head : dealloc_pages) {
+      FreeDeltaChain(chain_head);
+    }
+  }
+  return true;
 }
 
 // Explicit template instantiation

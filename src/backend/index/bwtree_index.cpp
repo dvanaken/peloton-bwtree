@@ -60,9 +60,6 @@ bool BWTreeIndex<KeyType, ValueType, KeyComparator,
 
   // Delete the key, val pair
   return container.Delete(index_key, location);
-
-  // Add your implementation here
-  return false;
 }
 
 template <typename KeyType, typename ValueType, class KeyComparator,

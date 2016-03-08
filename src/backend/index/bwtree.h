@@ -25,8 +25,9 @@
 #include "backend/index/index_key.h"
 
 #define CONSOLIDATE_THRESHOLD 5
-#define SPLIT_SIZE 1
-#define MERGE_SIZE 4
+#define SPLIT_SIZE 20
+#define MERGE_SIZE 5
+#define EPOCH_INTERVAL_MS 40  // in milliseconds
 
 namespace peloton {
 namespace index {
@@ -257,7 +258,7 @@ class BWTree {
 
   // ***** Functions for internal usage
 
-  void Split_Operation(Page* consolidated_page, std::stack<PID>& pages_visited,
+  bool Split_Operation(Page* consolidated_page, std::stack<PID>& pages_visited,
                        PID orig_pid);
   bool complete_the_split(PID side_link, std::stack<PID>& pages_visited);
 
@@ -565,12 +566,56 @@ class BWTree {
   inline void FreeDeltaChain(Page* page) {
     // Actually we can't free stale delta chain here, because other threads
     // might be reading it.
-    return;
+    //return;
     Page* free_page;
     while (page != nullptr) {
       free_page = page;
       page = page->GetDeltaNext();
-      delete free_page;
+      switch (free_page->GetType()) {
+        case INNER_NODE: {
+          InnerNode* inner_node = reinterpret_cast<InnerNode*>(free_page);
+          delete inner_node;
+          break;
+        }
+        case INDEX_TERM_DELTA: {
+          IndexTermDelta* idx_delta =
+              reinterpret_cast<IndexTermDelta*>(free_page);
+          delete idx_delta;
+          break;
+        }
+        case LEAF_NODE: {
+          LeafNode* leaf = reinterpret_cast<LeafNode*>(free_page);
+          delete leaf;
+          break;
+        }
+        case MODIFY_DELTA: {
+          ModifyDelta* mod_delta =
+              reinterpret_cast<ModifyDelta*>(free_page);
+          delete mod_delta;
+          break;
+        }
+        case SPLIT_DELTA: {
+          SplitDelta* split_delta =
+              reinterpret_cast<SplitDelta*>(free_page);
+          delete split_delta;
+          break;
+        }
+        case REMOVE_NODE_DELTA: {
+          RemoveNodeDelta* remove_delta =
+              reinterpret_cast<RemoveNodeDelta*>(free_page);
+          delete remove_delta;
+          break;
+        }
+        case NODE_MERGE_DELTA: {
+          NodeMergeDelta* merge_delta =
+              reinterpret_cast<NodeMergeDelta*>(free_page);
+          delete merge_delta;
+          break;
+        }
+        default:
+          throw IndexException("Unrecognized page type\n");
+          break;
+      }
     }
   }
 
@@ -590,6 +635,20 @@ class BWTree {
       return 0;
     }
   };
+
+  void RunEpochManager();
+
+  inline void Start() {
+    epoch_manager_ = std::thread(&BWTree::RunEpochManager, this);
+  }
+
+  uint64_t RegisterWorker();
+
+  void DeregisterWorker(uint64_t worker_epoch);
+
+  void DeallocatePage(Page *page);
+
+  bool Cleanup();
 
   // PID of the root node
   PID root_;
@@ -616,6 +675,16 @@ class BWTree {
 
   // Value equality function object
   ValueEqualityChecker value_equals_;
+
+  std::atomic_bool finished_;
+
+  std::thread epoch_manager_;
+
+  std::atomic_ullong epoch_;
+
+  std::unordered_map<uint64_t, std::atomic_ullong> active_threads_map_;
+
+  std::unordered_map<uint64_t, std::vector<Page*>> epoch_garbage_;
 };
 
 }  // End index namespace
