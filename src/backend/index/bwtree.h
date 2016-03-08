@@ -24,9 +24,9 @@
 #include "backend/common/logger.h"
 #include "backend/index/index_key.h"
 
-#define CONSOLIDATE_THRESHOLD 5
-#define SPLIT_SIZE 20
-#define MERGE_SIZE 5
+#define CONSOLIDATE_THRESHOLD 2
+#define SPLIT_SIZE 4
+#define MERGE_SIZE 4
 #define EPOCH_INTERVAL_MS 40  // in milliseconds
 
 namespace peloton {
@@ -525,7 +525,7 @@ class BWTree {
           new_leaf->data_items_.push_back(key_location);
         // LOG_DEBUG("%d", comparator_(old_key, key_location.first));
         // old_key = key_location.first;
-        LOG_DEBUG("one entry");
+        LOG_DEBUG("one entry with size: %ld", key_location.second.size());
       }
       LOG_DEBUG("Consolidate leaf item end.");
       return new_leaf;
@@ -685,6 +685,9 @@ class BWTree {
   std::unordered_map<uint64_t, std::atomic_ullong> active_threads_map_;
 
   std::unordered_map<uint64_t, std::vector<Page*>> epoch_garbage_;
+
+  // Used for debug
+  catalog::Schema *key_tuple_schema;
 };
 
 }  // End index namespace

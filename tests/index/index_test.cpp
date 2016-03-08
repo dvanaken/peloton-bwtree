@@ -263,7 +263,7 @@ TEST(IndexTests, ScanTest) {
   std::unique_ptr<index::Index> index(BuildIndex());
 
   // Single threaded test
-  size_t scale_factor = 1;
+  size_t scale_factor = 2;
   LaunchParallelTest(1, InsertTest, index.get(), pool, scale_factor);
 
   std::vector<oid_t> key_column_ids;

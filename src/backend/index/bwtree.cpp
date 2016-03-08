@@ -49,6 +49,17 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 
   // Can't do this here because we're using atomic inside vector
   // map_table_.resize(1000000);
+
+  // Used for debug: print out the key
+  std::vector<catalog::Column> columns;
+  catalog::Column column1(VALUE_TYPE_INTEGER, GetTypeSize(VALUE_TYPE_INTEGER),
+                          "A", true);
+  catalog::Column column2(VALUE_TYPE_VARCHAR, 1024, "B", true);
+  columns.push_back(column1);
+  columns.push_back(column2);
+  key_tuple_schema = new catalog::Schema(columns);
+  key_tuple_schema->SetIndexedColumns({0, 1});
+
 }
 
 template <typename KeyType, typename ValueType, class KeyComparator,
@@ -743,9 +754,11 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
                 DeallocatePage(new_modify_delta_page);
                 LOG_DEBUG("CAS of consolidation success");
 
+                LOG_DEBUG("Checking Split Threshold");
                 /* Check if split is required and perform the operation */
                 if (!Split_Operation(consolidated_page, pages_visited, current_PID)) {
 
+                  LOG_DEBUG("Checking Merge Threshold");
                   /* Check if merge is requires and perform the operation */
                   Merge_Operation(consolidated_page, pages_visited, current_PID);
                 }
@@ -1325,6 +1338,8 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             if (map_table_[pid_of_parent].compare_exchange_strong(
                 parent_node, index_term_delta_for_split)) {
               LOG_DEBUG("CAS of installing index term delta in parent succeeded");
+              LOG_DEBUG("High separator for index term delta: %s",
+                  index_term_delta_for_split->high_separator_.GetTupleForComparison(key_tuple_schema).GetInfo().c_str());
               return true;
             }
           } else {
@@ -1336,7 +1351,7 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
       }
     }
   }
-  return true;
+  return false;
 }
 
 template <typename KeyType, typename ValueType, class KeyComparator,
@@ -1622,6 +1637,8 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
                                                 KeyType merge_key) {
   PID parent_pid = pages_visited.top();
   Page* parent_page = map_table_[parent_pid];
+
+  LOG_DEBUG("Find left sibling for key: %s", merge_key.GetTupleForComparison(key_tuple_schema).GetInfo().c_str());
 
   /* Go over the delta chain looking for node neighboring the merge_key */
   while (true) {
