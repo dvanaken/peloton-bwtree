@@ -25,8 +25,8 @@
 #include "backend/index/index_key.h"
 
 #define CONSOLIDATE_THRESHOLD 2
-#define SPLIT_SIZE 4
-#define MERGE_SIZE 4
+#define SPLIT_SIZE 20
+#define MERGE_SIZE 2
 #define EPOCH_INTERVAL_MS 40  // in milliseconds
 
 namespace peloton {
@@ -101,11 +101,14 @@ class BWTree {
    public:
     Page(PageType type) : type_(type) { delta_next_ = nullptr; }
 
+    virtual ~Page() { };
+
     const inline PageType& GetType() const { return type_; }
 
     inline void SetDeltaNext(Page* next) { delta_next_ = next; }
 
     inline Page* GetDeltaNext() { return delta_next_; }
+
   };
 
   // A key belongs to an InnerNode if at least one of the following exists:
@@ -568,56 +571,11 @@ class BWTree {
   inline void FreeDeltaChain(Page* page) {
     // Actually we can't free stale delta chain here, because other threads
     // might be reading it.
-    //return;
     Page* free_page;
     while (page != nullptr) {
       free_page = page;
       page = page->GetDeltaNext();
-      switch (free_page->GetType()) {
-        case INNER_NODE: {
-          InnerNode* inner_node = reinterpret_cast<InnerNode*>(free_page);
-          delete inner_node;
-          break;
-        }
-        case INDEX_TERM_DELTA: {
-          IndexTermDelta* idx_delta =
-              reinterpret_cast<IndexTermDelta*>(free_page);
-          delete idx_delta;
-          break;
-        }
-        case LEAF_NODE: {
-          LeafNode* leaf = reinterpret_cast<LeafNode*>(free_page);
-          delete leaf;
-          break;
-        }
-        case MODIFY_DELTA: {
-          ModifyDelta* mod_delta =
-              reinterpret_cast<ModifyDelta*>(free_page);
-          delete mod_delta;
-          break;
-        }
-        case SPLIT_DELTA: {
-          SplitDelta* split_delta =
-              reinterpret_cast<SplitDelta*>(free_page);
-          delete split_delta;
-          break;
-        }
-        case REMOVE_NODE_DELTA: {
-          RemoveNodeDelta* remove_delta =
-              reinterpret_cast<RemoveNodeDelta*>(free_page);
-          delete remove_delta;
-          break;
-        }
-        case NODE_MERGE_DELTA: {
-          NodeMergeDelta* merge_delta =
-              reinterpret_cast<NodeMergeDelta*>(free_page);
-          delete merge_delta;
-          break;
-        }
-        default:
-          throw IndexException("Unrecognized page type\n");
-          break;
-      }
+      delete free_page;
     }
   }
 
