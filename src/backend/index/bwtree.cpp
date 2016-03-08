@@ -1310,7 +1310,7 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
       }
 
       LOG_DEBUG("CAS of installing delta split failed");
-      return false;
+      return true;
     } else {
       LOG_DEBUG("CAS of installing delta split success");
 
@@ -1321,7 +1321,7 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
                                                               new_root_node)) {
           LOG_DEBUG("CAS of installing new root node failed");
           delete new_root_node;
-          return false;
+          return true;
         }
         LOG_DEBUG("Installing new root node successful");
         return true;
@@ -1345,7 +1345,7 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
           } else {
             delete index_term_delta_for_split;
             LOG_DEBUG("CAS of installing index term delta in parent failed");
-            return false;
+            return true;
           }
         }
       }
@@ -1636,7 +1636,10 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
        ValueEqualityChecker>::find_left_sibling(std::stack<PID>& pages_visited,
                                                 KeyType merge_key) {
   PID parent_pid = pages_visited.top();
-  Page* parent_page = map_table_[parent_pid];
+  Page* parent_page = Consolidate(parent_pid);
+  if (!parent_page) {
+    return root_;
+  }
 
   LOG_DEBUG("Find left sibling for key: %s", merge_key.GetTupleForComparison(key_tuple_schema).GetInfo().c_str());
 
@@ -1649,16 +1652,20 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
         for (const auto& child : inner_node->children_) {
           if (reverse_comparator_(merge_key, child.first) == 0) {
             LOG_DEBUG("Found left sibling in Inner Node");
-            return child.second;
+            PID found_pid = child.second;
+            delete parent_page;
+            return found_pid;
           }
         }
 
         /* Couldn't find neighbor */
+        delete parent_page;
         return root_;
 
         break;
       }
       case INDEX_TERM_DELTA: {
+        assert(0);
         IndexTermDelta* idx_delta =
             reinterpret_cast<IndexTermDelta*>(parent_page);
 
@@ -1671,17 +1678,20 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
         continue;
       }
       case SPLIT_DELTA: {
+        assert(0);
         /* If parent is split abandon merge */
         // if split higher try more
         return root_;
         break;
       }
       case REMOVE_NODE_DELTA: {
+        assert(0);
         /* If parent is deleted abandon merge */
         return root_;
         break;
       }
       case NODE_MERGE_DELTA: {
+        assert(0);
         /* If parent is merged abandon merge */
         return root_;
         break;
@@ -1691,6 +1701,7 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
         break;
       }
       case MODIFY_DELTA: {
+        assert(0);
         parent_page = parent_page->GetDeltaNext();
         continue;
       }
