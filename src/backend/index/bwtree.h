@@ -27,6 +27,7 @@
 #define CONSOLIDATE_THRESHOLD 5
 #define SPLIT_SIZE 20
 #define MERGE_SIZE 5
+#define EPOCH_INTERVAL_MS 40  // in milliseconds
 
 namespace peloton {
 namespace index {

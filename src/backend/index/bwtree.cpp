@@ -26,90 +26,6 @@ std::mutex epoch_list_mtx;
 
 template <typename KeyType, typename ValueType, class KeyComparator,
           class KeyEqualityChecker, class ValueEqualityChecker>
-void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
-            ValueEqualityChecker>::RunEpochManager() {
-  std::mutex mtx;
-  std::unique_lock<std::mutex> lck(mtx);
-  while (exec_finished.wait_for(lck,
-        std::chrono::milliseconds(40)) == std::cv_status::timeout
-      && !finished_) {
-    LOG_DEBUG("Timed out...");
-    // Get next epoch #
-    uint64_t next_epoch = epoch_ + 1;
-    LOG_DEBUG("Incrementing epoch to %u", (unsigned) next_epoch);
-
-    // Add new epoch slots to the active workers map and the garbage
-    // collection map
-    active_threads_map_[next_epoch] = 0;
-    epoch_garbage_[next_epoch] = std::vector<Page*>();
-
-    // Now increment the global epoch counter. This should always be
-    // equal to next_epoch because this thread should be the only one
-    // ever changing it.
-    ++epoch_;
-    assert(epoch_ == next_epoch);
-    if (finished_)
-      break;
-  }
-  LOG_DEBUG("Woken up, exiting...");
-}
-
-template <typename KeyType, typename ValueType, class KeyComparator,
-          class KeyEqualityChecker, class ValueEqualityChecker>
-uint64_t BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
-            ValueEqualityChecker>::RegisterWorker() {
-  uint64_t current_epoch = epoch_;
-  LOG_DEBUG("Registering thread for epoch %u", (unsigned) current_epoch);
-  ++(active_threads_map_[current_epoch]);
-  return current_epoch;
-}
-
-template <typename KeyType, typename ValueType, class KeyComparator,
-          class KeyEqualityChecker, class ValueEqualityChecker>
-void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
-            ValueEqualityChecker>::DeregisterWorker(uint64_t worker_epoch) {
-  LOG_DEBUG("Registering thread from epoch %u", (unsigned) worker_epoch);
-  --(active_threads_map_[worker_epoch]);
-  assert(active_threads_map_[worker_epoch] >= 0);
-}
-
-template <typename KeyType, typename ValueType, class KeyComparator,
-          class KeyEqualityChecker, class ValueEqualityChecker>
-void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
-            ValueEqualityChecker>::DeallocatePage(Page *page) {
-  std::unique_lock<std::mutex> epoch_lck(epoch_list_mtx);
-  epoch_garbage_[epoch_].push_back(page);
-}
-
-template <typename KeyType, typename ValueType, class KeyComparator,
-          class KeyEqualityChecker, class ValueEqualityChecker>
-bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
-            ValueEqualityChecker>::Cleanup() {
-  // TODO: remove coarse-grain locking
-  std::unique_lock<std::mutex> epoch_lck(epoch_list_mtx);
-  uint64_t current_epoch = epoch_;
-
-  // Find all epochs that are safe to garbage collect
-  std::vector<uint64_t> safe_epochs;
-  for (uint64_t i = 0; i < current_epoch; ++i) {
-    auto entry = active_threads_map_.find(i);
-    if (entry != active_threads_map_.end() && entry->second == 0) {
-      // This is a valid epoch and there are no active threads remaining
-      safe_epochs.push_back(entry->second);
-      active_threads_map_.erase(entry);
-    }
-  }
-  for (uint64_t safe_epoch : safe_epochs) {
-    std::vector<Page*>& dealloc_pages = epoch_garbage_[safe_epoch];
-    for (Page *chain_head : dealloc_pages) {
-      FreeDeltaChain(chain_head);
-    }
-  }
-  return true;
-}
-
-template <typename KeyType, typename ValueType, class KeyComparator,
-          class KeyEqualityChecker, class ValueEqualityChecker>
 BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
        ValueEqualityChecker>::BWTree(const KeyComparator& comparator,
                                      const KeyEqualityChecker& equals)
@@ -147,65 +63,8 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
   for (PID i = 0; i < PID_counter_; ++i) {
     Page* page = map_table_[i];
     FreeDeltaChain(page);
-    /*Page* free_page;
-    while (page != nullptr) {
-      LOG_DEBUG("Freeing page in delta chain for PID %d\n", (int)i);
-      free_page = page;
-      page = page->GetDeltaNext();
-      switch (free_page->GetType()) {
-        case INNER_NODE: {
-          InnerNode* inner_node = reinterpret_cast<InnerNode*>(free_page);
-          delete inner_node;
-          break;
-        }
-        case INDEX_TERM_DELTA: {
-          IndexTermDelta* idx_delta =
-              reinterpret_cast<IndexTermDelta*>(free_page);
-          delete idx_delta;
-          break;
-        }
-        case LEAF_NODE: {
-          LeafNode* leaf = reinterpret_cast<LeafNode*>(free_page);
-          delete leaf;
-          break;
-        }
-        case MODIFY_DELTA: {
-          ModifyDelta* mod_delta =
-              reinterpret_cast<ModifyDelta*>(free_page);
-          delete mod_delta;
-          break;
-        }
-        case SPLIT_DELTA: {
-          SplitDelta* split_delta =
-              reinterpret_cast<SplitDelta*>(free_page);
-          delete split_delta;
-          break;
-        }
-        case REMOVE_NODE_DELTA: {
-          RemoveNodeDelta* remove_delta =
-              reinterpret_cast<RemoveNodeDelta*>(free_page);
-          delete remove_delta;
-          break;
-        }
-        case NODE_MERGE_DELTA: {
-          NodeMergeDelta* merge_delta =
-              reinterpret_cast<NodeMergeDelta*>(free_page);
-          delete merge_delta;
-          break;
-        }
-        default:
-          throw IndexException("Unrecognized page type\n");
-          break;
-      }
-    }*/
   }
   // Free any chains left in the garbage collection queue
-  //std::map<uint64_t, std::vector<Page*>>::iterator iter;
-  //for(iter = epoch_garbage_.begin(); iter != epoch_garbage_.end(); ++iter) {
-    //for (Page *page : iter->second) {
-    //  FreeDeltaChain(page);
-    //}
-  //}
   for (auto item : epoch_garbage_) {
     for (Page *page : item.second) {
       FreeDeltaChain(page);
@@ -2005,6 +1864,90 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 
   assert(0);
   return false;
+}
+
+template <typename KeyType, typename ValueType, class KeyComparator,
+          class KeyEqualityChecker, class ValueEqualityChecker>
+void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
+            ValueEqualityChecker>::RunEpochManager() {
+  std::mutex mtx;
+  std::unique_lock<std::mutex> lck(mtx);
+  while (exec_finished.wait_for(lck,
+        std::chrono::milliseconds(EPOCH_INTERVAL_MS)) == std::cv_status::timeout
+      && !finished_) {
+    LOG_DEBUG("Timed out...");
+    // Get next epoch #
+    uint64_t next_epoch = epoch_ + 1;
+    LOG_DEBUG("Incrementing epoch to %u", (unsigned) next_epoch);
+
+    // Add new epoch slots to the active workers map and the garbage
+    // collection map
+    active_threads_map_[next_epoch] = 0;
+    epoch_garbage_[next_epoch] = std::vector<Page*>();
+
+    // Now increment the global epoch counter. This should always be
+    // equal to next_epoch because this thread should be the only one
+    // ever changing it.
+    ++epoch_;
+    assert(epoch_ == next_epoch);
+    if (finished_)
+      break;
+  }
+  LOG_DEBUG("Woken up, exiting...");
+}
+
+template <typename KeyType, typename ValueType, class KeyComparator,
+          class KeyEqualityChecker, class ValueEqualityChecker>
+uint64_t BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
+            ValueEqualityChecker>::RegisterWorker() {
+  uint64_t current_epoch = epoch_;
+  LOG_DEBUG("Registering thread for epoch %u", (unsigned) current_epoch);
+  ++(active_threads_map_[current_epoch]);
+  return current_epoch;
+}
+
+template <typename KeyType, typename ValueType, class KeyComparator,
+          class KeyEqualityChecker, class ValueEqualityChecker>
+void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
+            ValueEqualityChecker>::DeregisterWorker(uint64_t worker_epoch) {
+  LOG_DEBUG("Registering thread from epoch %u", (unsigned) worker_epoch);
+  --(active_threads_map_[worker_epoch]);
+  assert(active_threads_map_[worker_epoch] >= 0);
+}
+
+template <typename KeyType, typename ValueType, class KeyComparator,
+          class KeyEqualityChecker, class ValueEqualityChecker>
+void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
+            ValueEqualityChecker>::DeallocatePage(Page *page) {
+  std::unique_lock<std::mutex> epoch_lck(epoch_list_mtx);
+  epoch_garbage_[epoch_].push_back(page);
+}
+
+template <typename KeyType, typename ValueType, class KeyComparator,
+          class KeyEqualityChecker, class ValueEqualityChecker>
+bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
+            ValueEqualityChecker>::Cleanup() {
+  // TODO: remove coarse-grain locking
+  std::unique_lock<std::mutex> epoch_lck(epoch_list_mtx);
+  uint64_t current_epoch = epoch_;
+
+  // Find all epochs that are safe to garbage collect
+  std::vector<uint64_t> safe_epochs;
+  for (uint64_t i = 0; i < current_epoch; ++i) {
+    auto entry = active_threads_map_.find(i);
+    if (entry != active_threads_map_.end() && entry->second == 0) {
+      // This is a valid epoch and there are no active threads remaining
+      safe_epochs.push_back(entry->second);
+      active_threads_map_.erase(entry);
+    }
+  }
+  for (uint64_t safe_epoch : safe_epochs) {
+    std::vector<Page*>& dealloc_pages = epoch_garbage_[safe_epoch];
+    for (Page *chain_head : dealloc_pages) {
+      FreeDeltaChain(chain_head);
+    }
+  }
+  return true;
 }
 
 // Explicit template instantiation
