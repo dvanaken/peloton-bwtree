@@ -547,16 +547,18 @@ class BWTree {
         bool first_child = true;
         PID last_PID = index_term_ranges.begin()->second.second;
         for (auto& kv : index_term_ranges) {
-          LOG_DEBUG("one entry");
           if (first_child) {
             first_child = false;
             continue;
           }
           new_inner->children_.push_back(std::make_pair(kv.first, last_PID));
           last_PID = kv.second.second;
+          KeyType tmp_key = kv.first;
+          LOG_DEBUG("one entry with high key : %s", tmp_key.GetTupleForComparison(key_tuple_schema).GetInfo().c_str());
         }
         new_inner->children_.push_back(
             std::make_pair(index_term_ranges.rbegin()->second.first, last_PID));
+        LOG_DEBUG("one entry with high key : %s", index_term_ranges.rbegin()->second.first.GetTupleForComparison(key_tuple_schema).GetInfo().c_str());
         LOG_DEBUG("Consolidate inner item end.");
       }
       return new_inner;

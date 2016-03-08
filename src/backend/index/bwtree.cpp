@@ -107,6 +107,8 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             ValueEqualityChecker>::Insert(const KeyType& key,
                                           const ValueType& data) {
   LOG_DEBUG("Trying new insert");
+  KeyType tmp_key = key;
+  LOG_DEBUG("Trying new insert with key: %s", tmp_key.GetTupleForComparison(key_tuple_schema).GetInfo().c_str());
   uint64_t worker_epoch = RegisterWorker();
   while (true) {
     Page* root_page = map_table_[root_];
@@ -289,7 +291,8 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
                 reinterpret_cast<NodeMergeDelta*>(current_page);
 
             /* Check if your Key is in merged node  */
-            if (reverse_comparator_(key, merge_delta->separator_) >= 0) {
+            if (reverse_comparator_(key, merge_delta->separator_) > 0) {
+              LOG_DEBUG("Found NODE_MERGE_DELTA to insert into");
               current_page = merge_delta->physical_link_;
             } else {
               current_page = current_page->GetDeltaNext();
@@ -654,7 +657,7 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
               reinterpret_cast<NodeMergeDelta*>(current_page);
 
           /* Check if your Key is in merged node  */
-          if (reverse_comparator_(key, merge_delta->separator_) >= 0) {
+          if (reverse_comparator_(key, merge_delta->separator_) > 0) {
             current_page = merge_delta->physical_link_;
           } else {
             current_page = current_page->GetDeltaNext();
@@ -1399,6 +1402,7 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
         return true;
       }
     } else {
+
       delete index_term_delta_for_split;
       LOG_DEBUG("CAS of installing index term delta in parent failed");
       return false;
@@ -1528,7 +1532,7 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 
       /* Create a new merge delta */
       merge_delta =
-          new NodeMergeDelta(node_to_merge->high_key_,
+          new NodeMergeDelta(node_to_merge->low_key_,
                              node_to_merge->absolute_max_, consolidated_page);
 
       __attribute__((unused)) LeafNode* node_merging_into =
@@ -1595,6 +1599,8 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
         if (map_table_[pid_merging_into].compare_exchange_strong(
             page_merging_into, merge_delta)) {
           LOG_DEBUG("CAS of installing node merge delta succeeded");
+          LOG_DEBUG("with separator key: %s",
+                merge_delta->separator_.GetTupleForComparison(key_tuple_schema).GetInfo().c_str());
         } else {
           delete merge_delta;
           delete index_term_delta_for_merge;
@@ -1615,6 +1621,9 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
           if (map_table_[pid_of_parent].compare_exchange_strong(
                   parent_node, index_term_delta_for_merge)) {
             LOG_DEBUG("CAS of installing index term delta in parent succeeded");
+            LOG_DEBUG("with low key: %s high key: %s",
+                index_term_delta_for_merge->low_separator_.GetTupleForComparison(key_tuple_schema).GetInfo().c_str(),
+                index_term_delta_for_merge->high_separator_.GetTupleForComparison(key_tuple_schema).GetInfo().c_str());
             break;
           }
         } else {
