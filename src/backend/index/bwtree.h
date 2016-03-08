@@ -566,57 +566,90 @@ class BWTree {
   inline void FreeDeltaChain(Page* page) {
     // Actually we can't free stale delta chain here, because other threads
     // might be reading it.
-    //return;
     Page* free_page;
     while (page != nullptr) {
       free_page = page;
       page = page->GetDeltaNext();
-      switch (free_page->GetType()) {
-        case INNER_NODE: {
-          InnerNode* inner_node = reinterpret_cast<InnerNode*>(free_page);
-          delete inner_node;
-          break;
-        }
-        case INDEX_TERM_DELTA: {
-          IndexTermDelta* idx_delta =
-              reinterpret_cast<IndexTermDelta*>(free_page);
-          delete idx_delta;
-          break;
-        }
-        case LEAF_NODE: {
-          LeafNode* leaf = reinterpret_cast<LeafNode*>(free_page);
-          delete leaf;
-          break;
-        }
-        case MODIFY_DELTA: {
-          ModifyDelta* mod_delta =
-              reinterpret_cast<ModifyDelta*>(free_page);
-          delete mod_delta;
-          break;
-        }
-        case SPLIT_DELTA: {
-          SplitDelta* split_delta =
-              reinterpret_cast<SplitDelta*>(free_page);
-          delete split_delta;
-          break;
-        }
-        case REMOVE_NODE_DELTA: {
-          RemoveNodeDelta* remove_delta =
-              reinterpret_cast<RemoveNodeDelta*>(free_page);
-          delete remove_delta;
-          break;
-        }
-        case NODE_MERGE_DELTA: {
-          NodeMergeDelta* merge_delta =
-              reinterpret_cast<NodeMergeDelta*>(free_page);
-          delete merge_delta;
-          break;
-        }
-        default:
-          throw IndexException("Unrecognized page type\n");
-          break;
-      }
+      FreePage(free_page);
     }
+  }
+
+  inline void FreePage(Page *page) {
+    if (page == nullptr)
+      return;
+    switch (page->GetType()) {
+      case INNER_NODE: {
+        InnerNode* inner_node = reinterpret_cast<InnerNode*>(page);
+        delete inner_node;
+        break;
+      }
+      case INDEX_TERM_DELTA: {
+        IndexTermDelta* idx_delta =
+            reinterpret_cast<IndexTermDelta*>(page);
+        delete idx_delta;
+        break;
+      }
+      case LEAF_NODE: {
+        LeafNode* leaf = reinterpret_cast<LeafNode*>(page);
+        delete leaf;
+        break;
+      }
+      case MODIFY_DELTA: {
+        ModifyDelta* mod_delta =
+            reinterpret_cast<ModifyDelta*>(page);
+        delete mod_delta;
+        break;
+      }
+      case SPLIT_DELTA: {
+        SplitDelta* split_delta =
+            reinterpret_cast<SplitDelta*>(page);
+        delete split_delta;
+        break;
+      }
+      case REMOVE_NODE_DELTA: {
+        RemoveNodeDelta* remove_delta =
+            reinterpret_cast<RemoveNodeDelta*>(page);
+        delete remove_delta;
+        break;
+      }
+      case NODE_MERGE_DELTA: {
+        NodeMergeDelta* merge_delta =
+            reinterpret_cast<NodeMergeDelta*>(page);
+        delete merge_delta;
+        break;
+      }
+      default:
+        throw IndexException("Unrecognized page type\n");
+        break;
+    }
+  }
+
+  inline void FreePage(InnerNode *inner_node) {
+    delete inner_node;
+  }
+
+  inline void FreePage(IndexTermDelta *index_term_delta) {
+    delete index_term_delta;
+  }
+
+  inline void FreePage(LeafNode *leaf_node) {
+    delete leaf_node;
+  }
+
+  inline void FreePage(ModifyDelta *modify_delta) {
+    delete modify_delta;
+  }
+
+  inline void FreePage(SplitDelta *split_delta) {
+    delete split_delta;
+  }
+
+  inline void FreePage(RemoveNodeDelta *remove_delta) {
+    delete remove_delta;
+  }
+
+  inline void FreePage(NodeMergeDelta *merge_delta) {
+    delete merge_delta;
   }
 
   // ***** Member variables
