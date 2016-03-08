@@ -22,6 +22,7 @@
 
 #include "backend/common/types.h"
 #include "backend/common/logger.h"
+#include "backend/common/platform.h"
 #include "backend/index/index_key.h"
 
 #define CONSOLIDATE_THRESHOLD 2
@@ -643,6 +644,9 @@ class BWTree {
   std::unordered_map<uint64_t, std::atomic_ullong> active_threads_map_;
 
   std::unordered_map<uint64_t, std::vector<Page*>> epoch_garbage_;
+
+  // TODO: synch helper for debug
+  RWLock gc_lock;
 
   // Used for debug
   catalog::Schema *key_tuple_schema;

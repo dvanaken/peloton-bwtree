@@ -21,9 +21,6 @@ namespace index {
 
 std::condition_variable exec_finished;
 
-// TODO: this lock is temporary
-std::mutex epoch_list_mtx;
-
 template <typename KeyType, typename ValueType, class KeyComparator,
           class KeyEqualityChecker, class ValueEqualityChecker>
 BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
@@ -1911,6 +1908,7 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 
     // Add new epoch slots to the active workers map and the garbage
     // collection map
+    gc_lock.WriteLock();
     active_threads_map_[next_epoch] = 0;
     epoch_garbage_[next_epoch] = std::vector<Page*>();
 
@@ -1918,7 +1916,9 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
     // equal to next_epoch because this thread should be the only one
     // ever changing it.
     ++epoch_;
+    gc_lock.Unlock();
     assert(epoch_ == next_epoch);
+    Cleanup();
     if (finished_)
       break;
   }
@@ -1929,9 +1929,11 @@ template <typename KeyType, typename ValueType, class KeyComparator,
           class KeyEqualityChecker, class ValueEqualityChecker>
 uint64_t BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             ValueEqualityChecker>::RegisterWorker() {
+  gc_lock.WriteLock();
   uint64_t current_epoch = epoch_;
   LOG_DEBUG("Registering thread for epoch %u", (unsigned) current_epoch);
   ++(active_threads_map_[current_epoch]);
+  gc_lock.Unlock();
   return current_epoch;
 }
 
@@ -1939,25 +1941,31 @@ template <typename KeyType, typename ValueType, class KeyComparator,
           class KeyEqualityChecker, class ValueEqualityChecker>
 void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             ValueEqualityChecker>::DeregisterWorker(uint64_t worker_epoch) {
+  gc_lock.WriteLock();
   LOG_DEBUG("Deregistering thread from epoch %u", (unsigned) worker_epoch);
   --(active_threads_map_[worker_epoch]);
   assert(active_threads_map_[worker_epoch] >= 0);
+  gc_lock.Unlock();
 }
 
 template <typename KeyType, typename ValueType, class KeyComparator,
           class KeyEqualityChecker, class ValueEqualityChecker>
 void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             ValueEqualityChecker>::DeallocatePage(Page *page) {
-  std::unique_lock<std::mutex> epoch_lck(epoch_list_mtx);
-  epoch_garbage_[epoch_].push_back(page);
+  gc_lock.WriteLock();
+  uint64_t current_epoch = epoch_;
+  LOG_DEBUG("Deallocating page in epoch %u", (unsigned) current_epoch);
+  epoch_garbage_[current_epoch].push_back(page);
+  gc_lock.Unlock();
 }
 
 template <typename KeyType, typename ValueType, class KeyComparator,
           class KeyEqualityChecker, class ValueEqualityChecker>
 bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             ValueEqualityChecker>::Cleanup() {
+  LOG_DEBUG("Cleaning up old pages");
   // TODO: remove coarse-grain locking
-  std::unique_lock<std::mutex> epoch_lck(epoch_list_mtx);
+  gc_lock.WriteLock();
   uint64_t current_epoch = epoch_;
 
   // Find all epochs that are safe to garbage collect
@@ -1968,6 +1976,7 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
       // This is a valid epoch and there are no active threads remaining
       safe_epochs.push_back(entry->second);
       active_threads_map_.erase(entry);
+      LOG_DEBUG("Found safe epoch %u", (unsigned) i);
     }
   }
   for (uint64_t safe_epoch : safe_epochs) {
@@ -1975,7 +1984,10 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
     for (Page *chain_head : dealloc_pages) {
       FreeDeltaChain(chain_head);
     }
+    epoch_garbage_.erase(safe_epoch);
   }
+  gc_lock.Unlock();
+  //assert(epoch_garbage_.size() == active_threads_map_.size());
   return true;
 }
 
