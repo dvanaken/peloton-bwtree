@@ -105,7 +105,7 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             ValueEqualityChecker>::Insert(const KeyType& key,
                                           const ValueType& data) {
   LOG_DEBUG("Trying new insert");
-  KeyType tmp_key = key;
+  __attribute__((unused)) KeyType tmp_key = key;
   LOG_DEBUG("Trying new insert with key: %s", tmp_key.GetTupleForComparison(key_tuple_schema).GetInfo().c_str());
   uint64_t worker_epoch = RegisterWorker();
   while (true) {
@@ -352,7 +352,7 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
               // Install new ModifyDelta page
               // Copy old locations_ and add our new value
               data_items.push_back(data);
-              int size_data = data_items.size();
+              __attribute__((unused)) int size_data = data_items.size();
               LOG_DEBUG("Creating new modify delta size: %d", size_data);
               ModifyDelta* new_modify_delta = new ModifyDelta(key, data_items);
               new_modify_delta->SetDeltaNext(head_of_delta);
@@ -719,7 +719,7 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             return false;
           }
 
-          int size_data = data_items.size();
+          __attribute__((unused)) int size_data = data_items.size();
           LOG_DEBUG("Creating new modify delta size: %d", size_data);
           ModifyDelta* new_modify_delta = new ModifyDelta(key, data_items);
           new_modify_delta->SetDeltaNext(head_of_delta);
@@ -802,7 +802,7 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
               return false;
             }
 
-            int size_data = data_items.size();
+            __attribute__((unused)) int size_data = data_items.size();
             LOG_DEBUG("Creating new modify delta size: %d", size_data);
             ModifyDelta* new_modify_delta = new ModifyDelta(key, data_items);
             new_modify_delta->SetDeltaNext(head_of_delta);

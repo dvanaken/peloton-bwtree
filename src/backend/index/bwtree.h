@@ -25,9 +25,9 @@
 #include "backend/common/platform.h"
 #include "backend/index/index_key.h"
 
-#define CONSOLIDATE_THRESHOLD 2
-#define SPLIT_SIZE 4
-#define MERGE_SIZE 4
+#define CONSOLIDATE_THRESHOLD 10
+#define SPLIT_SIZE 10
+#define MERGE_SIZE 0
 #define EPOCH_INTERVAL_MS 40  // in milliseconds
 
 namespace peloton {
@@ -425,7 +425,8 @@ class BWTree {
         }
         case SPLIT_DELTA: {
           // make sure we consolidate before split
-          PageType next_page_type = current_page->GetDeltaNext()->GetType();
+          __attribute__((unused)) PageType next_page_type =
+              current_page->GetDeltaNext()->GetType();
           assert(next_page_type == INNER_NODE || next_page_type == LEAF_NODE);
 
           SplitDelta* split_delta = reinterpret_cast<SplitDelta*>(current_page);
@@ -440,7 +441,8 @@ class BWTree {
           break;
         }
         case NODE_MERGE_DELTA: {
-          PageType next_page_type = current_page->GetDeltaNext()->GetType();
+          __attribute__((unused)) PageType next_page_type =
+              current_page->GetDeltaNext()->GetType();
           assert(next_page_type == INNER_NODE || next_page_type == LEAF_NODE);
           NodeMergeDelta* merge_delta =
               reinterpret_cast<NodeMergeDelta*>(current_page);
@@ -557,7 +559,7 @@ class BWTree {
           }
           new_inner->children_.push_back(std::make_pair(kv.first, last_PID));
           last_PID = kv.second.second;
-          KeyType tmp_key = kv.first;
+          __attribute__((unused)) KeyType tmp_key = kv.first;
           LOG_DEBUG("one entry with high key : %s", tmp_key.GetTupleForComparison(key_tuple_schema).GetInfo().c_str());
         }
         new_inner->children_.push_back(
