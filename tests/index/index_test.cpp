@@ -255,6 +255,48 @@ TEST(IndexTests, DeleteTest) {
   delete tuple_schema;
 }
 
+TEST(IndexTests, ScanTest) {
+  auto pool = TestingHarness::GetInstance().GetTestingPool();
+  std::vector<ItemPointer> locations;
+
+  // INDEX
+  std::unique_ptr<index::Index> index(BuildIndex());
+
+  // Single threaded test
+  size_t scale_factor = 1;
+  LaunchParallelTest(1, InsertTest, index.get(), pool, scale_factor);
+
+  std::vector<oid_t> key_column_ids;
+
+  std::vector<ExpressionType> expr_types;
+
+  std::vector<peloton::Value> values;
+
+  // constrain the search on key1 and key2
+  key_column_ids.push_back(0);
+  expr_types.push_back(EXPRESSION_TYPE_COMPARE_EQUAL);
+  values.push_back(ValueFactory::GetIntegerValue(100));
+  key_column_ids.push_back(1);
+  expr_types.push_back(EXPRESSION_TYPE_COMPARE_GREATERTHAN);
+  values.push_back(ValueFactory::GetStringValue("a"));
+  key_column_ids.push_back(1);
+  expr_types.push_back(EXPRESSION_TYPE_COMPARE_LESSTHAN);
+  values.push_back(ValueFactory::GetStringValue("d"));
+
+  // Check scan
+  locations = index->Scan(values, key_column_ids, expr_types,
+                                   SCAN_DIRECTION_TYPE_FORWARD);
+  EXPECT_EQ(locations.size(), 6);
+
+  LaunchParallelTest(1, DeleteTest, index.get(), pool, scale_factor);
+  locations = index->Scan(values, key_column_ids, expr_types,
+                                   SCAN_DIRECTION_TYPE_FORWARD);
+  EXPECT_EQ(locations.size(), 3);
+  EXPECT_EQ(locations[0].block, item2.block);
+
+  delete tuple_schema;
+}
+
 TEST(IndexTests, MultiThreadedInsertTest) {
   auto pool = TestingHarness::GetInstance().GetTestingPool();
   std::vector<ItemPointer> locations;
