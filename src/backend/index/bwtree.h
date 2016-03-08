@@ -565,7 +565,7 @@ class BWTree {
   inline void FreeDeltaChain(Page* page) {
     // Actually we can't free stale delta chain here, because other threads
     // might be reading it.
-    return;
+    //return;
     Page* free_page;
     while (page != nullptr) {
       free_page = page;
@@ -635,6 +635,20 @@ class BWTree {
     }
   };
 
+  void RunEpochManager();
+
+  inline void Start() {
+    epoch_manager_ = std::thread(&BWTree::RunEpochManager, this);
+  }
+
+  uint64_t RegisterWorker();
+
+  void DeregisterWorker(uint64_t worker_epoch);
+
+  void DeallocatePage(Page *page);
+
+  bool Cleanup();
+
   // PID of the root node
   PID root_;
 
@@ -660,6 +674,16 @@ class BWTree {
 
   // Value equality function object
   ValueEqualityChecker value_equals_;
+
+  std::atomic_bool finished_;
+
+  std::thread epoch_manager_;
+
+  std::atomic_ullong epoch_;
+
+  std::unordered_map<uint64_t, std::atomic_ullong> active_threads_map_;
+
+  std::unordered_map<uint64_t, std::vector<Page*>> epoch_garbage_;
 };
 
 }  // End index namespace
