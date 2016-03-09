@@ -480,6 +480,43 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
                   }
                 }
               }
+
+              /* Check if parents needs to be consolidated */
+              while (!pages_visited.empty()) {
+                current_PID = pages_visited.top();
+                pages_visited.pop();
+                if (pages_visited.empty()) {
+                  assert(current_PID == root_);
+                }
+                if (CheckConsolidate(current_PID)) {
+                  LOG_DEBUG("Performing consolidation of parent");
+                  Page* consolidated_page = Consolidate(current_PID);
+                  if (consolidated_page) {
+                    Page* old_head_of_delta = map_table_[current_PID];
+
+                    /* Attempt to insert updated consolidated page */
+                    if (!map_table_[current_PID].compare_exchange_strong(
+                        old_head_of_delta, consolidated_page)) {
+                      delete consolidated_page;
+                      LOG_DEBUG("CAS of consolidated parent failed");
+                    } else {
+                      // TODO: Eventually we'll have epoch garbage collection. But
+                      // now we free in this way.
+                      DeallocatePage(old_head_of_delta);
+                      LOG_DEBUG("CAS of consolidated parent success");
+
+                      /* Check if split is required and perform the operation */
+                      if (!Split_Operation(consolidated_page, pages_visited,
+                          current_PID)) {
+
+                        /* Check if merge is requires and perform the operation */
+                        Merge_Operation(consolidated_page, pages_visited,
+                            current_PID);
+                      }
+                    }
+                  }
+                }
+              }
             }
             DeregisterWorker(worker_epoch);
             return inserted;
