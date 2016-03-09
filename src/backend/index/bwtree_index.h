@@ -59,7 +59,8 @@ class BWTreeIndex : public Index {
 
   // TODO: Implement this
   bool Cleanup() {
-    return true;
+    //return true;
+    return container.Cleanup();
   }
 
   // TODO: Implement this
@@ -74,9 +75,6 @@ class BWTreeIndex : public Index {
   // equality checker and comparator
   KeyEqualityChecker equals;
   KeyComparator comparator;
-
-  // synch helper
-  RWLock index_lock;
 };
 
 }  // End index namespace

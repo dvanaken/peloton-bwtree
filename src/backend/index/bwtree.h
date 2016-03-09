@@ -27,7 +27,7 @@
 #include "backend/index/index_key.h"
 
 #define CONSOLIDATE_THRESHOLD 8
-#define SPLIT_SIZE 4
+#define SPLIT_SIZE 10
 #define MERGE_SIZE 0
 #define EPOCH_INTERVAL_MS 40  // in milliseconds
 
@@ -71,6 +71,8 @@ class BWTree {
   // Search functions
   std::vector<ValueType> SearchKey(const KeyType& key);
   std::map<KeyType, std::vector<ValueType>, KeyComparator> SearchAllKeys();
+
+  bool Cleanup();
 
   size_t GetMemoryFootprint();
 
@@ -627,8 +629,6 @@ class BWTree {
 
   void DeallocatePage(Page *page);
 
-  bool Cleanup();
-
   size_t GetPageSize(Page *page);
 
   // PID of the root node
@@ -670,7 +670,8 @@ class BWTree {
   std::condition_variable exec_finished_;
 
   // TODO: synch helper for debug
-  RWLock gc_lock;
+  RWLock cleanup_lock;
+  RWLock dealloc_lock;
 
   // Used for debug
   catalog::Schema *key_tuple_schema;

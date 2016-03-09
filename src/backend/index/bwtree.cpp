@@ -1928,7 +1928,9 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 
     // Add new epoch slots to the active workers map and the garbage
     // collection map
-    gc_lock.WriteLock();
+    //gc_lock.WriteLock();
+    LOG_DEBUG("epoch garbage size: %u", (unsigned) epoch_garbage_.size());
+    LOG_DEBUG("active threads size: %u", (unsigned) active_threads_map_.size());
     active_threads_map_[next_epoch] = 0;
     epoch_garbage_[next_epoch] = std::vector<Page*>();
 
@@ -1936,9 +1938,14 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
     // equal to next_epoch because this thread should be the only one
     // ever changing it.
     ++epoch_;
-    gc_lock.Unlock();
+    //gc_lock.Unlock();
     assert(epoch_ == next_epoch);
+    //__attribute__((unused)) size_t memory_footprint_before = GetMemoryFootprint();
     Cleanup();
+    //__attribute__((unused)) size_t memory_footprint_after = GetMemoryFootprint();
+//    LOG_DEBUG("GetMemoryFootprint: before = %u, after = %u",
+//        (unsigned) memory_footprint_before,
+//        (unsigned) memory_footprint_after);
     if (finished_)
       break;
   }
@@ -1949,11 +1956,11 @@ template <typename KeyType, typename ValueType, class KeyComparator,
           class KeyEqualityChecker, class ValueEqualityChecker>
 uint64_t BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             ValueEqualityChecker>::RegisterWorker() {
-  gc_lock.WriteLock();
+  //gc_lock.WriteLock();
   uint64_t current_epoch = epoch_;
   LOG_DEBUG("Registering thread for epoch %u", (unsigned) current_epoch);
   ++(active_threads_map_[current_epoch]);
-  gc_lock.Unlock();
+  //gc_lock.Unlock();
   return current_epoch;
 }
 
@@ -1961,22 +1968,22 @@ template <typename KeyType, typename ValueType, class KeyComparator,
           class KeyEqualityChecker, class ValueEqualityChecker>
 void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             ValueEqualityChecker>::DeregisterWorker(uint64_t worker_epoch) {
-  gc_lock.WriteLock();
+  //dealloc_lock.WriteLock();
   LOG_DEBUG("Deregistering thread from epoch %u", (unsigned) worker_epoch);
   --(active_threads_map_[worker_epoch]);
   assert(active_threads_map_[worker_epoch] >= 0);
-  gc_lock.Unlock();
+  //dealloc_lock.Unlock();
 }
 
 template <typename KeyType, typename ValueType, class KeyComparator,
           class KeyEqualityChecker, class ValueEqualityChecker>
 void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             ValueEqualityChecker>::DeallocatePage(Page *page) {
-  gc_lock.WriteLock();
+  dealloc_lock.WriteLock();
   uint64_t current_epoch = epoch_;
   LOG_DEBUG("Deallocating page in epoch %u", (unsigned) current_epoch);
   epoch_garbage_[current_epoch].push_back(page);
-  gc_lock.Unlock();
+  dealloc_lock.Unlock();
 }
 
 template <typename KeyType, typename ValueType, class KeyComparator,
@@ -1985,29 +1992,35 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             ValueEqualityChecker>::Cleanup() {
   LOG_DEBUG("Cleaning up old pages");
   // TODO: remove coarse-grain locking
-  gc_lock.WriteLock();
+  cleanup_lock.WriteLock();
   uint64_t current_epoch = epoch_;
 
   // Find all epochs that are safe to garbage collect
-  std::vector<uint64_t> safe_epochs;
+  //std::vector<uint64_t> safe_epochs;
   for (uint64_t i = 0; i < current_epoch; ++i) {
     auto entry = active_threads_map_.find(i);
     if (entry != active_threads_map_.end() && entry->second == 0) {
       // This is a valid epoch and there are no active threads remaining
-      safe_epochs.push_back(entry->second);
-      active_threads_map_.erase(entry);
+      //safe_epochs.push_back(entry->second);
+
       LOG_DEBUG("Found safe epoch %u", (unsigned) i);
+      std::vector<Page*>& dealloc_pages = epoch_garbage_[i];
+      LOG_DEBUG("Deleting garbage (%u items) in safe epoch %u\n", (unsigned) dealloc_pages.size(),
+              (unsigned) i);
+      for (uint64_t j = 0; j < dealloc_pages.size(); ++j) {
+        Page *chain_head = dealloc_pages[j];
+        FreeDeltaChain(chain_head);
+        dealloc_pages[j] = nullptr;
+      }
+      active_threads_map_.erase(i);
+      epoch_garbage_.erase(i);
     }
   }
-  for (uint64_t safe_epoch : safe_epochs) {
-    std::vector<Page*>& dealloc_pages = epoch_garbage_[safe_epoch];
-    for (Page *chain_head : dealloc_pages) {
-      FreeDeltaChain(chain_head);
-    }
-    epoch_garbage_.erase(safe_epoch);
-  }
-  gc_lock.Unlock();
-  //assert(epoch_garbage_.size() == active_threads_map_.size());
+  LOG_DEBUG("epoch garbage size: %u", (unsigned) epoch_garbage_.size());
+  LOG_DEBUG("active threads size: %u", (unsigned) active_threads_map_.size());
+  assert(epoch_garbage_.size() == active_threads_map_.size());
+  cleanup_lock.Unlock();
+
   return true;
 }
 
@@ -2031,7 +2044,7 @@ size_t BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 
   // Now walk through pages to be deallocated
   uint64_t current_epoch = epoch_;
-  gc_lock.ReadLock();
+  cleanup_lock.ReadLock();
 
   for (uint64_t i = 0; i < current_epoch; ++i) {
     auto entry = epoch_garbage_.find(i);
@@ -2046,7 +2059,7 @@ size_t BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
       }
     }
   }
-  gc_lock.Unlock();
+  cleanup_lock.Unlock();
 
   DeregisterWorker(worker_epoch);
   LOG_DEBUG("Finished GetMemoryFootprint");
@@ -2062,47 +2075,47 @@ size_t BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
     case INNER_NODE: {
       InnerNode* inner_node = reinterpret_cast<InnerNode*>(page);
       page_size = sizeof(*inner_node);
-      LOG_DEBUG("Size of inner node: %u", (unsigned) page_size);
+      //LOG_DEBUG("Size of inner node: %u", (unsigned) page_size);
       break;
     }
     case INDEX_TERM_DELTA: {
       IndexTermDelta* index_delta = reinterpret_cast<IndexTermDelta*>(page);
       page_size = sizeof(*index_delta);
-      LOG_DEBUG("Size of index term delta: %u", (unsigned) page_size);
+      //LOG_DEBUG("Size of index term delta: %u", (unsigned) page_size);
       break;
     }
     case SPLIT_DELTA: {
       SplitDelta* split_delta = reinterpret_cast<SplitDelta*>(page);
       page_size = sizeof(*split_delta);
-      LOG_DEBUG("Size of split delta: %u", (unsigned) page_size);
+      //LOG_DEBUG("Size of split delta: %u", (unsigned) page_size);
       break;
     }
     case REMOVE_NODE_DELTA: {
       RemoveNodeDelta* remove_delta = reinterpret_cast<RemoveNodeDelta*>(page);
       page_size = sizeof(*remove_delta);
-      LOG_DEBUG("Size of remove node delta: %u", (unsigned) page_size);
+      //LOG_DEBUG("Size of remove node delta: %u", (unsigned) page_size);
       break;
     }
     case NODE_MERGE_DELTA: {
       NodeMergeDelta* merge_delta = reinterpret_cast<NodeMergeDelta*>(page);
       page_size = sizeof(*merge_delta);
-      LOG_DEBUG("Size of node merge delta: %u", (unsigned) page_size);
+      //LOG_DEBUG("Size of node merge delta: %u", (unsigned) page_size);
       break;
     }
     case LEAF_NODE: {
       LeafNode* leaf = reinterpret_cast<LeafNode*>(page);
       page_size = sizeof(*leaf);
-      LOG_DEBUG("Size of leaf node: %u", (unsigned) page_size);
+      //LOG_DEBUG("Size of leaf node: %u", (unsigned) page_size);
       break;
     }
     case MODIFY_DELTA: {
       ModifyDelta* modify_delta = reinterpret_cast<ModifyDelta*>(page);
       page_size = sizeof(*modify_delta);
-      LOG_DEBUG("Size of modify delta: %u", (unsigned) page_size);
+      //LOG_DEBUG("Size of modify delta: %u", (unsigned) page_size);
       break;
     }
     default:
-      page_size = 8;
+      page_size = 64;
       break;
   }
   assert(page_size > 0);
