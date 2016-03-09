@@ -25,9 +25,9 @@
 #include "backend/common/platform.h"
 #include "backend/index/index_key.h"
 
-#define CONSOLIDATE_THRESHOLD 2
+#define CONSOLIDATE_THRESHOLD 8
 #define SPLIT_SIZE 4
-#define MERGE_SIZE 4
+#define MERGE_SIZE 0
 #define EPOCH_INTERVAL_MS 40  // in milliseconds
 
 namespace peloton {
@@ -70,6 +70,8 @@ class BWTree {
   // Search functions
   std::vector<ValueType> SearchKey(const KeyType& key);
   std::map<KeyType, std::vector<ValueType>, KeyComparator> SearchAllKeys();
+
+  size_t GetMemoryFootprint();
 
  private:
   // ***** Different types of page records
@@ -625,6 +627,8 @@ class BWTree {
   void DeallocatePage(Page *page);
 
   bool Cleanup();
+
+  size_t GetPageSize(Page *page);
 
   // PID of the root node
   PID root_;

@@ -1931,7 +1931,9 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 
     // Add new epoch slots to the active workers map and the garbage
     // collection map
+    LOG_DEBUG("Trying to acquire write lock in RunEpochManager");
     gc_lock.WriteLock();
+    LOG_DEBUG("Acquired write lock in RunEpochManager");
     active_threads_map_[next_epoch] = 0;
     epoch_garbage_[next_epoch] = std::vector<Page*>();
 
@@ -2012,6 +2014,104 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
   gc_lock.Unlock();
   //assert(epoch_garbage_.size() == active_threads_map_.size());
   return true;
+}
+
+template <typename KeyType, typename ValueType, class KeyComparator,
+          class KeyEqualityChecker, class ValueEqualityChecker>
+size_t BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
+            ValueEqualityChecker>::GetMemoryFootprint() {
+  LOG_DEBUG("Starting GetMemoryFootprint");
+  uint64_t worker_epoch = RegisterWorker();
+  size_t memory_footprint = 0;
+
+  // First walk through mapping table and calculate footprint
+  PID num_pids = PID_counter_;
+  for (PID i = 0; i < PID_counter_; ++i) {
+    Page *current_page = map_table_[i];
+    while (current_page != nullptr) {
+      memory_footprint += GetPageSize(current_page);
+      current_page = current_page->GetDeltaNext();
+    }
+  }
+
+  // Now walk through pages to be deallocated
+  uint64_t current_epoch = epoch_;
+  gc_lock.ReadLock();
+
+  for (uint64_t i = 0; i < current_epoch; ++i) {
+    auto entry = epoch_garbage_.find(i);
+    if (entry != epoch_garbage_.end()) {
+      std::vector<Page*> chain_heads = entry->second;
+      for (Page *chain_head : chain_heads) {
+        Page *current_page = chain_head;
+        while (current_page != nullptr) {
+          memory_footprint += GetPageSize(current_page);
+          current_page = current_page->GetDeltaNext();
+        }
+      }
+    }
+  }
+  gc_lock.Unlock();
+
+  DeregisterWorker(worker_epoch);
+  LOG_DEBUG("Finished GetMemoryFootprint");
+  return memory_footprint;
+}
+
+template <typename KeyType, typename ValueType, class KeyComparator,
+          class KeyEqualityChecker, class ValueEqualityChecker>
+size_t BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
+            ValueEqualityChecker>::GetPageSize(Page *page) {
+  size_t page_size = 0;
+  switch (page->GetType()) {
+    case INNER_NODE: {
+      InnerNode* inner_node = reinterpret_cast<InnerNode*>(page);
+      page_size = sizeof(*inner_node);
+      LOG_DEBUG("Size of inner node: %u", (unsigned) page_size);
+      break;
+    }
+    case INDEX_TERM_DELTA: {
+      IndexTermDelta* index_delta = reinterpret_cast<IndexTermDelta*>(page);
+      page_size = sizeof(*index_delta);
+      LOG_DEBUG("Size of index term delta: %u", (unsigned) page_size);
+      break;
+    }
+    case SPLIT_DELTA: {
+      SplitDelta* split_delta = reinterpret_cast<SplitDelta*>(page);
+      page_size = sizeof(*split_delta);
+      LOG_DEBUG("Size of split delta: %u", (unsigned) page_size);
+      break;
+    }
+    case REMOVE_NODE_DELTA: {
+      RemoveNodeDelta* remove_delta = reinterpret_cast<RemoveNodeDelta*>(page);
+      page_size = sizeof(*remove_delta);
+      LOG_DEBUG("Size of remove node delta: %u", (unsigned) page_size);
+      break;
+    }
+    case NODE_MERGE_DELTA: {
+      NodeMergeDelta* merge_delta = reinterpret_cast<NodeMergeDelta*>(page);
+      page_size = sizeof(*merge_delta);
+      LOG_DEBUG("Size of node merge delta: %u", (unsigned) page_size);
+      break;
+    }
+    case LEAF_NODE: {
+      LeafNode* leaf = reinterpret_cast<LeafNode*>(page);
+      page_size = sizeof(*leaf);
+      LOG_DEBUG("Size of leaf node: %u", (unsigned) page_size);
+      break;
+    }
+    case MODIFY_DELTA: {
+      ModifyDelta* modify_delta = reinterpret_cast<ModifyDelta*>(page);
+      page_size = sizeof(*modify_delta);
+      LOG_DEBUG("Size of modify delta: %u", (unsigned) page_size);
+      break;
+    }
+    default:
+      page_size = 8;
+      break;
+  }
+  assert(page_size > 0);
+  return page_size;
 }
 
 // Explicit template instantiation

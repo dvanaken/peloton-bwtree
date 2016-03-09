@@ -64,7 +64,7 @@ class BWTreeIndex : public Index {
 
   // TODO: Implement this
   size_t GetMemoryFootprint() {
-    return 0;
+    return container.GetMemoryFootprint();
   }
 
  protected:
