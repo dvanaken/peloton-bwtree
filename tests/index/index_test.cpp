@@ -384,6 +384,78 @@ void HybridTestP3(index::Index *index, VarlenPool *pool, size_t scale_factor) {
   }
 }
 
+// INSERT HELPER FUNCTION
+void coolTest(index::Index *index, VarlenPool *pool, size_t scale_factor) {
+  // Loop based on scale factor
+  for (size_t scale_itr = 1; scale_itr <= scale_factor; scale_itr++) {
+    // Insert a bunch of keys based on scale itr
+    std::unique_ptr<storage::Tuple> key0(new storage::Tuple(key_schema, true));
+    std::unique_ptr<storage::Tuple> key1(new storage::Tuple(key_schema, true));
+    std::unique_ptr<storage::Tuple> key2(new storage::Tuple(key_schema, true));
+    std::unique_ptr<storage::Tuple> key3(new storage::Tuple(key_schema, true));
+    std::unique_ptr<storage::Tuple> key4(new storage::Tuple(key_schema, true));
+    std::unique_ptr<storage::Tuple> keynonce(
+        new storage::Tuple(key_schema, true));
+    std::unique_ptr<storage::Tuple> key5(new storage::Tuple(key_schema, true));
+    std::unique_ptr<storage::Tuple> key6(new storage::Tuple(key_schema, true));
+    std::unique_ptr<storage::Tuple> key7(new storage::Tuple(key_schema, true));
+    std::unique_ptr<storage::Tuple> key8(new storage::Tuple(key_schema, true));
+    std::unique_ptr<storage::Tuple> key9(new storage::Tuple(key_schema, true));
+
+    key0->SetValue(0, ValueFactory::GetIntegerValue(100 * scale_itr), pool);
+    key0->SetValue(1, ValueFactory::GetStringValue("a"), pool);
+    key1->SetValue(0, ValueFactory::GetIntegerValue(100 * scale_itr), pool);
+    key1->SetValue(1, ValueFactory::GetStringValue("b"), pool);
+    key2->SetValue(0, ValueFactory::GetIntegerValue(100 * scale_itr), pool);
+    key2->SetValue(1, ValueFactory::GetStringValue("c"), pool);
+    key3->SetValue(0, ValueFactory::GetIntegerValue(400 * scale_itr), pool);
+    key3->SetValue(1, ValueFactory::GetStringValue("d"), pool);
+    key4->SetValue(0, ValueFactory::GetIntegerValue(500 * scale_itr), pool);
+    key4->SetValue(1, ValueFactory::GetStringValue(
+                          "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+                          "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+                          "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+                          "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+                          "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+                          "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+                          "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+                          "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+                          "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+                          "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+                          "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+                          "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+                          "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+                          "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+                          "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+                          "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+                          "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+                          "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+                          "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+                          "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"),
+                   pool);
+    keynonce->SetValue(0, ValueFactory::GetIntegerValue(1000 * scale_itr),
+                       pool);
+    keynonce->SetValue(1, ValueFactory::GetStringValue("f"), pool);
+
+    key5->SetValue(0, ValueFactory::GetIntegerValue(250), pool);
+    key5->SetValue(1, ValueFactory::GetStringValue("hello"), pool);
+    key6->SetValue(0, ValueFactory::GetIntegerValue(10), pool);
+    key6->SetValue(1, ValueFactory::GetStringValue("goodbye"), pool);
+    key7->SetValue(0, ValueFactory::GetIntegerValue(5000), pool);
+    key7->SetValue(1, ValueFactory::GetStringValue("something"), pool);
+    key8->SetValue(0, ValueFactory::GetIntegerValue(89), pool);
+    key8->SetValue(1, ValueFactory::GetStringValue("dad"), pool);
+    key9->SetValue(0, ValueFactory::GetIntegerValue(4020), pool);
+    key9->SetValue(1, ValueFactory::GetStringValue("mom"), pool);
+
+    index->InsertEntry(key5.get(), item0);
+    index->InsertEntry(key6.get(), item1);
+    index->InsertEntry(key7.get(), item2);
+    index->InsertEntry(key8.get(), item1);
+    index->InsertEntry(key9.get(), item2);
+  }
+}
+
 TEST(IndexTests, DeleteTest) {
   auto pool = TestingHarness::GetInstance().GetTestingPool();
   std::vector<ItemPointer> locations;
@@ -654,6 +726,104 @@ TEST(IndexTests, MultiThreadedHybirdMoreTest) {
 
   locations = index->ScanKey(key4.get());
   EXPECT_EQ(locations.size(), 0);
+
+  delete tuple_schema;
+}
+
+TEST(IndexTests, AnotherDamnTest) {
+  auto pool = TestingHarness::GetInstance().GetTestingPool();
+  std::vector<ItemPointer> locations;
+
+  // INDEX
+  std::unique_ptr<index::Index> index(BuildIndex());
+
+  locations = index->ScanAllKeys();
+  EXPECT_EQ(locations.size(), 0);
+
+  // Parallel Test
+  size_t num_threads = 100;
+  size_t scale_factor = 1;
+  LaunchParallelTest(num_threads, InsertTest, index.get(), pool, scale_factor);
+  LaunchParallelTest(num_threads, coolTest, index.get(), pool, scale_factor);
+
+  std::unique_ptr<storage::Tuple> key0(new storage::Tuple(key_schema, true));
+  std::unique_ptr<storage::Tuple> key1(new storage::Tuple(key_schema, true));
+  std::unique_ptr<storage::Tuple> key2(new storage::Tuple(key_schema, true));
+  std::unique_ptr<storage::Tuple> key3(new storage::Tuple(key_schema, true));
+  std::unique_ptr<storage::Tuple> key4(new storage::Tuple(key_schema, true));
+  std::unique_ptr<storage::Tuple> key5(new storage::Tuple(key_schema, true));
+  std::unique_ptr<storage::Tuple> key6(new storage::Tuple(key_schema, true));
+  std::unique_ptr<storage::Tuple> key7(new storage::Tuple(key_schema, true));
+  std::unique_ptr<storage::Tuple> key8(new storage::Tuple(key_schema, true));
+  std::unique_ptr<storage::Tuple> key9(new storage::Tuple(key_schema, true));
+
+  key0->SetValue(0, ValueFactory::GetIntegerValue(100), pool);
+  key0->SetValue(1, ValueFactory::GetStringValue("a"), pool);
+  key1->SetValue(0, ValueFactory::GetIntegerValue(100), pool);
+  key1->SetValue(1, ValueFactory::GetStringValue("b"), pool);
+  key2->SetValue(0, ValueFactory::GetIntegerValue(100), pool);
+  key2->SetValue(1, ValueFactory::GetStringValue("c"), pool);
+  key3->SetValue(0, ValueFactory::GetIntegerValue(400), pool);
+  key3->SetValue(1, ValueFactory::GetStringValue("d"), pool);
+  key4->SetValue(0, ValueFactory::GetIntegerValue(500), pool);
+  key4->SetValue(1, ValueFactory::GetStringValue(
+                        "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+                        "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+                        "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+                        "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+                        "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+                        "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+                        "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+                        "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+                        "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+                        "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+                        "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+                        "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+                        "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+                        "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+                        "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+                        "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+                        "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+                        "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+                        "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+                        "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"),
+                 pool);
+
+  std::unique_ptr<storage::Tuple> keynonce(
+      new storage::Tuple(key_schema, true));
+
+  keynonce->SetValue(0, ValueFactory::GetIntegerValue(1000), pool);
+  keynonce->SetValue(1, ValueFactory::GetStringValue("f"), pool);
+
+  key5->SetValue(0, ValueFactory::GetIntegerValue(250), pool);
+  key5->SetValue(1, ValueFactory::GetStringValue("hello"), pool);
+  key6->SetValue(0, ValueFactory::GetIntegerValue(10), pool);
+  key6->SetValue(1, ValueFactory::GetStringValue("goodbye"), pool);
+  key7->SetValue(0, ValueFactory::GetIntegerValue(5000), pool);
+  key7->SetValue(1, ValueFactory::GetStringValue("something"), pool);
+  key8->SetValue(0, ValueFactory::GetIntegerValue(89), pool);
+  key8->SetValue(1, ValueFactory::GetStringValue("dad"), pool);
+  key9->SetValue(0, ValueFactory::GetIntegerValue(4020), pool);
+  key9->SetValue(1, ValueFactory::GetStringValue("mom"), pool);
+
+  locations = index->ScanKey(key0.get());
+  EXPECT_EQ(locations.size(), num_threads);
+  EXPECT_EQ(locations[0].block, item0.block);
+
+  locations = index->ScanKey(key5.get());
+  EXPECT_EQ(locations.size(), num_threads);
+
+  locations = index->ScanKey(key6.get());
+  EXPECT_EQ(locations.size(), num_threads);
+
+  locations = index->ScanKey(key7.get());
+  EXPECT_EQ(locations.size(), num_threads);
+
+  locations = index->ScanKey(key8.get());
+  EXPECT_EQ(locations.size(), num_threads);
+
+  locations = index->ScanKey(key9.get());
+  EXPECT_EQ(locations.size(), num_threads);
 
   delete tuple_schema;
 }
