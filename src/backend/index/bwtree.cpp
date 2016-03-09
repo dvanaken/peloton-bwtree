@@ -10,7 +10,6 @@
 //
 //===----------------------------------------------------------------------===//
 #include <chrono>
-#include <condition_variable>
 #include <mutex>
 #include <thread>
 
@@ -18,8 +17,6 @@
 
 namespace peloton {
 namespace index {
-
-std::condition_variable exec_finished;
 
 template <typename KeyType, typename ValueType, class KeyComparator,
           class KeyEqualityChecker, class ValueEqualityChecker>
@@ -64,7 +61,7 @@ template <typename KeyType, typename ValueType, class KeyComparator,
 BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
        ValueEqualityChecker>::~BWTree() {
   finished_ = true;
-  exec_finished.notify_one();
+  exec_finished_.notify_one();
   epoch_manager_.join();
   delete key_tuple_schema;
 
@@ -479,6 +476,43 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
                       /* Check if merge is requires and perform the operation */
                       Merge_Operation(consolidated_page, pages_visited,
                           current_PID);
+                    }
+                  }
+                }
+              }
+
+              /* Check if parents needs to be consolidated */
+              while (!pages_visited.empty()) {
+                current_PID = pages_visited.top();
+                pages_visited.pop();
+                if (pages_visited.empty()) {
+                  assert(current_PID == root_);
+                }
+                if (CheckConsolidate(current_PID)) {
+                  LOG_DEBUG("Performing consolidation of parent");
+                  Page* consolidated_page = Consolidate(current_PID);
+                  if (consolidated_page) {
+                    Page* old_head_of_delta = map_table_[current_PID];
+
+                    /* Attempt to insert updated consolidated page */
+                    if (!map_table_[current_PID].compare_exchange_strong(
+                        old_head_of_delta, consolidated_page)) {
+                      delete consolidated_page;
+                      LOG_DEBUG("CAS of consolidated parent failed");
+                    } else {
+                      // TODO: Eventually we'll have epoch garbage collection. But
+                      // now we free in this way.
+                      DeallocatePage(old_head_of_delta);
+                      LOG_DEBUG("CAS of consolidated parent success");
+
+                      /* Check if split is required and perform the operation */
+                      if (!Split_Operation(consolidated_page, pages_visited,
+                          current_PID)) {
+
+                        /* Check if merge is requires and perform the operation */
+                        Merge_Operation(consolidated_page, pages_visited,
+                            current_PID);
+                      }
                     }
                   }
                 }
@@ -1927,7 +1961,7 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             ValueEqualityChecker>::RunEpochManager() {
   std::mutex mtx;
   std::unique_lock<std::mutex> lck(mtx);
-  while (exec_finished.wait_for(lck,
+  while (exec_finished_.wait_for(lck,
         std::chrono::milliseconds(EPOCH_INTERVAL_MS)) == std::cv_status::timeout
       && !finished_) {
     LOG_DEBUG("Timed out...");
@@ -1937,7 +1971,9 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 
     // Add new epoch slots to the active workers map and the garbage
     // collection map
-    gc_lock.WriteLock();
+    //gc_lock.WriteLock();
+    LOG_DEBUG("epoch garbage size: %u", (unsigned) epoch_garbage_.size());
+    LOG_DEBUG("active threads size: %u", (unsigned) active_threads_map_.size());
     active_threads_map_[next_epoch] = 0;
     epoch_garbage_[next_epoch] = std::vector<Page*>();
 
@@ -1945,9 +1981,14 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
     // equal to next_epoch because this thread should be the only one
     // ever changing it.
     ++epoch_;
-    gc_lock.Unlock();
+    //gc_lock.Unlock();
     assert(epoch_ == next_epoch);
+    //__attribute__((unused)) size_t memory_footprint_before = GetMemoryFootprint();
     Cleanup();
+    //__attribute__((unused)) size_t memory_footprint_after = GetMemoryFootprint();
+//    LOG_DEBUG("GetMemoryFootprint: before = %u, after = %u",
+//        (unsigned) memory_footprint_before,
+//        (unsigned) memory_footprint_after);
     if (finished_)
       break;
   }
@@ -1958,11 +1999,11 @@ template <typename KeyType, typename ValueType, class KeyComparator,
           class KeyEqualityChecker, class ValueEqualityChecker>
 uint64_t BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             ValueEqualityChecker>::RegisterWorker() {
-  gc_lock.WriteLock();
+  //gc_lock.WriteLock();
   uint64_t current_epoch = epoch_;
   LOG_DEBUG("Registering thread for epoch %u", (unsigned) current_epoch);
   ++(active_threads_map_[current_epoch]);
-  gc_lock.Unlock();
+  //gc_lock.Unlock();
   return current_epoch;
 }
 
@@ -1970,22 +2011,22 @@ template <typename KeyType, typename ValueType, class KeyComparator,
           class KeyEqualityChecker, class ValueEqualityChecker>
 void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             ValueEqualityChecker>::DeregisterWorker(uint64_t worker_epoch) {
-  gc_lock.WriteLock();
+  //dealloc_lock.WriteLock();
   LOG_DEBUG("Deregistering thread from epoch %u", (unsigned) worker_epoch);
   --(active_threads_map_[worker_epoch]);
   assert(active_threads_map_[worker_epoch] >= 0);
-  gc_lock.Unlock();
+  //dealloc_lock.Unlock();
 }
 
 template <typename KeyType, typename ValueType, class KeyComparator,
           class KeyEqualityChecker, class ValueEqualityChecker>
 void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             ValueEqualityChecker>::DeallocatePage(Page *page) {
-  gc_lock.WriteLock();
+  dealloc_lock.WriteLock();
   uint64_t current_epoch = epoch_;
   LOG_DEBUG("Deallocating page in epoch %u", (unsigned) current_epoch);
   epoch_garbage_[current_epoch].push_back(page);
-  gc_lock.Unlock();
+  dealloc_lock.Unlock();
 }
 
 template <typename KeyType, typename ValueType, class KeyComparator,
@@ -1994,30 +2035,134 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             ValueEqualityChecker>::Cleanup() {
   LOG_DEBUG("Cleaning up old pages");
   // TODO: remove coarse-grain locking
-  gc_lock.WriteLock();
+  cleanup_lock.WriteLock();
   uint64_t current_epoch = epoch_;
 
   // Find all epochs that are safe to garbage collect
-  std::vector<uint64_t> safe_epochs;
+  //std::vector<uint64_t> safe_epochs;
   for (uint64_t i = 0; i < current_epoch; ++i) {
     auto entry = active_threads_map_.find(i);
     if (entry != active_threads_map_.end() && entry->second == 0) {
       // This is a valid epoch and there are no active threads remaining
-      safe_epochs.push_back(entry->second);
-      active_threads_map_.erase(entry);
+      //safe_epochs.push_back(entry->second);
+
       LOG_DEBUG("Found safe epoch %u", (unsigned) i);
+      std::vector<Page*>& dealloc_pages = epoch_garbage_[i];
+      LOG_DEBUG("Deleting garbage (%u items) in safe epoch %u\n", (unsigned) dealloc_pages.size(),
+              (unsigned) i);
+      for (uint64_t j = 0; j < dealloc_pages.size(); ++j) {
+        Page *chain_head = dealloc_pages[j];
+        FreeDeltaChain(chain_head);
+        dealloc_pages[j] = nullptr;
+      }
+      active_threads_map_.erase(i);
+      epoch_garbage_.erase(i);
     }
   }
-  for (uint64_t safe_epoch : safe_epochs) {
-    std::vector<Page*>& dealloc_pages = epoch_garbage_[safe_epoch];
-    for (Page *chain_head : dealloc_pages) {
-      FreeDeltaChain(chain_head);
-    }
-    epoch_garbage_.erase(safe_epoch);
-  }
-  gc_lock.Unlock();
-  //assert(epoch_garbage_.size() == active_threads_map_.size());
+  LOG_DEBUG("epoch garbage size: %u", (unsigned) epoch_garbage_.size());
+  LOG_DEBUG("active threads size: %u", (unsigned) active_threads_map_.size());
+  assert(epoch_garbage_.size() == active_threads_map_.size());
+  cleanup_lock.Unlock();
+
   return true;
+}
+
+template <typename KeyType, typename ValueType, class KeyComparator,
+          class KeyEqualityChecker, class ValueEqualityChecker>
+size_t BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
+            ValueEqualityChecker>::GetMemoryFootprint() {
+  LOG_DEBUG("Starting GetMemoryFootprint");
+  uint64_t worker_epoch = RegisterWorker();
+  size_t memory_footprint = 0;
+
+  // First walk through mapping table and calculate footprint
+  PID num_pids = PID_counter_;
+  for (PID i = 0; i < PID_counter_; ++i) {
+    Page *current_page = map_table_[i];
+    while (current_page != nullptr) {
+      memory_footprint += GetPageSize(current_page);
+      current_page = current_page->GetDeltaNext();
+    }
+  }
+
+  // Now walk through pages to be deallocated
+  uint64_t current_epoch = epoch_;
+  cleanup_lock.ReadLock();
+
+  for (uint64_t i = 0; i < current_epoch; ++i) {
+    auto entry = epoch_garbage_.find(i);
+    if (entry != epoch_garbage_.end()) {
+      std::vector<Page*> chain_heads = entry->second;
+      for (Page *chain_head : chain_heads) {
+        Page *current_page = chain_head;
+        while (current_page != nullptr) {
+          memory_footprint += GetPageSize(current_page);
+          current_page = current_page->GetDeltaNext();
+        }
+      }
+    }
+  }
+  cleanup_lock.Unlock();
+
+  DeregisterWorker(worker_epoch);
+  LOG_DEBUG("Finished GetMemoryFootprint");
+  return memory_footprint;
+}
+
+template <typename KeyType, typename ValueType, class KeyComparator,
+          class KeyEqualityChecker, class ValueEqualityChecker>
+size_t BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
+            ValueEqualityChecker>::GetPageSize(Page *page) {
+  size_t page_size = 0;
+  switch (page->GetType()) {
+    case INNER_NODE: {
+      InnerNode* inner_node = reinterpret_cast<InnerNode*>(page);
+      page_size = sizeof(*inner_node);
+      //LOG_DEBUG("Size of inner node: %u", (unsigned) page_size);
+      break;
+    }
+    case INDEX_TERM_DELTA: {
+      IndexTermDelta* index_delta = reinterpret_cast<IndexTermDelta*>(page);
+      page_size = sizeof(*index_delta);
+      //LOG_DEBUG("Size of index term delta: %u", (unsigned) page_size);
+      break;
+    }
+    case SPLIT_DELTA: {
+      SplitDelta* split_delta = reinterpret_cast<SplitDelta*>(page);
+      page_size = sizeof(*split_delta);
+      //LOG_DEBUG("Size of split delta: %u", (unsigned) page_size);
+      break;
+    }
+    case REMOVE_NODE_DELTA: {
+      RemoveNodeDelta* remove_delta = reinterpret_cast<RemoveNodeDelta*>(page);
+      page_size = sizeof(*remove_delta);
+      //LOG_DEBUG("Size of remove node delta: %u", (unsigned) page_size);
+      break;
+    }
+    case NODE_MERGE_DELTA: {
+      NodeMergeDelta* merge_delta = reinterpret_cast<NodeMergeDelta*>(page);
+      page_size = sizeof(*merge_delta);
+      //LOG_DEBUG("Size of node merge delta: %u", (unsigned) page_size);
+      break;
+    }
+    case LEAF_NODE: {
+      LeafNode* leaf = reinterpret_cast<LeafNode*>(page);
+      page_size = sizeof(*leaf);
+      //LOG_DEBUG("Size of leaf node: %u", (unsigned) page_size);
+      break;
+    }
+    case MODIFY_DELTA: {
+      ModifyDelta* modify_delta = reinterpret_cast<ModifyDelta*>(page);
+      page_size = sizeof(*modify_delta);
+      //LOG_DEBUG("Size of modify delta: %u", (unsigned) page_size);
+      break;
+    }
+    default:
+      page_size = 64;
+      break;
+  }
+  assert(page_size > 0);
+  return page_size;
 }
 
 // Explicit template instantiation

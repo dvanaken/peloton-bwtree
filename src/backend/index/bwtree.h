@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <condition_variable>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -25,9 +26,9 @@
 #include "backend/common/platform.h"
 #include "backend/index/index_key.h"
 
-#define CONSOLIDATE_THRESHOLD 2
-#define SPLIT_SIZE 4
-#define MERGE_SIZE 4
+#define CONSOLIDATE_THRESHOLD 8
+#define SPLIT_SIZE 10
+#define MERGE_SIZE 1
 #define EPOCH_INTERVAL_MS 40  // in milliseconds
 
 namespace peloton {
@@ -70,6 +71,10 @@ class BWTree {
   // Search functions
   std::vector<ValueType> SearchKey(const KeyType& key);
   std::map<KeyType, std::vector<ValueType>, KeyComparator> SearchAllKeys();
+
+  bool Cleanup();
+
+  size_t GetMemoryFootprint();
 
  private:
   // ***** Different types of page records
@@ -624,7 +629,7 @@ class BWTree {
 
   void DeallocatePage(Page *page);
 
-  bool Cleanup();
+  size_t GetPageSize(Page *page);
 
   // PID of the root node
   PID root_;
@@ -662,8 +667,11 @@ class BWTree {
 
   std::unordered_map<uint64_t, std::vector<Page*>> epoch_garbage_;
 
+  std::condition_variable exec_finished_;
+
   // TODO: synch helper for debug
-  RWLock gc_lock;
+  RWLock cleanup_lock;
+  RWLock dealloc_lock;
 
   // Used for debug
   catalog::Schema *key_tuple_schema;
