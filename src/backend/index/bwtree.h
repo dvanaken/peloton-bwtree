@@ -335,11 +335,11 @@ class BWTree {
     bool split_indicator = false;
     KeyType split_separator = KeyType();
     bool merge_indicator = false;
-    PID side_link;
+    PID side_link = -1;
 
     KeyType leaf_low_key;
-    PID next_leaf;
-    PID prev_leaf;
+    PID next_leaf = -1;
+    PID prev_leaf = -1;
 
     Page* merge_link = nullptr;
 

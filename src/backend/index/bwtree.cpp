@@ -1066,7 +1066,7 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 
   bool split_indicator = false;
   __attribute__((unused)) bool merge_indicator = false;
-  KeyType split_separator;
+  KeyType split_separator = KeyType();
   PID split_next_node;
 
   __attribute__((unused)) Page* head_of_delta = current_page;
@@ -1189,9 +1189,9 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
                                                        pages_visited,
                                                    PID orig_pid) {
   bool split_required = false;
-  SplitDelta* split_delta;
-  IndexTermDelta* index_term_delta_for_split;
-  InnerNode* new_root_node;
+  SplitDelta* split_delta = nullptr;
+  IndexTermDelta* index_term_delta_for_split = nullptr;
+  InnerNode* new_root_node = nullptr;
   PID reinstalled_root = root_;
 
   /* Check if split required */
@@ -1362,7 +1362,7 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
                                                       std::stack<PID>&
                                                           pages_visited) {
   Page* new_split_node = map_table_[side_link];
-  IndexTermDelta* index_term_delta_for_split;
+  IndexTermDelta* index_term_delta_for_split = nullptr;
 
   if (new_split_node->GetType() == INNER_NODE) {
     InnerNode* new_inner_node = reinterpret_cast<InnerNode*>(new_split_node);
@@ -1726,7 +1726,7 @@ bool BWTree<
     ValueEqualityChecker>::complete_the_merge(RemoveNodeDelta* remove_node,
                                               std::stack<PID>& pages_visited) {
   PID megred_into_pid = remove_node->merged_into_;
-  IndexTermDelta* index_term_delta;
+  IndexTermDelta* index_term_delta = nullptr;
 
   /* Get the high key of the page that's deleted */
   Page* page_deleted = remove_node->GetDeltaNext();
