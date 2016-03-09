@@ -305,19 +305,12 @@ TEST(IndexTests, MultiThreadedInsertTest) {
   std::unique_ptr<index::Index> index(BuildIndex());
 
   // Parallel Test
-  size_t num_threads = 1;
-  size_t scale_factor = 1;
+  size_t num_threads = 4;
+  size_t scale_factor = 2;
   LaunchParallelTest(num_threads, InsertTest, index.get(), pool, scale_factor);
-  LOG_DEBUG("One Launch");
-  LaunchParallelTest(num_threads, InsertTest, index.get(), pool, scale_factor);
-  LOG_DEBUG("One Launch");
-  LaunchParallelTest(num_threads, InsertTest, index.get(), pool, scale_factor);
-  LOG_DEBUG("One Launch");
-  LaunchParallelTest(num_threads, InsertTest, index.get(), pool, scale_factor);
-  LOG_DEBUG("One Launch");
 
   locations = index->ScanAllKeys();
-  EXPECT_EQ(locations.size(), 9 * num_threads);
+  EXPECT_EQ(locations.size(), 9 * num_threads * scale_factor);
 
   std::unique_ptr<storage::Tuple> key0(new storage::Tuple(key_schema, true));
   std::unique_ptr<storage::Tuple> keynonce(

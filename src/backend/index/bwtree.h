@@ -25,7 +25,7 @@
 #include "backend/common/platform.h"
 #include "backend/index/index_key.h"
 
-#define CONSOLIDATE_THRESHOLD 3
+#define CONSOLIDATE_THRESHOLD 2
 #define SPLIT_SIZE 4
 #define MERGE_SIZE 4
 #define EPOCH_INTERVAL_MS 40  // in milliseconds
@@ -404,6 +404,7 @@ class BWTree {
                 idx_delta->high_separator_.GetTupleForComparison(key_tuple_schema).GetInfo().c_str());
 
           bool first_element = true;
+          bool end_case = false;
           for (auto& key_value : index_term_ranges) {
             if ((((first_element && absolute_min) ||
                   (!idx_delta->absolute_min_ &&
@@ -412,11 +413,17 @@ class BWTree {
                 reverse_comparator_(key_value.second.first,
                                     idx_delta->low_separator_) > 0) {
               current_page = current_page->GetDeltaNext();
-              continue;
+              end_case = true;
+              break;
             }
 
             first_element = false;
           }
+
+          if (end_case)
+            continue;
+
+
 
           if (idx_delta->absolute_min_) absolute_min = true;
           if (idx_delta->absolute_max_) absolute_max = true;

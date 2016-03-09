@@ -152,9 +152,9 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
                                       // our search path
       Page* current_page = root_page;
       PID current_PID = root_;
-      LOG_DEBUG("Tracking memory corruption begin:");
-      Consolidate(root_);
-      LOG_DEBUG("Tracking memory corruption end:");
+      //LOG_DEBUG("Tracking memory corruption begin:");
+      //Consolidate(root_);
+      //LOG_DEBUG("Tracking memory corruption end:");
       Page* head_of_delta = current_page;
       bool attempt_insert = true;
       while (attempt_insert) {
@@ -1616,18 +1616,18 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 
       /* Attempt to install index term delta on the parent */
       while (true) {
-      LOG_DEBUG("Tracking memory corruption begin:");
-      Consolidate(root_);
-      LOG_DEBUG("Tracking memory corruption end:");
+      //LOG_DEBUG("Tracking memory corruption begin:");
+      //Consolidate(root_);
+      //LOG_DEBUG("Tracking memory corruption end:");
         // Safe to keep retrying - thoughts? (aaron)
         Page* parent_node = map_table_[pid_of_parent];
         if (parent_node->GetType() != REMOVE_NODE_DELTA) {
           index_term_delta_for_merge->SetDeltaNext(parent_node);
           if (map_table_[pid_of_parent].compare_exchange_strong(
                   parent_node, index_term_delta_for_merge)) {
-      LOG_DEBUG("Tracking memory corruption begin:");
-      Consolidate(root_);
-      LOG_DEBUG("Tracking memory corruption end:");
+      //LOG_DEBUG("Tracking memory corruption begin:");
+      //Consolidate(root_);
+      //LOG_DEBUG("Tracking memory corruption end:");
             LOG_DEBUG("CAS of installing index term delta in parent succeeded");
             LOG_DEBUG("with low key: %s high key: %s",
                 index_term_delta_for_merge->low_separator_.GetTupleForComparison(key_tuple_schema).GetInfo().c_str(),
@@ -1739,15 +1739,15 @@ bool BWTree<
     KeyType, ValueType, KeyComparator, KeyEqualityChecker,
     ValueEqualityChecker>::complete_the_merge(RemoveNodeDelta* remove_node,
                                               std::stack<PID>& pages_visited) {
-  PID megred_into_pid = remove_node->merged_into_;
+  PID merged_into_pid = remove_node->merged_into_;
   IndexTermDelta* index_term_delta = nullptr;
 
   /* Get the high key of the page that's deleted */
   Page* page_deleted = remove_node->GetDeltaNext();
 
   /* Consolidated the page we are merging into */
-  Page* page_merging_into = map_table_[megred_into_pid];
-  Page* page_merging_into_consolidate = Consolidate(megred_into_pid);
+  Page* page_merging_into = map_table_[merged_into_pid];
+  Page* page_merging_into_consolidate = Consolidate(merged_into_pid);
 
   if (!page_merging_into_consolidate) {
     LOG_DEBUG("Failed to consolidated page merging into");
@@ -1755,7 +1755,7 @@ bool BWTree<
   }
 
   /* Install consolidated page being merged into */
-  if (!map_table_[megred_into_pid].compare_exchange_strong(
+  if (!map_table_[merged_into_pid].compare_exchange_strong(
           page_merging_into, page_merging_into_consolidate)) {
     delete page_merging_into_consolidate;
     LOG_DEBUG("CAS of consolidated page failed");
@@ -1780,21 +1780,21 @@ bool BWTree<
 
       /* Install Merge Delta */
       merge_delta->SetDeltaNext(page_merging_into_consolidate);
-      if (!map_table_[megred_into_pid].compare_exchange_strong(
+      if (!map_table_[merged_into_pid].compare_exchange_strong(
               page_merging_into_consolidate, merge_delta)) {
         LOG_DEBUG("CAS of merge delta failed");
         delete merge_delta;
         return false;
       }
-
-      InnerNode* inner_merged_into =
-          reinterpret_cast<InnerNode*>(page_merging_into_consolidate);
-      index_term_delta =
-          new IndexTermDelta(inner_merged_into->low_key_,
-                             inner_merged_into->high_key_, megred_into_pid);
-      index_term_delta->absolute_max_ = inner_merged_into->absolute_max_;
-      index_term_delta->absolute_min_ = inner_merged_into->absolute_min_;
     }
+
+    InnerNode* inner_merged_into =
+        reinterpret_cast<InnerNode*>(page_merging_into_consolidate);
+    index_term_delta =
+        new IndexTermDelta(inner_merged_into->low_key_,
+                           inner_merged_into->high_key_, merged_into_pid);
+    index_term_delta->absolute_max_ = inner_merged_into->absolute_max_;
+    index_term_delta->absolute_min_ = inner_merged_into->absolute_min_;
   } else if (page_deleted->GetType() == LEAF_NODE) {
     __attribute__((unused)) LeafNode* leaf =
         reinterpret_cast<LeafNode*>(page_deleted);
@@ -1808,21 +1808,21 @@ bool BWTree<
 
       /* Install Merge Delta */
       merge_delta->SetDeltaNext(page_merging_into_consolidate);
-      if (!map_table_[megred_into_pid].compare_exchange_strong(
+      if (!map_table_[merged_into_pid].compare_exchange_strong(
               page_merging_into_consolidate, merge_delta)) {
         LOG_DEBUG("CAS of merge delta failed");
         delete merge_delta;
         return false;
       }
-
-      __attribute__((unused)) LeafNode* leaf_merged_into =
-          reinterpret_cast<LeafNode*>(page_merging_into_consolidate);
-      index_term_delta =
-          new IndexTermDelta(leaf_merged_into->low_key_,
-                             leaf_merged_into->high_key_, megred_into_pid);
-      index_term_delta->absolute_max_ = leaf_merged_into->absolute_max_;
-      index_term_delta->absolute_min_ = leaf_merged_into->absolute_min_;
     }
+
+    __attribute__((unused)) LeafNode* leaf_merged_into =
+        reinterpret_cast<LeafNode*>(page_merging_into_consolidate);
+    index_term_delta =
+        new IndexTermDelta(leaf_merged_into->low_key_,
+                           leaf_merged_into->high_key_, merged_into_pid);
+    index_term_delta->absolute_max_ = leaf_merged_into->absolute_max_;
+    index_term_delta->absolute_min_ = leaf_merged_into->absolute_min_;
   } else {
     assert(0);
   }
