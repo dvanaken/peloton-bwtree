@@ -1931,9 +1931,7 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 
     // Add new epoch slots to the active workers map and the garbage
     // collection map
-    LOG_DEBUG("Trying to acquire write lock in RunEpochManager");
     gc_lock.WriteLock();
-    LOG_DEBUG("Acquired write lock in RunEpochManager");
     active_threads_map_[next_epoch] = 0;
     epoch_garbage_[next_epoch] = std::vector<Page*>();
 
