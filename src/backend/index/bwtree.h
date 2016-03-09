@@ -25,9 +25,9 @@
 #include "backend/common/platform.h"
 #include "backend/index/index_key.h"
 
-#define CONSOLIDATE_THRESHOLD 10
-#define SPLIT_SIZE 10
-#define MERGE_SIZE 0
+#define CONSOLIDATE_THRESHOLD 3
+#define SPLIT_SIZE 4
+#define MERGE_SIZE 4
 #define EPOCH_INTERVAL_MS 40  // in milliseconds
 
 namespace peloton {
@@ -397,6 +397,11 @@ class BWTree {
         case INDEX_TERM_DELTA: {
           IndexTermDelta* idx_delta =
               reinterpret_cast<IndexTermDelta*>(current_page);
+          LOG_DEBUG("Current page: %p", current_page);
+
+          LOG_DEBUG("Consolidate INDEX_TERM_DELTA with low key: %s high key: %s",
+                idx_delta->low_separator_.GetTupleForComparison(key_tuple_schema).GetInfo().c_str(),
+                idx_delta->high_separator_.GetTupleForComparison(key_tuple_schema).GetInfo().c_str());
 
           bool first_element = true;
           for (auto& key_value : index_term_ranges) {
@@ -421,6 +426,7 @@ class BWTree {
                                                    idx_delta->side_link_));
           // Keep traversing the delta chain.
           current_page = current_page->GetDeltaNext();
+          LOG_DEBUG("Next page: %p", current_page);
           continue;
         }
         case SPLIT_DELTA: {

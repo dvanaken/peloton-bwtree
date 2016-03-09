@@ -152,6 +152,9 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
                                       // our search path
       Page* current_page = root_page;
       PID current_PID = root_;
+      LOG_DEBUG("Tracking memory corruption begin:");
+      Consolidate(root_);
+      LOG_DEBUG("Tracking memory corruption end:");
       Page* head_of_delta = current_page;
       bool attempt_insert = true;
       while (attempt_insert) {
@@ -1339,8 +1342,9 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             if (map_table_[pid_of_parent].compare_exchange_strong(
                 parent_node, index_term_delta_for_split)) {
               LOG_DEBUG("CAS of installing index term delta in parent succeeded");
-              LOG_DEBUG("High separator for index term delta: %s",
-                  index_term_delta_for_split->high_separator_.GetTupleForComparison(key_tuple_schema).GetInfo().c_str());
+              LOG_DEBUG("with low key: %s high key: %s",
+                index_term_delta_for_split->low_separator_.GetTupleForComparison(key_tuple_schema).GetInfo().c_str(),
+                index_term_delta_for_split->high_separator_.GetTupleForComparison(key_tuple_schema).GetInfo().c_str());
               return true;
             }
           } else {
@@ -1612,12 +1616,18 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 
       /* Attempt to install index term delta on the parent */
       while (true) {
+      LOG_DEBUG("Tracking memory corruption begin:");
+      Consolidate(root_);
+      LOG_DEBUG("Tracking memory corruption end:");
         // Safe to keep retrying - thoughts? (aaron)
         Page* parent_node = map_table_[pid_of_parent];
         if (parent_node->GetType() != REMOVE_NODE_DELTA) {
           index_term_delta_for_merge->SetDeltaNext(parent_node);
           if (map_table_[pid_of_parent].compare_exchange_strong(
                   parent_node, index_term_delta_for_merge)) {
+      LOG_DEBUG("Tracking memory corruption begin:");
+      Consolidate(root_);
+      LOG_DEBUG("Tracking memory corruption end:");
             LOG_DEBUG("CAS of installing index term delta in parent succeeded");
             LOG_DEBUG("with low key: %s high key: %s",
                 index_term_delta_for_merge->low_separator_.GetTupleForComparison(key_tuple_schema).GetInfo().c_str(),
@@ -1642,11 +1652,15 @@ std::uint64_t
 BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
        ValueEqualityChecker>::find_left_sibling(std::stack<PID>& pages_visited,
                                                 KeyType merge_key) {
+    LOG_DEBUG("here1");
   PID parent_pid = pages_visited.top();
+    LOG_DEBUG("here2");
   Page* parent_page = Consolidate(parent_pid);
+    LOG_DEBUG("here3");
   if (!parent_page) {
     return root_;
   }
+    LOG_DEBUG("here4");
 
   LOG_DEBUG("Find left sibling for key: %s", merge_key.GetTupleForComparison(key_tuple_schema).GetInfo().c_str());
 
