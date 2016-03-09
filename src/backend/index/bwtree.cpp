@@ -10,7 +10,6 @@
 //
 //===----------------------------------------------------------------------===//
 #include <chrono>
-#include <condition_variable>
 #include <mutex>
 #include <thread>
 
@@ -18,8 +17,6 @@
 
 namespace peloton {
 namespace index {
-
-std::condition_variable exec_finished;
 
 template <typename KeyType, typename ValueType, class KeyComparator,
           class KeyEqualityChecker, class ValueEqualityChecker>
@@ -64,7 +61,7 @@ template <typename KeyType, typename ValueType, class KeyComparator,
 BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
        ValueEqualityChecker>::~BWTree() {
   finished_ = true;
-  exec_finished.notify_one();
+  exec_finished_.notify_one();
   epoch_manager_.join();
   delete key_tuple_schema;
 
@@ -1921,7 +1918,7 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             ValueEqualityChecker>::RunEpochManager() {
   std::mutex mtx;
   std::unique_lock<std::mutex> lck(mtx);
-  while (exec_finished.wait_for(lck,
+  while (exec_finished_.wait_for(lck,
         std::chrono::milliseconds(EPOCH_INTERVAL_MS)) == std::cv_status::timeout
       && !finished_) {
     LOG_DEBUG("Timed out...");

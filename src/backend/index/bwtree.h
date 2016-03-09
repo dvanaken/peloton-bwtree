@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <condition_variable>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -665,6 +666,8 @@ class BWTree {
   std::unordered_map<uint64_t, std::atomic_ullong> active_threads_map_;
 
   std::unordered_map<uint64_t, std::vector<Page*>> epoch_garbage_;
+
+  std::condition_variable exec_finished_;
 
   // TODO: synch helper for debug
   RWLock gc_lock;
