@@ -157,6 +157,7 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
       while (attempt_insert) {
         switch (current_page->GetType()) {
           case INNER_NODE: {
+            LOG_DEBUG("Visit INNER_NODE");
             InnerNode* inner_node = reinterpret_cast<InnerNode*>(current_page);
             assert(inner_node->absolute_min_ ||
                    reverse_comparator_(key, inner_node->low_key_) > 0);
@@ -211,6 +212,7 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             continue;
           }
           case INDEX_TERM_DELTA: {
+            LOG_DEBUG("Visit INDEX_TERM_DELTA");
             IndexTermDelta* idx_delta =
                 reinterpret_cast<IndexTermDelta*>(current_page);
             // If this key is > low_separator_ and <= high_separator_ then this
@@ -235,6 +237,7 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             continue;
           }
           case SPLIT_DELTA: {
+            LOG_DEBUG("Visit SPLIT_DELTA");
             SplitDelta* split_delta =
                 reinterpret_cast<SplitDelta*>(current_page);
 
@@ -266,6 +269,7 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             continue;
           }
           case REMOVE_NODE_DELTA: {
+            LOG_DEBUG("Visit REMOVE_NODE_DELTA");
             RemoveNodeDelta* remove_delta =
                 reinterpret_cast<RemoveNodeDelta*>(current_page);
 
@@ -285,6 +289,7 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             continue;
           }
           case NODE_MERGE_DELTA: {
+            LOG_DEBUG("Visit NODE_MERGE_DELTA");
             NodeMergeDelta* merge_delta =
                 reinterpret_cast<NodeMergeDelta*>(current_page);
 
@@ -299,6 +304,7 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             continue;
           }
           case LEAF_NODE: {
+            LOG_DEBUG("Visit LEAF_NODE");
             __attribute__((unused)) LeafNode* leaf =
                 reinterpret_cast<LeafNode*>(current_page);
             bool inserted;  // Whether this <key, value> pair is inserted
@@ -406,6 +412,7 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             return inserted;
           }
           case MODIFY_DELTA: {
+            LOG_DEBUG("Visit MODIFY_DELTA");
             ModifyDelta* mod_delta =
                 reinterpret_cast<ModifyDelta*>(current_page);
             bool inserted;  // Whether this <key, value> pair is inserted
