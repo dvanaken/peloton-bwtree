@@ -42,8 +42,6 @@ struct ItemPointerEqualityChecker {
   }
 };
 
-// Look up the stx btree interface for background.
-// peloton/third_party/stx/btree.h
 template <typename KeyType, typename ValueType, class KeyComparator,
           class KeyEqualityChecker,
           bool _Duplicates = true,
@@ -67,8 +65,10 @@ class BWTree {
   std::vector<ValueType> SearchKey(const KeyType& key);
   std::map<KeyType, std::vector<ValueType>, KeyComparator> SearchAllKeys();
 
+  // Forces GC
   bool Cleanup();
 
+  // Calculates the bytes of heap memory used
   size_t GetMemoryFootprint();
 
  private:
@@ -77,10 +77,7 @@ class BWTree {
   enum PageType {
     // For leaf nodes.
     LEAF_NODE,
-    // Combine the following three to one for convenience.
-    // INSERT_DELTA,
     MODIFY_DELTA,
-    // DELETE_DELTA,
 
     // For inner nodes.
     INNER_NODE,
@@ -88,10 +85,6 @@ class BWTree {
     INDEX_TERM_DELTA,
     REMOVE_NODE_DELTA,
     NODE_MERGE_DELTA
-
-    // It seems that INDEX_TERM_DELETE_DELTA is the same as INDEX_TERM_DELTA,
-    // so currently I don't use this type.
-    // INDEX_TERM_DELETE_DELTA
   };
 
   class Page {
@@ -262,18 +255,29 @@ class BWTree {
 
   // ***** Functions for internal usage
 
+  // Performs a node split
   bool Split_Operation(Page* consolidated_page, std::stack<PID>& pages_visited,
                        PID orig_pid);
+
+  // Completes the 2nd half of the split
   bool complete_the_split(PID side_link, std::stack<PID>& pages_visited);
 
+  // Merges two nodes
   void Merge_Operation(Page* consolidated_page, std::stack<PID>& pages_visited,
                        PID orig_pid);
+
+  // Helper function to find the left sibling of a particular node
   PID find_left_sibling(std::stack<PID>& pages_visited, KeyType merge_key);
+
+  // Completes the latter part of the merge
   bool complete_the_merge(RemoveNodeDelta* remove_node,
                           std::stack<PID>& pages_visited);
+
+  // Checks if merge is already installed
   bool is_merge_installed(Page* page_merging_into, Page* compare_to,
                           KeyType high_key);
 
+  // Installs a new page into the map table
   inline PID InstallNewMapping(Page* new_page) {
     PID new_slot = PID_counter_++;
 
@@ -286,6 +290,7 @@ class BWTree {
     return new_slot;
   }
 
+  // Check whether we need to consolidate this delta chain
   inline bool CheckConsolidate(PID page_PID) {
     Page* current_page = map_table_[page_PID];
     int page_length = 0;
@@ -306,6 +311,7 @@ class BWTree {
       return false;
   }
 
+  // Consolidates a delta chain and returns a new base page
   inline Page* Consolidate(PID page_PID) {
     std::vector<ValueType> result;
     Page* current_page = map_table_[page_PID];
@@ -501,7 +507,6 @@ class BWTree {
           continue;
         }
         default:
-          // throw IndexException("Unrecognized page type\n");
           break;
       }
     }
@@ -573,6 +578,7 @@ class BWTree {
     }
   }
 
+  // Frees up the pages in a delta chain
   inline void FreeDeltaChain(Page* page) {
     // Actually we can't free stale delta chain here, because other threads
     // might be reading it.
@@ -601,18 +607,25 @@ class BWTree {
     }
   };
 
+  // Epoch manager logic
   void RunEpochManager();
 
+  // Starts the epoch manager
   inline void Start() {
     epoch_manager_ = std::thread(&BWTree::RunEpochManager, this);
   }
 
+  // Registers a worker thread for the current epoch
   uint64_t RegisterWorker();
 
+  // De-registers a worker thread from its local epoch
   void DeregisterWorker(uint64_t worker_epoch);
 
+  // Adds this delta chain to the list of deallocated chains
+  // for the current epoch
   void DeallocatePage(Page *page);
 
+  // Returns the size of the given page type
   size_t GetPageSize(Page *page);
 
   // PID of the root node
@@ -638,16 +651,22 @@ class BWTree {
   // Value equality function object
   ValueEqualityChecker value_equals_;
 
+  // Termination signal for the epoch manager
   std::atomic_bool finished_;
 
+  // Epoch manager background thread
   std::thread epoch_manager_;
 
+  // Global epoch counter
   std::atomic_ullong epoch_;
 
+  // Map that tracks the number of active threads in each epoch
   std::unordered_map<uint64_t, std::atomic_ullong> active_threads_map_;
 
+  // Map that tracks the delta chains deallocated in each epoch
   std::unordered_map<uint64_t, std::vector<Page*>> epoch_garbage_;
 
+  // CV to wake up epoch manager if finished
   std::condition_variable exec_finished_;
 
   // TODO: synch helper for debug
