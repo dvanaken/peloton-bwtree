@@ -46,7 +46,9 @@ struct ItemPointerEqualityChecker {
 // peloton/third_party/stx/btree.h
 template <typename KeyType, typename ValueType, class KeyComparator,
           class KeyEqualityChecker,
-          class ValueEqualityChecker = ItemPointerEqualityChecker>
+          bool _Duplicates = true,
+          class ValueEqualityChecker = ItemPointerEqualityChecker
+          >
 class BWTree {
   using PID = std::uint64_t;
   static constexpr PID NullPID = std::numeric_limits<PID>::max();

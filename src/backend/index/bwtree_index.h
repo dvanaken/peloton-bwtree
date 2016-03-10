@@ -35,7 +35,7 @@ template <typename KeyType, typename ValueType, typename KeyComparator, typename
 class BWTreeIndex : public Index {
   friend class IndexFactory;
 
-  typedef BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker> MapType;
+  typedef BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker, true> MapType;
 
  public:
   BWTreeIndex(IndexMetadata *metadata);
@@ -70,7 +70,7 @@ class BWTreeIndex : public Index {
 
  protected:
   // container
-  MapType container{true};
+  MapType container;
 
   // equality checker and comparator
   KeyEqualityChecker equals;

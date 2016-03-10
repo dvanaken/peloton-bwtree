@@ -19,8 +19,11 @@ namespace peloton {
 namespace index {
 
 template <typename KeyType, typename ValueType, class KeyComparator,
-          class KeyEqualityChecker, class ValueEqualityChecker>
+          class KeyEqualityChecker,
+          bool _Duplicates ,
+          class ValueEqualityChecker>
 BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
+          _Duplicates,
        ValueEqualityChecker>::BWTree(const KeyComparator& comparator,
                                      const KeyEqualityChecker& equals)
     : comparator_(comparator),
@@ -29,7 +32,7 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
       epoch_manager_() {
   root_ = 0;
   PID_counter_ = 1;
-  allow_duplicate_ = true;
+  allow_duplicate_ = _Duplicates;
 
   InnerNode* root_base_page = new InnerNode();
   map_table_[root_] = root_base_page;
@@ -59,8 +62,10 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 }
 
 template <typename KeyType, typename ValueType, class KeyComparator,
-          class KeyEqualityChecker, class ValueEqualityChecker>
-BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
+          class KeyEqualityChecker,
+          bool _Duplicates,
+          class ValueEqualityChecker>
+BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker, _Duplicates,
        ValueEqualityChecker>::~BWTree() {
   if (GC_ENABLED) {
     finished_ = true;
@@ -101,8 +106,10 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 // }
 
 template <typename KeyType, typename ValueType, class KeyComparator,
-          class KeyEqualityChecker, class ValueEqualityChecker>
-bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
+          class KeyEqualityChecker,
+          bool _Duplicates,
+          class ValueEqualityChecker>
+bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker, _Duplicates,
             ValueEqualityChecker>::Insert(const KeyType& key,
                                           const ValueType& data) {
   LOG_DEBUG("Trying new insert");
@@ -544,8 +551,10 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 }
 
 template <typename KeyType, typename ValueType, class KeyComparator,
-          class KeyEqualityChecker, class ValueEqualityChecker>
-bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
+          class KeyEqualityChecker,
+          bool _Duplicates,
+          class ValueEqualityChecker>
+bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker, _Duplicates,
             ValueEqualityChecker>::Delete(const KeyType& key,
                                           const ValueType& data) {
   LOG_DEBUG("Trying delete");
@@ -918,9 +927,11 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 }
 
 template <typename KeyType, typename ValueType, class KeyComparator,
-          class KeyEqualityChecker, class ValueEqualityChecker>
+          class KeyEqualityChecker,
+          bool _Duplicates,
+          class ValueEqualityChecker>
 std::vector<ValueType>
-BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
+BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker, _Duplicates,
        ValueEqualityChecker>::SearchKey(__attribute__((unused))
                                         const KeyType& key) {
   Page* current_page = map_table_[root_];
@@ -1089,9 +1100,11 @@ class VisitedChecker {
 */
 
 template <typename KeyType, typename ValueType, class KeyComparator,
-          class KeyEqualityChecker, class ValueEqualityChecker>
+          class KeyEqualityChecker,
+          bool _Duplicates,
+          class ValueEqualityChecker>
 std::map<KeyType, std::vector<ValueType>, KeyComparator>
-BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
+BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,  _Duplicates,
        ValueEqualityChecker>::SearchAllKeys() {
   LOG_DEBUG("Trying searchAllKeys");
   //std::vector<ValueType> result;
@@ -1230,8 +1243,10 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 
 // TODO: Need to handle case where we are splitting the root
 template <typename KeyType, typename ValueType, class KeyComparator,
-          class KeyEqualityChecker, class ValueEqualityChecker>
-bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
+          class KeyEqualityChecker,
+          bool _Duplicates,
+          class ValueEqualityChecker>
+bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,  _Duplicates,
             ValueEqualityChecker>::Split_Operation(Page* consolidated_page,
                                                    std::stack<PID>&
                                                        pages_visited,
@@ -1405,8 +1420,10 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 }
 
 template <typename KeyType, typename ValueType, class KeyComparator,
-          class KeyEqualityChecker, class ValueEqualityChecker>
-bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
+          class KeyEqualityChecker,
+          bool _Duplicates,
+          class ValueEqualityChecker>
+bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,  _Duplicates,
             ValueEqualityChecker>::complete_the_split(PID side_link,
                                                       std::stack<PID>&
                                                           pages_visited) {
@@ -1461,8 +1478,10 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 }
 
 template <typename KeyType, typename ValueType, class KeyComparator,
-          class KeyEqualityChecker, class ValueEqualityChecker>
-void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
+          class KeyEqualityChecker,
+          bool _Duplicates,
+          class ValueEqualityChecker>
+void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker, _Duplicates,
             ValueEqualityChecker>::Merge_Operation(Page* consolidated_page,
                                                    std::stack<PID>&
                                                        pages_visited,
@@ -1699,9 +1718,11 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 // TODO: Handle case where parent is deleted, split, merged
 /* Returns root PID if we fail to find child */
 template <typename KeyType, typename ValueType, class KeyComparator,
-          class KeyEqualityChecker, class ValueEqualityChecker>
+          class KeyEqualityChecker,
+          bool _Duplicates,
+          class ValueEqualityChecker>
 std::uint64_t
-BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
+BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,  _Duplicates,
        ValueEqualityChecker>::find_left_sibling(std::stack<PID>& pages_visited,
                                                 KeyType merge_key) {
   PID parent_pid = pages_visited.top();
@@ -1782,9 +1803,11 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 }
 
 template <typename KeyType, typename ValueType, class KeyComparator,
-          class KeyEqualityChecker, class ValueEqualityChecker>
+          class KeyEqualityChecker,
+          bool _Duplicates,
+          class ValueEqualityChecker>
 bool BWTree<
-    KeyType, ValueType, KeyComparator, KeyEqualityChecker,
+    KeyType, ValueType, KeyComparator, KeyEqualityChecker, _Duplicates,
     ValueEqualityChecker>::complete_the_merge(RemoveNodeDelta* remove_node,
                                               std::stack<PID>& pages_visited) {
   PID merged_into_pid = remove_node->merged_into_;
@@ -1898,8 +1921,10 @@ bool BWTree<
 }
 
 template <typename KeyType, typename ValueType, class KeyComparator,
-          class KeyEqualityChecker, class ValueEqualityChecker>
-bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
+          class KeyEqualityChecker,
+          bool _Duplicates,
+          class ValueEqualityChecker>
+bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,  _Duplicates,
             ValueEqualityChecker>::is_merge_installed(Page* page_merging_into,
                                                       Page* compare_to,
                                                       KeyType high_key) {
@@ -1967,8 +1992,10 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 }
 
 template <typename KeyType, typename ValueType, class KeyComparator,
-          class KeyEqualityChecker, class ValueEqualityChecker>
-void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
+          class KeyEqualityChecker,
+          bool _Duplicates,
+          class ValueEqualityChecker>
+void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,  _Duplicates,
             ValueEqualityChecker>::RunEpochManager() {
   if (!GC_ENABLED) {
     assert(false);
@@ -2017,8 +2044,10 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 }
 
 template <typename KeyType, typename ValueType, class KeyComparator,
-          class KeyEqualityChecker, class ValueEqualityChecker>
-uint64_t BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
+          class KeyEqualityChecker,
+          bool _Duplicates,
+          class ValueEqualityChecker>
+uint64_t BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker, _Duplicates,
             ValueEqualityChecker>::RegisterWorker() {
   if (!GC_ENABLED) {
     return 0;
@@ -2032,8 +2061,10 @@ uint64_t BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 }
 
 template <typename KeyType, typename ValueType, class KeyComparator,
-          class KeyEqualityChecker, class ValueEqualityChecker>
-void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
+          class KeyEqualityChecker,
+          bool _Duplicates ,
+          class ValueEqualityChecker>
+void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker, _Duplicates,
             ValueEqualityChecker>::DeregisterWorker(uint64_t worker_epoch) {
   if (!GC_ENABLED) {
     return;
@@ -2046,8 +2077,10 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 }
 
 template <typename KeyType, typename ValueType, class KeyComparator,
-          class KeyEqualityChecker, class ValueEqualityChecker>
-void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
+          class KeyEqualityChecker,
+          bool _Duplicates,
+          class ValueEqualityChecker>
+void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker, _Duplicates,
             ValueEqualityChecker>::DeallocatePage(Page *page) {
   dealloc_lock.WriteLock();
   uint64_t current_epoch = epoch_;
@@ -2057,8 +2090,10 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 }
 
 template <typename KeyType, typename ValueType, class KeyComparator,
-          class KeyEqualityChecker, class ValueEqualityChecker>
-bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
+          class KeyEqualityChecker,
+          bool _Duplicates,
+          class ValueEqualityChecker>
+bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker, _Duplicates,
             ValueEqualityChecker>::Cleanup() {
   if (!GC_ENABLED) {
     return true;
@@ -2098,8 +2133,10 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 }
 
 template <typename KeyType, typename ValueType, class KeyComparator,
-          class KeyEqualityChecker, class ValueEqualityChecker>
-size_t BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
+          class KeyEqualityChecker,
+          bool _Duplicates,
+          class ValueEqualityChecker>
+size_t BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker, _Duplicates,
             ValueEqualityChecker>::GetMemoryFootprint() {
   if (!GC_ENABLED) {
     return 0;
@@ -2143,8 +2180,10 @@ size_t BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 }
 
 template <typename KeyType, typename ValueType, class KeyComparator,
-          class KeyEqualityChecker, class ValueEqualityChecker>
-size_t BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
+          class KeyEqualityChecker,
+          bool _Duplicates,
+          class ValueEqualityChecker>
+size_t BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker, _Duplicates,
             ValueEqualityChecker>::GetPageSize(Page *page) {
   size_t page_size = 0;
   switch (page->GetType()) {
