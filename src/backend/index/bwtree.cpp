@@ -2005,7 +2005,7 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 //        (unsigned) memory_footprint_after);
     for (uint64_t i = 0; i < epoch_; ++i) {
       auto entry = active_threads_map_.find(i);
-      if (entry != active_threads_map_.end()) {
+      if (entry != active_threads_map_.end() && active_threads_map_[i] > 0) {
         LOG_DEBUG("Epoch %u has %u active threads remaining",(unsigned) i,
             (unsigned)active_threads_map_[i]);
       }
