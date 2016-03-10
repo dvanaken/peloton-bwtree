@@ -1401,7 +1401,7 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
       }
     }
   }
-  return false;
+  return true;
 }
 
 template <typename KeyType, typename ValueType, class KeyComparator,
