@@ -30,6 +30,7 @@
 #define SPLIT_SIZE 4
 #define MERGE_SIZE 4
 #define EPOCH_INTERVAL_MS 40  // in milliseconds
+#define GC_ENABLED true
 
 namespace peloton {
 namespace index {

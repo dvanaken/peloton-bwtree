@@ -34,12 +34,14 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
   InnerNode* root_base_page = new InnerNode();
   map_table_[root_] = root_base_page;
 
-  // Initialize state for epoch manager
-  finished_ = false;
   epoch_ = 0;
-  active_threads_map_[epoch_] = 0;
   epoch_garbage_[epoch_] = std::vector<Page*>();
-  Start();
+  if (GC_ENABLED) {
+    // Initialize state for epoch manager
+    active_threads_map_[epoch_] = 0;
+    finished_ = false;
+    Start();
+  }
 
   // Can't do this here because we're using atomic inside vector
   // map_table_.resize(1000000);
@@ -60,9 +62,11 @@ template <typename KeyType, typename ValueType, class KeyComparator,
           class KeyEqualityChecker, class ValueEqualityChecker>
 BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
        ValueEqualityChecker>::~BWTree() {
-  finished_ = true;
-  exec_finished_.notify_one();
-  epoch_manager_.join();
+  if (GC_ENABLED) {
+    finished_ = true;
+    exec_finished_.notify_one();
+    epoch_manager_.join();
+  }
   delete key_tuple_schema;
 
   // Free chains in map table
@@ -1966,6 +1970,9 @@ template <typename KeyType, typename ValueType, class KeyComparator,
           class KeyEqualityChecker, class ValueEqualityChecker>
 void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             ValueEqualityChecker>::RunEpochManager() {
+  if (!GC_ENABLED) {
+    assert(false);
+  }
   std::mutex mtx;
   std::unique_lock<std::mutex> lck(mtx);
   while (exec_finished_.wait_for(lck,
@@ -2006,6 +2013,9 @@ template <typename KeyType, typename ValueType, class KeyComparator,
           class KeyEqualityChecker, class ValueEqualityChecker>
 uint64_t BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             ValueEqualityChecker>::RegisterWorker() {
+  if (!GC_ENABLED) {
+    return 0;
+  }
   //gc_lock.WriteLock();
   uint64_t current_epoch = epoch_;
   LOG_DEBUG("Registering thread for epoch %u", (unsigned) current_epoch);
@@ -2018,6 +2028,9 @@ template <typename KeyType, typename ValueType, class KeyComparator,
           class KeyEqualityChecker, class ValueEqualityChecker>
 void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             ValueEqualityChecker>::DeregisterWorker(uint64_t worker_epoch) {
+  if (!GC_ENABLED) {
+    return;
+  }
   //dealloc_lock.WriteLock();
   LOG_DEBUG("Deregistering thread from epoch %u", (unsigned) worker_epoch);
   --(active_threads_map_[worker_epoch]);
@@ -2040,6 +2053,9 @@ template <typename KeyType, typename ValueType, class KeyComparator,
           class KeyEqualityChecker, class ValueEqualityChecker>
 bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             ValueEqualityChecker>::Cleanup() {
+  if (!GC_ENABLED) {
+    return true;
+  }
   LOG_DEBUG("Cleaning up old pages");
   // TODO: remove coarse-grain locking
   cleanup_lock.WriteLock();
@@ -2078,6 +2094,9 @@ template <typename KeyType, typename ValueType, class KeyComparator,
           class KeyEqualityChecker, class ValueEqualityChecker>
 size_t BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
             ValueEqualityChecker>::GetMemoryFootprint() {
+  if (!GC_ENABLED) {
+    return 0;
+  }
   LOG_DEBUG("Starting GetMemoryFootprint");
   uint64_t worker_epoch = RegisterWorker();
   size_t memory_footprint = 0;
