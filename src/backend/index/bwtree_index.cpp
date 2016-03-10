@@ -45,7 +45,9 @@ bool BWTreeIndex<KeyType, ValueType, KeyComparator,
   index_key.SetFromKey(key);
 
   // Insert the key, val pair
-  return container.Insert(index_key, location);
+  bool succeed = container.Insert(index_key, location);
+  LOG_DEBUG("Succeed InsertEntry!");
+  return succeed;
 }
 
 template <typename KeyType, typename ValueType, class KeyComparator,

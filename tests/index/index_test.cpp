@@ -164,6 +164,8 @@ void InsertTest(index::Index *index, VarlenPool *pool, size_t scale_factor) {
     index->InsertEntry(key3.get(), item1);
     index->InsertEntry(key4.get(), item1);
   }
+
+  LOG_DEBUG("Finish a lunch!");
 }
 
 // DELETE HELPER FUNCTION
@@ -582,7 +584,9 @@ TEST(IndexTests, MultiThreadedInsertMoreTest) {
   size_t scale_factor = 2;
   LaunchParallelTest(num_threads, InsertTest, index.get(), pool, scale_factor);
 
+  LOG_DEBUG("here1");
   locations = index->ScanAllKeys();
+  LOG_DEBUG("here2");
   EXPECT_EQ(locations.size(), 9 * num_threads * scale_factor);
 
   std::unique_ptr<storage::Tuple> key0(new storage::Tuple(key_schema, true));
@@ -629,26 +633,33 @@ TEST(IndexTests, MultiThreadedInsertMoreTest) {
   keynonce->SetValue(0, ValueFactory::GetIntegerValue(1000), pool);
   keynonce->SetValue(1, ValueFactory::GetStringValue("f"), pool);
 
+  LOG_DEBUG("here scan key");
   locations = index->ScanKey(keynonce.get());
   EXPECT_EQ(locations.size(), 0);
 
+  LOG_DEBUG("here scan key");
   locations = index->ScanKey(key0.get());
   EXPECT_EQ(locations.size(), num_threads);
   EXPECT_EQ(locations[0].block, item0.block);
+  LOG_DEBUG("here scan key");
   locations = index->ScanKey(key1.get());
   EXPECT_EQ(locations.size(), num_threads * 5);
   EXPECT_EQ(locations[0].block, item1.block);
+  LOG_DEBUG("here scan key");
   locations = index->ScanKey(key2.get());
   EXPECT_EQ(locations.size(), num_threads);
   EXPECT_EQ(locations[0].block, item1.block);
+  LOG_DEBUG("here scan key");
   locations = index->ScanKey(key3.get());
   EXPECT_EQ(locations.size(), num_threads);
   EXPECT_EQ(locations[0].block, item1.block);
+  LOG_DEBUG("here scan key");
   locations = index->ScanKey(key4.get());
   EXPECT_EQ(locations.size(), num_threads);
   EXPECT_EQ(locations[0].block, item1.block);
 
   delete tuple_schema;
+  LOG_DEBUG("Finish multi-thread more insert test!");
 }
 
 TEST(IndexTests, MultiThreadedHybirdMoreTest) {
@@ -826,6 +837,7 @@ TEST(IndexTests, AnotherDamnTest) {
   EXPECT_EQ(locations.size(), num_threads);
 
   delete tuple_schema;
+  LOG_DEBUG("Finish another damn test!");
 }
 
 }  // End test namespace
