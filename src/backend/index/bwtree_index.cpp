@@ -26,14 +26,12 @@ BWTreeIndex<KeyType, ValueType, KeyComparator, KeyEqualityChecker>::BWTreeIndex(
       container(KeyComparator(metadata), KeyEqualityChecker(metadata)),
       equals(metadata),
       comparator(metadata) {
-  // Add your implementation here
 }
 
 template <typename KeyType, typename ValueType, class KeyComparator,
           class KeyEqualityChecker>
 BWTreeIndex<KeyType, ValueType, KeyComparator,
             KeyEqualityChecker>::~BWTreeIndex() {
-  // Add your implementation here
 }
 
 template <typename KeyType, typename ValueType, class KeyComparator,
@@ -46,7 +44,6 @@ bool BWTreeIndex<KeyType, ValueType, KeyComparator,
 
   // Insert the key, val pair
   bool succeed = container.Insert(index_key, location);
-  LOG_DEBUG("Succeed InsertEntry!");
   return succeed;
 }
 
