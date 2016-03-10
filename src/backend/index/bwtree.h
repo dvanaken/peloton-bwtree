@@ -26,9 +26,9 @@
 #include "backend/common/platform.h"
 #include "backend/index/index_key.h"
 
-#define CONSOLIDATE_THRESHOLD 8
-#define SPLIT_SIZE 10
-#define MERGE_SIZE 5
+#define CONSOLIDATE_THRESHOLD 3
+#define SPLIT_SIZE 4
+#define MERGE_SIZE 4
 #define EPOCH_INTERVAL_MS 40  // in milliseconds
 
 namespace peloton {

@@ -482,41 +482,41 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
               }
 
               /* Check if parents needs to be consolidated */
-              while (!pages_visited.empty()) {
-                current_PID = pages_visited.top();
-                pages_visited.pop();
-                if (pages_visited.empty()) {
-                  assert(current_PID == root_);
-                }
-                if (CheckConsolidate(current_PID)) {
-                  LOG_DEBUG("Performing consolidation of parent");
-                  Page* consolidated_page = Consolidate(current_PID);
-                  if (consolidated_page) {
-                    Page* old_head_of_delta = map_table_[current_PID];
-
-                    /* Attempt to insert updated consolidated page */
-                    if (!map_table_[current_PID].compare_exchange_strong(
-                        old_head_of_delta, consolidated_page)) {
-                      delete consolidated_page;
-                      LOG_DEBUG("CAS of consolidated parent failed");
-                    } else {
-                      // TODO: Eventually we'll have epoch garbage collection. But
-                      // now we free in this way.
-                      DeallocatePage(old_head_of_delta);
-                      LOG_DEBUG("CAS of consolidated parent success");
-
-                      /* Check if split is required and perform the operation */
-                      if (!Split_Operation(consolidated_page, pages_visited,
-                          current_PID)) {
-
-                        /* Check if merge is requires and perform the operation */
-                        Merge_Operation(consolidated_page, pages_visited,
-                            current_PID);
-                      }
-                    }
-                  }
-                }
-              }
+//              while (!pages_visited.empty()) {
+//                current_PID = pages_visited.top();
+//                pages_visited.pop();
+//                if (pages_visited.empty()) {
+//                  assert(current_PID == root_);
+//                }
+//                if (CheckConsolidate(current_PID)) {
+//                  LOG_DEBUG("Performing consolidation of parent");
+//                  Page* consolidated_page = Consolidate(current_PID);
+//                  if (consolidated_page) {
+//                    Page* old_head_of_delta = map_table_[current_PID];
+//
+//                    /* Attempt to insert updated consolidated page */
+//                    if (!map_table_[current_PID].compare_exchange_strong(
+//                        old_head_of_delta, consolidated_page)) {
+//                      delete consolidated_page;
+//                      LOG_DEBUG("CAS of consolidated parent failed");
+//                    } else {
+//                      // TODO: Eventually we'll have epoch garbage collection. But
+//                      // now we free in this way.
+//                      DeallocatePage(old_head_of_delta);
+//                      LOG_DEBUG("CAS of consolidated parent success");
+//
+//                      /* Check if split is required and perform the operation */
+//                      if (!Split_Operation(consolidated_page, pages_visited,
+//                          current_PID)) {
+//
+//                        /* Check if merge is requires and perform the operation */
+//                        Merge_Operation(consolidated_page, pages_visited,
+//                            current_PID);
+//                      }
+//                    }
+//                  }
+//                }
+//              }
             }
             DeregisterWorker(worker_epoch);
             return inserted;
@@ -1498,7 +1498,7 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
 
       /* Create a new merge delta */
       merge_delta =
-          new NodeMergeDelta(node_to_merge->high_key_,
+          new NodeMergeDelta(node_to_merge->low_key_,
                              node_to_merge->absolute_max_, consolidated_page);
 
       InnerNode* node_merging_into =
@@ -1814,7 +1814,7 @@ bool BWTree<
 
       /* Create a new merge delta */
       NodeMergeDelta* merge_delta = new NodeMergeDelta(
-          inner_node->high_key_, inner_node->absolute_max_, page_deleted);
+          inner_node->low_key_, inner_node->absolute_max_, page_deleted);
 
       /* Install Merge Delta */
       merge_delta->SetDeltaNext(page_merging_into_consolidate);
@@ -1830,8 +1830,8 @@ bool BWTree<
         reinterpret_cast<InnerNode*>(page_merging_into_consolidate);
     index_term_delta =
         new IndexTermDelta(inner_merged_into->low_key_,
-                           inner_merged_into->high_key_, merged_into_pid);
-    index_term_delta->absolute_max_ = inner_merged_into->absolute_max_;
+                           inner_node->high_key_, merged_into_pid);
+    index_term_delta->absolute_max_ = inner_node->absolute_max_;
     index_term_delta->absolute_min_ = inner_merged_into->absolute_min_;
   } else if (page_deleted->GetType() == LEAF_NODE) {
     __attribute__((unused)) LeafNode* leaf =
@@ -1984,7 +1984,7 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,
     //gc_lock.Unlock();
     assert(epoch_ == next_epoch);
     //__attribute__((unused)) size_t memory_footprint_before = GetMemoryFootprint();
-    Cleanup();
+    //Cleanup();
     //__attribute__((unused)) size_t memory_footprint_after = GetMemoryFootprint();
 //    LOG_DEBUG("GetMemoryFootprint: before = %u, after = %u",
 //        (unsigned) memory_footprint_before,
