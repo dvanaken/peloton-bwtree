@@ -57,13 +57,10 @@ class BWTreeIndex : public Index {
 
   std::string GetTypeName() const;
 
-  // TODO: Implement this
   bool Cleanup() {
-    //return true;
     return container.Cleanup();
   }
 
-  // TODO: Implement this
   size_t GetMemoryFootprint() {
     return container.GetMemoryFootprint();
   }
