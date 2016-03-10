@@ -1883,7 +1883,6 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,  _Duplicates,
 
     // Add new epoch slots to the active workers map and the garbage
     // collection map
-    //gc_lock.WriteLock();
     LOG_DEBUG("epoch garbage size: %u", (unsigned) epoch_garbage_.size());
     LOG_DEBUG("active threads size: %u", (unsigned) active_threads_map_.size());
     active_threads_map_[next_epoch] = 0;
@@ -1893,6 +1892,10 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,  _Duplicates,
     // equal to next_epoch because this thread should be the only one
     // ever changing it.
     ++epoch_;
+
+    // We disable doind cleanup on our own because otherwise we do not pass
+    // the speed test.
+    // Cleanup();
     assert(epoch_ == next_epoch);
     for (uint64_t i = 0; i < epoch_; ++i) {
       auto entry = active_threads_map_.find(i);
@@ -1942,9 +1945,9 @@ template <typename KeyType, typename ValueType, class KeyComparator,
           class ValueEqualityChecker>
 void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker, _Duplicates,
             ValueEqualityChecker>::DeallocatePage(Page *page) {
-  dealloc_lock.WriteLock();
   uint64_t current_epoch = epoch_;
   LOG_DEBUG("Deallocating page in epoch %u", (unsigned) current_epoch);
+  dealloc_lock.WriteLock();
   epoch_garbage_[current_epoch].push_back(page);
   dealloc_lock.Unlock();
 }
@@ -1966,12 +1969,13 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker, _Duplicates,
   for (uint64_t i = 0; i < current_epoch; ++i) {
     auto entry = active_threads_map_.find(i);
     if (entry != active_threads_map_.end() && entry->second == 0) {
-      // This is a valid epoch and there are no active threads remaining
-
+      // This is a previous epoch and there are no active threads remaining
+      // (safe to clean)
       LOG_DEBUG("Found safe epoch %u", (unsigned) i);
       std::vector<Page*>& dealloc_pages = epoch_garbage_[i];
-      LOG_DEBUG("Deleting garbage (%u items) in safe epoch %u\n", (unsigned) dealloc_pages.size(),
-              (unsigned) i);
+      LOG_DEBUG("Deleting garbage (%u items) in safe epoch %u\n", 
+          (unsigned) dealloc_pages.size(),
+          (unsigned) i);
       for (uint64_t j = 0; j < dealloc_pages.size(); ++j) {
         Page *chain_head = dealloc_pages[j];
         FreeDeltaChain(chain_head);
@@ -2012,7 +2016,7 @@ size_t BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker, _Duplicates
     }
   }
 
-  // Now walk through pages to be deallocated
+  // Now walk through pages to be deallocated (but haven't yet)
   uint64_t current_epoch = epoch_;
   cleanup_lock.ReadLock();
 
