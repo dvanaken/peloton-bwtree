@@ -57,14 +57,6 @@ class BWTree {
   BWTree(const KeyComparator& comparator, const KeyEqualityChecker& equals);
   ~BWTree();
 
-  // TODO (dana): I can't get this to compile after I add allow_duplicate as a
-  // param
-  // BWTree(const KeyComparator& comparator, const KeyEqualityChecker& equals,
-  //  bool allow_duplicate);
-
-  // BWTree();
-  // BWTree(bool allow_duplicate);
-
   // Insert function
   bool Insert(const KeyType& key, const ValueType& data);
 
@@ -318,9 +310,6 @@ class BWTree {
     std::vector<ValueType> result;
     Page* current_page = map_table_[page_PID];
 
-    // while (current_page != nullptr)
-    //  current_page = current_page->GetDeltaNext();
-
     std::map<KeyType, PID, KeyComparator> key_pointers(comparator_);
     std::map<KeyType, std::vector<ValueType>, KeyComparator> key_locations(
         comparator_);
@@ -331,15 +320,7 @@ class BWTree {
     bool absolute_min = false;
     bool absolute_max = false;
     bool is_leaf;
-    // if (current_page->GetType() == INNER_NODE)
-    // else
 
-    // Finally I found out a way to use set here... so we dont't need this
-    // VisitedChecker<KeyType, KeyEqualityChecker> visited_keys;
-
-    // std::stack<Page*> physical_links;
-    // std::stack<bool> split_indicators;
-    // std::stack<KeyType> split_separators;
     bool split_indicator = false;
     KeyType split_separator = KeyType();
     bool merge_indicator = false;
@@ -641,9 +622,6 @@ class BWTree {
   std::atomic<PID> PID_counter_;
 
   // Maps node PIDs to memory locations
-  // TODO: Because std::atomic is not CopyInsertable, we have to use a fix
-  // size
-  // here. Need some sort of garbage collection later
   std::vector<std::atomic<Page*>> map_table_{1000000};
 
   // True if duplicate keys are permitted

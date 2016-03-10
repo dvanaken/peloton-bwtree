@@ -87,24 +87,6 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker, _Duplicates,
   }
 }
 
-// TODO (dana): can't get this to compile after I add the allow_duplicate param
-// template <typename KeyType, typename ValueType, class KeyComparator, class
-// KeyEqualityChecker>
-// BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker>::BWTree(
-//     const KeyComparator& comparator,
-//     const KeyEqualityChecker& equals,
-//     bool allow_duplicate)
-//       : comparator_(comparator), equals_(equals),
-//       allow_duplicate_(allow_duplicate) {
-//   root_ = 0;
-//   PID_counter_ = 1;
-//   allow_duplicate_ = allow_duplicate;
-//
-//   InnerNode* root_base_page = new InnerNode();
-//   map_table_[root_] = root_base_page;
-//
-// }
-
 template <typename KeyType, typename ValueType, class KeyComparator,
           class KeyEqualityChecker,
           bool _Duplicates,
@@ -150,9 +132,7 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker, _Duplicates,
         DeregisterWorker(worker_epoch);
         return true;
       } else {
-        // TODO: Garbage collect leaf_base_page, index_term_page and leaf_PID.
         delete index_term_page;
-        // delete leaf_base_page; // TODO: I think we need to delete this too
         continue;
       }
     } else {
@@ -160,9 +140,6 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker, _Duplicates,
                                       // our search path
       Page* current_page = root_page;
       PID current_PID = root_;
-      //LOG_DEBUG("Tracking memory corruption begin:");
-      //Consolidate(root_);
-      //LOG_DEBUG("Tracking memory corruption end:");
       Page* head_of_delta = current_page;
       bool attempt_insert = true;
       while (attempt_insert) {
@@ -175,7 +152,6 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker, _Duplicates,
             assert(inner_node->absolute_max_ ||
                    reverse_comparator_(key, inner_node->high_key_) <= 0);
 
-            // TODO: use binary search here instead
             bool found_child = false;  // For debug only, should remove later
             for (const auto& child : inner_node->children_) {
               if (reverse_comparator_(key, child.first) <= 0) {
@@ -341,7 +317,6 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker, _Duplicates,
               head_of_delta = current_page;
             }
 
-            // TODO: this lookup should be binary search
             // Check if the given key is already located in this leaf
             bool found_key = false;
             std::vector<ValueType> data_items;
@@ -402,9 +377,6 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker, _Duplicates,
                     delete consolidated_page;
                     LOG_DEBUG("CAS of consolidation failed");
                   } else {
-                    // TODO: Eventually we'll have epoch garbage collection. But
-                    // now we free in this way.
-                    //FreeDeltaChain(new_modify_delta_page);
                     DeallocatePage(new_modify_delta_page);
                     LOG_DEBUG("CAS of consolidation success");
 
@@ -481,9 +453,6 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker, _Duplicates,
                     delete consolidated_page;
                     LOG_DEBUG("CAS of consolidation failed");
                   } else {
-                    // TODO: Eventually we'll have epoch garbage collection. But
-                    // now we free in this way.
-                    //FreeDeltaChain(new_modify_delta_page);
                     DeallocatePage(new_modify_delta_page);
                     LOG_DEBUG("CAS of consolidation success");
 
@@ -498,43 +467,6 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker, _Duplicates,
                   }
                 }
               }
-
-              /* Check if parents needs to be consolidated */
-//              while (!pages_visited.empty()) {
-//                current_PID = pages_visited.top();
-//                pages_visited.pop();
-//                if (pages_visited.empty()) {
-//                  assert(current_PID == root_);
-//                }
-//                if (CheckConsolidate(current_PID)) {
-//                  LOG_DEBUG("Performing consolidation of parent");
-//                  Page* consolidated_page = Consolidate(current_PID);
-//                  if (consolidated_page) {
-//                    Page* old_head_of_delta = map_table_[current_PID];
-//
-//                    /* Attempt to insert updated consolidated page */
-//                    if (!map_table_[current_PID].compare_exchange_strong(
-//                        old_head_of_delta, consolidated_page)) {
-//                      delete consolidated_page;
-//                      LOG_DEBUG("CAS of consolidated parent failed");
-//                    } else {
-//                      // TODO: Eventually we'll have epoch garbage collection. But
-//                      // now we free in this way.
-//                      DeallocatePage(old_head_of_delta);
-//                      LOG_DEBUG("CAS of consolidated parent success");
-//
-//                      /* Check if split is required and perform the operation */
-//                      if (!Split_Operation(consolidated_page, pages_visited,
-//                          current_PID)) {
-//
-//                        /* Check if merge is requires and perform the operation */
-//                        Merge_Operation(consolidated_page, pages_visited,
-//                            current_PID);
-//                      }
-//                    }
-//                  }
-//                }
-//              }
             }
             DeregisterWorker(worker_epoch);
             return inserted;
@@ -806,9 +738,6 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker, _Duplicates,
                 delete consolidated_page;
                 LOG_DEBUG("CAS of consolidation failed");
               } else {
-                // TODO: Eventually we'll have epoch garbage collection. But now
-                // we free in this way.
-                //FreeDeltaChain(new_modify_delta_page);
                 DeallocatePage(new_modify_delta_page);
                 LOG_DEBUG("CAS of consolidation success");
 
@@ -889,9 +818,6 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker, _Duplicates,
                   delete consolidated_page;
                   LOG_DEBUG("CAS of consolidation failed");
                 } else {
-                  // TODO: Eventually we'll have epoch garbage collection. But
-                  // now we free in this way.
-                  //FreeDeltaChain(new_modify_delta_page);
                   DeallocatePage(new_modify_delta_page);
 
                   LOG_DEBUG("CAS of consolidation success");
@@ -961,7 +887,6 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker, _Duplicates,
                reverse_comparator_(key, inner_node->low_key_) > 0);
         assert(inner_node->absolute_max_ ||
                reverse_comparator_(key, inner_node->high_key_) <= 0);
-        // TODO: use binary search here instead
         bool found_child = false;  // For debug only, should remove later
         for (const auto& child : inner_node->children_) {
           if (reverse_comparator_(key, child.first) <= 0) {
@@ -1051,7 +976,6 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker, _Duplicates,
           break;
         }
 
-        // TODO: this lookup should be binary search
         // Check if the given key is already located in this leaf
         std::vector<ValueType> data_items;
         for (const auto& key_values : leaf->data_items_) {
@@ -1082,23 +1006,6 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker, _Duplicates,
   }
 }
 
-/*
-template <typename KeyType, typename KeyEqualityChecker>
-class VisitedChecker {
- public:
-  std::vector<KeyType> data_;
-
-  void insert(const KeyType& item) { data_.push_back(item); }
-
-  bool find(const KeyType& item, KeyEqualityChecker& equals) {
-    for (auto& i : data_) {
-      if (equals(i, item)) return true;
-    }
-    return false;
-  }
-};
-*/
-
 template <typename KeyType, typename ValueType, class KeyComparator,
           class KeyEqualityChecker,
           bool _Duplicates,
@@ -1107,7 +1014,6 @@ std::map<KeyType, std::vector<ValueType>, KeyComparator>
 BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,  _Duplicates,
        ValueEqualityChecker>::SearchAllKeys() {
   LOG_DEBUG("Trying searchAllKeys");
-  //std::vector<ValueType> result;
   std::map<KeyType, std::vector<ValueType>, KeyComparator> visited_keys(comparator_);
 
   Page* current_page = map_table_[root_];
@@ -1121,9 +1027,6 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,  _Duplicates,
     DeregisterWorker(worker_epoch);
     return visited_keys;
   }
-
-  // Finally I found out a way to use set here... so we dont't need this
-  // VisitedChecker<KeyType, KeyEqualityChecker> visited_keys;
 
   bool split_indicator = false;
   __attribute__((unused)) bool merge_indicator = false;
@@ -1192,14 +1095,7 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,  _Duplicates,
             break;
 
           visited_keys.insert(std::make_pair(key_values.first, key_values.second));
-          //if (visited_keys.find(key_values.first) == visited_keys.end()) {
-            // if (visited_keys.find(key_values.first) == visited_keys.end()) {
-            //result.insert(result.end(), key_values.second.begin(),
-            //              key_values.second.end());
-          //}
         }
-
-        //if (!merge_indicator) visited_keys.clear();
 
         if (split_indicator) {
           current_PID = split_next_node;
@@ -1223,11 +1119,6 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,  _Duplicates,
       case MODIFY_DELTA: {
         ModifyDelta* mod_delta = reinterpret_cast<ModifyDelta*>(current_page);
         visited_keys.insert(std::make_pair(mod_delta->key_, mod_delta->locations_));
-        //if (visited_keys.find(mod_delta->key_) == visited_keys.end()) {
-          // if (visited_keys.find(mod_delta->key_) == visited_keys.end()) {
-          //result.insert(result.end(), mod_delta->locations_.begin(),
-          //              mod_delta->locations_.end());
-        //}
 
         current_page = current_page->GetDeltaNext();
         continue;
@@ -1236,12 +1127,9 @@ BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,  _Duplicates,
         throw IndexException("Unrecognized page type\n");
         break;
     }
-
-    // return std::vector<ValueType>();
   }
 }
 
-// TODO: Need to handle case where we are splitting the root
 template <typename KeyType, typename ValueType, class KeyComparator,
           class KeyEqualityChecker,
           bool _Duplicates,
@@ -1395,7 +1283,6 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,  _Duplicates,
 
         /* Attempt to install index term delta on the parent */
         while (true) {
-          // Safe to keep retrying - thoughts? (aaron)
           Page* parent_node = map_table_[pid_of_parent];
           if (parent_node->GetType() != REMOVE_NODE_DELTA) {
             index_term_delta_for_split->SetDeltaNext(parent_node);
@@ -1448,7 +1335,6 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,  _Duplicates,
     index_term_delta_for_split->absolute_max_ = new_leaf_node->absolute_max_;
   } else {
     LOG_DEBUG("Neither inner nor leaf node?");
-    // I believe this should never happen - thoughts? (aaron)
     return false;
   }
 
@@ -1457,7 +1343,6 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,  _Duplicates,
 
   /* Attempt to install index term delta on the parent */
   while (true) {
-    // Safe to keep retrying - thoughts? (aaron)
     Page* parent_node = map_table_[pid_of_parent];
     if (parent_node->GetType() != REMOVE_NODE_DELTA) {
       index_term_delta_for_split->SetDeltaNext(parent_node);
@@ -1628,9 +1513,6 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker, _Duplicates,
       /* Attempt to install the consolidated page */
       if (map_table_[pid_merging_into].compare_exchange_strong(
               current_top_of_page, page_merging_into)) {
-        // TODO: Eventually we'll have epoch garbage collection. But now we free
-        // in this way.
-        //FreeDeltaChain(current_top_of_page);
         DeallocatePage(current_top_of_page);
         LOG_DEBUG(
             "Successfully installed consolidated page we are merging into");
@@ -1687,18 +1569,11 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker, _Duplicates,
 
       /* Attempt to install index term delta on the parent */
       while (true) {
-      //LOG_DEBUG("Tracking memory corruption begin:");
-      //Consolidate(root_);
-      //LOG_DEBUG("Tracking memory corruption end:");
-        // Safe to keep retrying - thoughts? (aaron)
         Page* parent_node = map_table_[pid_of_parent];
         if (parent_node->GetType() != REMOVE_NODE_DELTA) {
           index_term_delta_for_merge->SetDeltaNext(parent_node);
           if (map_table_[pid_of_parent].compare_exchange_strong(
                   parent_node, index_term_delta_for_merge)) {
-      //LOG_DEBUG("Tracking memory corruption begin:");
-      //Consolidate(root_);
-      //LOG_DEBUG("Tracking memory corruption end:");
             LOG_DEBUG("CAS of installing index term delta in parent succeeded with PID: %ld", index_term_delta_for_merge->side_link_);
             LOG_DEBUG("with low key: %s high key: %s",
                 index_term_delta_for_merge->low_separator_.GetTupleForComparison(key_tuple_schema).GetInfo().c_str(),
@@ -1715,7 +1590,6 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker, _Duplicates,
   }
 }
 
-// TODO: Handle case where parent is deleted, split, merged
 /* Returns root PID if we fail to find child */
 template <typename KeyType, typename ValueType, class KeyComparator,
           class KeyEqualityChecker,
@@ -1833,9 +1707,6 @@ bool BWTree<
     LOG_DEBUG("CAS of consolidated page failed");
     return false;
   } else {
-    // TODO: Eventually we'll have epoch garbage collection. But now we free in
-    // this way.
-    //FreeDeltaChain(page_merging_into);
     DeallocatePage(page_merging_into);
   }
 
@@ -2022,14 +1893,7 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker,  _Duplicates,
     // equal to next_epoch because this thread should be the only one
     // ever changing it.
     ++epoch_;
-    //gc_lock.Unlock();
     assert(epoch_ == next_epoch);
-    //__attribute__((unused)) size_t memory_footprint_before = GetMemoryFootprint();
-    //Cleanup();
-    //__attribute__((unused)) size_t memory_footprint_after = GetMemoryFootprint();
-//    LOG_DEBUG("GetMemoryFootprint: before = %u, after = %u",
-//        (unsigned) memory_footprint_before,
-//        (unsigned) memory_footprint_after);
     for (uint64_t i = 0; i < epoch_; ++i) {
       auto entry = active_threads_map_.find(i);
       if (entry != active_threads_map_.end() && active_threads_map_[i] > 0) {
@@ -2052,11 +1916,9 @@ uint64_t BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker, _Duplicat
   if (!GC_ENABLED) {
     return 0;
   }
-  //gc_lock.WriteLock();
   uint64_t current_epoch = epoch_;
   LOG_DEBUG("Registering thread for epoch %u", (unsigned) current_epoch);
   ++(active_threads_map_[current_epoch]);
-  //gc_lock.Unlock();
   return current_epoch;
 }
 
@@ -2069,11 +1931,9 @@ void BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker, _Duplicates,
   if (!GC_ENABLED) {
     return;
   }
-  //dealloc_lock.WriteLock();
   LOG_DEBUG("Deregistering thread from epoch %u", (unsigned) worker_epoch);
   --(active_threads_map_[worker_epoch]);
   assert(active_threads_map_[worker_epoch] >= 0);
-  //dealloc_lock.Unlock();
 }
 
 template <typename KeyType, typename ValueType, class KeyComparator,
@@ -2099,17 +1959,14 @@ bool BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker, _Duplicates,
     return true;
   }
   LOG_DEBUG("Cleaning up old pages");
-  // TODO: remove coarse-grain locking
   cleanup_lock.WriteLock();
   uint64_t current_epoch = epoch_;
 
   // Find all epochs that are safe to garbage collect
-  //std::vector<uint64_t> safe_epochs;
   for (uint64_t i = 0; i < current_epoch; ++i) {
     auto entry = active_threads_map_.find(i);
     if (entry != active_threads_map_.end() && entry->second == 0) {
       // This is a valid epoch and there are no active threads remaining
-      //safe_epochs.push_back(entry->second);
 
       LOG_DEBUG("Found safe epoch %u", (unsigned) i);
       std::vector<Page*>& dealloc_pages = epoch_garbage_[i];
@@ -2190,43 +2047,36 @@ size_t BWTree<KeyType, ValueType, KeyComparator, KeyEqualityChecker, _Duplicates
     case INNER_NODE: {
       InnerNode* inner_node = reinterpret_cast<InnerNode*>(page);
       page_size = sizeof(*inner_node);
-      //LOG_DEBUG("Size of inner node: %u", (unsigned) page_size);
       break;
     }
     case INDEX_TERM_DELTA: {
       IndexTermDelta* index_delta = reinterpret_cast<IndexTermDelta*>(page);
       page_size = sizeof(*index_delta);
-      //LOG_DEBUG("Size of index term delta: %u", (unsigned) page_size);
       break;
     }
     case SPLIT_DELTA: {
       SplitDelta* split_delta = reinterpret_cast<SplitDelta*>(page);
       page_size = sizeof(*split_delta);
-      //LOG_DEBUG("Size of split delta: %u", (unsigned) page_size);
       break;
     }
     case REMOVE_NODE_DELTA: {
       RemoveNodeDelta* remove_delta = reinterpret_cast<RemoveNodeDelta*>(page);
       page_size = sizeof(*remove_delta);
-      //LOG_DEBUG("Size of remove node delta: %u", (unsigned) page_size);
       break;
     }
     case NODE_MERGE_DELTA: {
       NodeMergeDelta* merge_delta = reinterpret_cast<NodeMergeDelta*>(page);
       page_size = sizeof(*merge_delta);
-      //LOG_DEBUG("Size of node merge delta: %u", (unsigned) page_size);
       break;
     }
     case LEAF_NODE: {
       LeafNode* leaf = reinterpret_cast<LeafNode*>(page);
       page_size = sizeof(*leaf);
-      //LOG_DEBUG("Size of leaf node: %u", (unsigned) page_size);
       break;
     }
     case MODIFY_DELTA: {
       ModifyDelta* modify_delta = reinterpret_cast<ModifyDelta*>(page);
       page_size = sizeof(*modify_delta);
-      //LOG_DEBUG("Size of modify delta: %u", (unsigned) page_size);
       break;
     }
     default:
